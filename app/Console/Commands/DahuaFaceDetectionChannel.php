@@ -27,7 +27,7 @@ class DahuaFaceDetectionChannel extends Command
     protected $description = 'Fetch Facedetection data dari Dahua';
 
     protected int $channel;
-    protected int $gateOutChannel = 7;  
+    protected int $gateOutChannel = 1;  
     protected string|null $gateName;
 
     public function __construct()
