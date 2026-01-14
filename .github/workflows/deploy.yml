@@ -23,5 +23,6 @@ jobs:
           port: ${{ secrets.SERVER_PORT }}
           script: |
             echo "🚀 Pulling latest changes..."
+            cd /var/chronical/twb-be
             git pull origin master --rebase
-            /bin/bash /var/chronical/twb-be/runner.sh
+            /bin/bash  runner.sh
