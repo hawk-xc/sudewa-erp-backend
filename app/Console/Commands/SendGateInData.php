@@ -114,7 +114,7 @@ class SendGateInData extends Command
                 $detection->face_age = $api_data['age'] ?? null;
                 $detection->person_pic_quality = $api_data['quality_score'] ?? null;
                 $detection->is_duplicate = $api_data['is_duplicate'] ?? false;
-                // $detection->emotion = $api_data['expression'] ?? null;
+                $detection->emotion = $api_data['expression'] ?? null;
 
                 $detection->status = 1;
                 $detection->save();
