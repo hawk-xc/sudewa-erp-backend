@@ -24,4 +24,4 @@ jobs:
           script: |
             echo "🚀 Pulling latest changes..."
             git pull origin master --rebase
-            /bin/bash /home/xlxtwc/Chronical_Project/twb-be/runner.sh
+            /bin/bash /var/chronical/twb-be/runner.sh
