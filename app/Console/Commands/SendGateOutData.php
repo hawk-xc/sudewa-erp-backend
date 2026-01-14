@@ -206,7 +206,7 @@ class SendGateOutData extends Command
                 // ======================================================
                 $detection->is_matched          = true;
                 $detection->rec_no_in           = $visitor_in->rec_no;
-                $detection->duration            = $minutes;
+                $detection->duration            = (int) ceil($minutes);
                 $detection->similarity          = $confidence;
                 $detection->status              = true;
                 $detection->is_registered       = true;
