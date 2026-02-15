@@ -1,15 +1,13 @@
 <?php
 
-use Illuminate\Support\Str;
+use App\Http\Controllers\Auth\AuthController;
+use App\Http\Controllers\Permission\PermissionController;
+use App\Http\Controllers\Role\RoleController;
+use App\Http\Controllers\User\UserController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Storage;
-use App\Http\Controllers\Auth\AuthController;
-use App\Http\Controllers\DashboardController;
-use App\Http\Controllers\Role\RoleController;
-use App\Http\Controllers\Permission\PermissionController;
-use App\Http\Controllers\User\UserController;
-use App\Http\Controllers\Visitor\VisitorDetectionController;
+use Illuminate\Support\Str;
 
 /*
 |--------------------------------------------------------------------------
@@ -45,9 +43,6 @@ Route::group(
             Route::post('reset-password', [AuthController::class, 'resetPassword'])->name('users.reset-password');
         });
 
-        // Dashboard Statictic API
-        Route::get('dashboard', [DashboardController::class, 'index'])->name('dashboard');
-
         // User API
         Route::group(['prefix' => 'users'], function () {
             Route::apiResource('/', UserController::class)->parameters(['' => 'user']);
@@ -67,43 +62,21 @@ Route::group(
         });
 
         // Permission API
-        Route::group(['prefix' => 'permissions'], function() {
+        Route::group(['prefix' => 'permissions'], function () {
             Route::get('', [PermissionController::class, 'index']);
             Route::get('{id}', [PermissionController::class, 'show']);
         });
 
-        // Visitor API
-        Route::group(['prefix' => 'visitors'], function () { {
-            }
-            Route::apiResource('', VisitorDetectionController::class)->parameters(['' => 'visitors']);
-            Route::post('{id}/restore', [VisitorDetectionController::class, 'restore'])->name('visitors.restore');
-            Route::get('{id}/get-match', [VisitorDetectionController::class, 'getMatch'])->name('visitors.get-match');
-            Route::post('{id}/revert', [VisitorDetectionController::class, 'revert'])->name('visitors.revert');
-            Route::post('{id}/revert-matched', [VisitorDetectionController::class, 'revertMatchedData'])->name('visitors.revert-matched');
-            Route::delete('{id}/force-delete', [VisitorDetectionController::class, 'forceDelete'])->name('visitors.force-delete');
-            // action route
-            Route::group(['prefix' => 'action'], function () {
-                Route::get('get-report', [VisitorDetectionController::class, 'getReport'])->name('visitors.get-report');
-                Route::get('get-queues', [VisitorDetectionController::class, 'getQueues'])->name('visitors.get-queues');
-                Route::get('get-match-data', [VisitorDetectionController::class, 'getMatchedData'])->name('visitors.get-match-data');
-                Route::get('get-statistic', [VisitorDetectionController::class, 'getStatisticData'])->name('visitors.get-statistic-data');
-                Route::delete('delete-bulk', [VisitorDetectionController::class, 'deleteBulk'])->name('visitors.delete-bulk');
-            });
-        });
-
-        // Sidebar menu
-        Route::get('get-sidebar-menu', [DashboardController::class, 'sidebar'])->name('dashboard.get-sidebar');
-
-        Route::post('upload-content', function(Request $request) {
+        Route::post('upload-content', function (Request $request) {
             $request->validate([
                 'name' => 'required|string',
-                'content' => 'required|file|max:2048'
+                'content' => 'required|file|max:2048',
             ]);
 
             $file = $request->file('content');
             $fileExtension = $file->getClientOriginalExtension();
 
-            $fileName = time() . Str::slug($request->name) . '.' . $fileExtension;
+            $fileName = time().Str::slug($request->name).'.'.$fileExtension;
 
             try {
                 $fileMove = Storage::disk('minio')->putFileAs('content', $file, $fileName);
@@ -112,12 +85,12 @@ Route::group(
                 return json_encode([
                     'status' => true,
                     'message' => 'file successfully uploaded!',
-                    'file_url' => $fileUrl
+                    'file_url' => $fileUrl,
                 ]);
             } catch (Exception $err) {
                 return json_encode([
                     'status' => false,
-                    'message' => 'Err uploaded file : ' . $err->getMessage()
+                    'message' => 'Err uploaded file : '.$err->getMessage(),
                 ]);
             }
         });
