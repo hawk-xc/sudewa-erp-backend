@@ -3,7 +3,6 @@
 namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
-use Spatie\Permission\Contracts\Permission;
 
 class DatabaseSeeder extends Seeder
 {
@@ -14,7 +13,17 @@ class DatabaseSeeder extends Seeder
      */
     public function run()
     {
+        // auth
         $this->call(PermissionSeeder::class);
         $this->call(UserSeeder::class);
+
+        // app flow seed
+        $this->call(CompanySeeder::class);
+        $this->call(ModuleSeeder::class);
+        $this->call(FeatureSeeder::class);
+
+        // app flow pivot
+        $this->call(CompanyModuleSeeder::class);
+        $this->call(ModuleFeatureSeeder::class);
     }
 }

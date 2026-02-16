@@ -1,0 +1,174 @@
+<?php
+
+namespace Database\Seeders;
+
+use App\Models\Feature;
+use Illuminate\Database\Seeder;
+
+class FeatureSeeder extends Seeder
+{
+    /**
+     * Run the database seeds.
+     */
+    public function run(): void
+    {
+        $features = [
+            // Master Data Module
+            [
+                'name' => 'Master Akun',
+                'slug' => 'chart-of-accounts',
+                'description' => 'Account master data',
+            ],
+            [
+                'name' => 'Master Supplier',
+                'slug' => 'suppliers',
+                'description' => 'Supplier master data',
+            ],
+            [
+                'name' => 'Master Customer',
+                'slug' => 'customers',
+                'description' => 'Customer master data',
+            ],
+            [
+                'name' => 'Master Tipe Unit',
+                'slug' => 'unit-types',
+                'description' => 'Unit type master data',
+            ],
+            [
+                'name' => 'Master Sparepart',
+                'slug' => 'spare-parts',
+                'description' => 'Spare part master data',
+            ],
+            [
+                'name' => 'Master Kas',
+                'slug' => 'cash-accounts',
+                'description' => 'Cash account master data',
+            ],
+            [
+                'name' => 'Master User',
+                'slug' => 'users',
+                'description' => 'User master data',
+            ],
+
+            // Transaction Module
+            [
+                'name' => 'Arus Transaksi',
+                'slug' => 'transaction-journal',
+                'description' => 'Transaction flow records',
+            ],
+            [
+                'name' => 'Pembelian Unit',
+                'slug' => 'unit-purchases',
+                'description' => 'Unit purchase transactions',
+            ],
+            [
+                'name' => 'Penjualan Unit',
+                'slug' => 'unit-sales',
+                'description' => 'Unit sales transactions',
+            ],
+
+            // Warehouse Module
+            [
+                'name' => 'Stok Unit',
+                'slug' => 'unit-inventory',
+                'description' => 'Unit inventory data',
+            ],
+            [
+                'name' => 'Penerimaan Unit',
+                'slug' => 'unit-receipts',
+                'description' => 'Unit receiving records',
+            ],
+            [
+                'name' => 'Pengeluaran Unit',
+                'slug' => 'unit-dispatches',
+                'description' => 'Unit dispatch records',
+            ],
+
+            // Finance Module
+            [
+                'name' => 'Transaksi Kas Harian',
+                'slug' => 'daily-cash-transactions',
+                'description' => 'Daily cash transactions',
+            ],
+            [
+                'name' => 'Data PPN Pembelian',
+                'slug' => 'purchase-vat-records',
+                'description' => 'Purchase VAT records',
+            ],
+            [
+                'name' => 'Data PPN Penjualan',
+                'slug' => 'sales-vat-records',
+                'description' => 'Sales VAT records',
+            ],
+            [
+                'name' => 'Data Refund Beli',
+                'slug' => 'purchase-refunds',
+                'description' => 'Purchase refund records',
+            ],
+            [
+                'name' => 'Data Refund Jual',
+                'slug' => 'sales-refunds',
+                'description' => 'Sales refund records',
+            ],
+            [
+                'name' => 'Data Hutang',
+                'slug' => 'accounts-payable',
+                'description' => 'Accounts payable records',
+            ],
+            [
+                'name' => 'Data Pembayaran Hutang',
+                'slug' => 'payable-payments',
+                'description' => 'Accounts payable payments',
+            ],
+            [
+                'name' => 'Data Piutang',
+                'slug' => 'accounts-receivable',
+                'description' => 'Accounts receivable records',
+            ],
+            [
+                'name' => 'Data Terima Piutang',
+                'slug' => 'receivable-collections',
+                'description' => 'Accounts receivable collections',
+            ],
+
+            // Laporan Module
+            [
+                'name' => 'Laporan Transaksi Kas',
+                'slug' => 'cash-transaction-reports',
+                'description' => 'Cash transaction reports',
+            ],
+            [
+                'name' => 'Laporan Akuntansi',
+                'slug' => 'accounting-reports',
+                'description' => 'Accounting reports',
+            ],
+            [
+                'name' => 'Laporan Pembelian',
+                'slug' => 'purchase-reports',
+                'description' => 'Purchase reports',
+            ],
+            [
+                'name' => 'Laporan Penjualan',
+                'slug' => 'sales-reports',
+                'description' => 'Sales reports',
+            ],
+            [
+                'name' => 'Laporan Penerimaan',
+                'slug' => 'receipt-reports',
+                'description' => 'Receiving reports',
+            ],
+            [
+                'name' => 'Laporan Pengiriman',
+                'slug' => 'dispatch-reports',
+                'description' => 'Dispatch reports',
+            ],
+            [
+                'name' => 'Laporan Stok',
+                'slug' => 'inventory-reports',
+                'description' => 'Inventory reports',
+            ],
+        ];
+
+        Feature::insert($features);
+    }
+}

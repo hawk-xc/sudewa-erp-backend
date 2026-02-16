@@ -5,9 +5,8 @@ namespace Database\Seeders;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
-use Spatie\Permission\Models\Role;
-use Illuminate\Support\Facades\Hash;
 use Spatie\Permission\Models\Permission;
+use Spatie\Permission\Models\Role;
 
 class UserSeeder extends Seeder
 {
@@ -21,13 +20,13 @@ class UserSeeder extends Seeder
         DB::table('users')->delete();
 
         $user = User::create([
-            'username' => 'admintwb12',
+            'username' => 'admin',
             'firstname' => 'Admin',
             'lastname' => 'true',
-            'name' => 'Admin TWB',
+            'name' => 'Admin',
             'email' => 'admin@deraly.id',
             'password' => bcrypt('rootme'),
-            'secure_password' =>  encrypt('rootme')
+            'secure_password' => encrypt('rootme'),
         ]);
 
         $adminRole = Role::firstOrCreate(['name' => 'admin']);

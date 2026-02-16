@@ -2,10 +2,9 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
-use Spatie\Permission\Models\Role;
 use Spatie\Permission\Models\Permission;
+use Spatie\Permission\Models\Role;
 
 class PermissionSeeder extends Seeder
 {
@@ -15,33 +14,35 @@ class PermissionSeeder extends Seeder
     public function run(): void
     {
         $permissions = [
-            // Visitor Permissions
-            'visitor:list',
-            'visitor:edit',
-            'visitor:create',
-            'visitor:delete',
-            'visitor:export',
+            'master-data:create',
+            'master-data:view',
+            'master-data:edit',
+            'master-data:edit',
+            'master-data:delete',
 
-            // Role Permissions
-            'roles:list',
-            'roles:edit',
-            'roles:create',
-            'roles:delete',
-            'roles:export',
+            'transaction:create',
+            'transaction:view',
+            'transaction:edit',
+            'transaction:delete',
 
-            // Permission Permissions
-            'permissions:list',
-            'permissions:edit',
-            'permissions:create',
-            'permissions:delete',
-            'permissions:export',
+            'warehouse:create',
+            'warehouse:view',
+            'warehouse:edit',
+            'warehouse:delete',
 
-            // User Permissions
-            'users:list',
-            'users:edit',
-            'users:create',
-            'users:delete',
-            'users:export',
+            'finance:create',
+            'finance:view',
+            'finance:edit',
+            'finance:delete',
+
+            'report:view',
+            'report:delete',
+            'report:export',
+
+            'user:create',
+            'user:view',
+            'user:edit',
+            'user:delete',
         ];
 
         foreach ($permissions as $permission) {
@@ -51,7 +52,6 @@ class PermissionSeeder extends Seeder
         $admin = Role::firstOrCreate(['name' => 'admin']);
 
         $admin->syncPermissions(Permission::all());
-
 
     }
 }
