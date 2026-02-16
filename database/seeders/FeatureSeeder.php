@@ -53,7 +53,7 @@ class FeatureSeeder extends Seeder
             // Transaction Module
             [
                 'name' => 'Arus Transaksi',
-                'slug' => 'transaction-journal',
+                'slug' => 'transaction-flow',
                 'description' => 'Transaction flow records',
             ],
             [

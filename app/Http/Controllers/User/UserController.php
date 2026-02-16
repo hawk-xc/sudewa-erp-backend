@@ -2,25 +2,20 @@
 
 namespace App\Http\Controllers\User;
 
-use App\Models\User;
-use Illuminate\Support\Str;
-use Illuminate\Http\Request;
-use App\Traits\ResponseTrait;
-use Illuminate\Http\Response;
-use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\DB;
-use Spatie\Permission\Models\Role;
 use App\Http\Controllers\Controller;
+use App\Models\User;
 use App\Repositories\AuthRepository;
+use App\Traits\ResponseTrait;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 
 class UserController extends Controller
 {
     use ResponseTrait;
 
-    /**
-     * @var AuthRepository
-     */
     protected AuthRepository $authRepository;
 
     /**
@@ -28,12 +23,12 @@ class UserController extends Controller
      */
     public function __construct(AuthRepository $ar)
     {
-        $this->middleware(['permission:users:list'])->only(['index', 'show', 'getUserPassword']);
-        $this->middleware(['permission:users:create'])->only('store');
-        $this->middleware(['permission:users:edit'])->only('update', 'activateUser', 'deactivateUser');
-        $this->middleware(['permission:users:delete'])->only(['destroy']);
-        $this->middleware(['permission:roles:create'])->only(['assignRole']);
-        $this->middleware(['permission:roles:delete'])->only(['revokeRole']);
+        $this->middleware(['permission:user:list'])->only(['index', 'show', 'getUserPassword']);
+        $this->middleware(['permission:user:create'])->only('store');
+        $this->middleware(['permission:user:edit'])->only('update', 'activateUser', 'deactivateUser');
+        $this->middleware(['permission:user:delete'])->only(['destroy']);
+        $this->middleware(['permission:role:create'])->only(['assignRole']);
+        $this->middleware(['permission:role:delete'])->only(['revokeRole']);
 
         $this->authRepository = $ar;
     }
@@ -53,9 +48,9 @@ class UserController extends Controller
                         ->orWhere('email', $request->search)
                         ->orWhere('username', $request->search);
                 } else {
-                    $query->where('name', 'like', '%' . $request->search . '%')
-                        ->orWhere('email', 'like', '%' . $request->search . '%')
-                        ->orWhere('username', 'like', '%' . $request->search . '%');
+                    $query->where('name', 'like', '%'.$request->search.'%')
+                        ->orWhere('email', 'like', '%'.$request->search.'%')
+                        ->orWhere('username', 'like', '%'.$request->search.'%');
                 }
             });
         }
@@ -93,7 +88,7 @@ class UserController extends Controller
                 'username' => $request->username,
                 'firstname' => $request->firstname,
                 'lastname' => $request->lastname,
-                'fullname' => $request->firstname . ' ' . $request->lastname,
+                'fullname' => $request->firstname.' '.$request->lastname,
             ];
 
             if ($request->filled('password')) {
@@ -107,7 +102,7 @@ class UserController extends Controller
 
             $user = User::create($data);
 
-            if ($request->has('roles') && !empty($request->roles)) {
+            if ($request->has('roles') && ! empty($request->roles)) {
                 $user->assignRole($request->roles);
             }
 
@@ -118,6 +113,7 @@ class UserController extends Controller
             return $this->responseSuccess($user, 'User created successfully');
         } catch (\Exception $e) {
             DB::rollBack();
+
             return $this->responseError(null, $e->getMessage(), 500);
         }
     }
@@ -125,21 +121,22 @@ class UserController extends Controller
     public function show(string $id): JsonResponse
     {
         $user = User::with('roles')->find($id);
-        if (!$user) {
+        if (! $user) {
             return $this->responseError(null, 'User not found', 404);
         }
+
         return $this->responseSuccess($user, 'User retrieved successfully');
     }
 
     public function update(Request $request, string $id): JsonResponse
     {
         $user = User::find($id);
-        if (!$user) {
+        if (! $user) {
             return $this->responseError(null, 'User not found', 404);
         }
 
         $data = array_filter($request->only(['name', 'email', 'password', 'username', 'firstname', 'lastname']), function ($value) {
-            return !is_null($value) && $value !== '';
+            return ! is_null($value) && $value !== '';
         });
 
         if (empty($data)) {
@@ -151,13 +148,13 @@ class UserController extends Controller
             $rules['name'] = 'string|max:255';
         }
         if (array_key_exists('email', $data)) {
-            $rules['email'] = 'string|email|max:255|unique:users,email,' . $id;
+            $rules['email'] = 'string|email|max:255|unique:users,email,'.$id;
         }
         if (array_key_exists('password', $data)) {
             $rules['password'] = 'string|min:8';
         }
         if (array_key_exists('username', $data)) {
-            $rules['username'] = 'string|max:255|unique:users,username,' . $id;
+            $rules['username'] = 'string|max:255|unique:users,username,'.$id;
         }
         if (array_key_exists('firstname', $data)) {
             $rules['firstname'] = 'string|max:255';
@@ -177,16 +174,18 @@ class UserController extends Controller
             if (isset($data['firstname']) || isset($data['lastname'])) {
                 $firstname = $data['firstname'] ?? $user->firstname;
                 $lastname = $data['lastname'] ?? $user->lastname;
-                $data['fullname'] = $firstname . ' ' . $lastname;
+                $data['fullname'] = $firstname.' '.$lastname;
             }
 
             $user->fill($data);
             $user->save();
 
             DB::commit();
+
             return $this->responseSuccess($user, 'User updated successfully');
         } catch (\Exception $e) {
             DB::rollBack();
+
             return $this->responseError(null, $e->getMessage(), 500);
         }
     }
@@ -194,7 +193,7 @@ class UserController extends Controller
     public function destroy(string $id): JsonResponse
     {
         $user = User::find($id);
-        if (!$user) {
+        if (! $user) {
             return $this->responseError(null, 'User not found', 404);
         }
 
@@ -206,9 +205,11 @@ class UserController extends Controller
         try {
             $user->delete();
             DB::commit();
+
             return $this->responseSuccess(null, 'User deleted successfully');
         } catch (\Exception $e) {
             DB::rollBack();
+
             return $this->responseError(null, $e->getMessage(), 500);
         }
     }
@@ -217,7 +218,7 @@ class UserController extends Controller
     {
         $user = User::find($id);
 
-        if (!$user) {
+        if (! $user) {
             return $this->responseError(null, 'User not found', 404);
         }
 
@@ -229,9 +230,11 @@ class UserController extends Controller
         try {
             $user->assignRole($request->roles);
             DB::commit();
+
             return $this->responseSuccess($user->load('roles'), 'Roles assigned successfully');
         } catch (\Exception $e) {
             DB::rollBack();
+
             return $this->responseError(null, $e->getMessage(), 500);
         }
     }
@@ -239,7 +242,7 @@ class UserController extends Controller
     public function revokeRole(Request $request, string $id): JsonResponse
     {
         $user = User::find($id);
-        if (!$user) {
+        if (! $user) {
             return $this->responseError(null, 'User not found', 404);
         }
 
@@ -256,9 +259,11 @@ class UserController extends Controller
                 }
             }
             DB::commit();
+
             return $this->responseSuccess($user->load('roles'), 'Roles revoked successfully');
         } catch (\Exception $e) {
             DB::rollBack();
+
             return $this->responseError(null, $e->getMessage(), 500);
         }
     }
@@ -267,7 +272,7 @@ class UserController extends Controller
     {
         $user = User::find($id);
 
-        if (!$user) {
+        if (! $user) {
             return $this->responseError(null, 'User not found', 404);
         }
 
@@ -281,6 +286,7 @@ class UserController extends Controller
             return $this->responseSuccess($user, 'User activated successfully');
         } catch (\Exception $e) {
             DB::rollBack();
+
             return $this->responseError(null, $e->getMessage(), 500);
         }
     }
@@ -288,7 +294,7 @@ class UserController extends Controller
     public function deactivateUser(string $id): JsonResponse
     {
         $user = User::find($id);
-        if (!$user) {
+        if (! $user) {
             return $this->responseError(null, 'User not found', 404);
         }
 
@@ -301,6 +307,7 @@ class UserController extends Controller
             return $this->responseSuccess($user, 'User deactivated successfully');
         } catch (\Exception $e) {
             DB::rollBack();
+
             return $this->responseError(null, $e->getMessage(), 500);
         }
     }
@@ -315,7 +322,7 @@ class UserController extends Controller
 
         $user_password = decrypt($user->secure_password);
 
-        if (!$user_password) {
+        if (! $user_password) {
             return $this->responseError(null, 'User password not found', 404);
         }
 
