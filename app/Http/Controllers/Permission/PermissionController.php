@@ -24,7 +24,7 @@ class PermissionController extends Controller
      */
     public function __construct(AuthRepository $ar)
     {
-        $this->middleware(['permission:permissions:list'])->only(['index', 'show']);
+        $this->middleware(['permission:permission:list'])->only(['index', 'show']);
 
         $this->authRepository = $ar;
     }

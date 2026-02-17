@@ -22,11 +22,11 @@ class RoleController extends Controller
      */
     public function __construct(AuthRepository $ar)
     {
-        $this->middleware(['permission:roles:list'])->only(['index', 'show']);
-        $this->middleware(['permission:roles:create'])->only(['store']);
-        $this->middleware(['permission:roles:update'])->only(['update']);
-        $this->middleware(['permission:roles:delete'])->only(['destroy']);
-        $this->middleware(['permission:roles:assign-permission'])->only(['assignPermission']);
+        $this->middleware(['permission:role:list'])->only(['index', 'show']);
+        $this->middleware(['permission:role:create'])->only(['store']);
+        $this->middleware(['permission:role:update'])->only(['update']);
+        $this->middleware(['permission:role:delete'])->only(['destroy']);
+        $this->middleware(['permission:role:assign-permission'])->only(['assignPermission']);
 
         $this->authRepository = $ar;
     }
@@ -89,7 +89,7 @@ class RoleController extends Controller
             ]);
 
             $permissionNames = array_map('trim', explode(',', $request->permissions));
-        } {
+        } else {
             $permissionNames = $request->permissions;
         }
 
