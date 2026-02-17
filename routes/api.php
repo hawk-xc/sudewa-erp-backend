@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Auth\AuthController;
+use App\Http\Controllers\MasterData\MasterCustomerController;
 use App\Http\Controllers\Permission\PermissionController;
 use App\Http\Controllers\Role\RoleController;
 use App\Http\Controllers\User\UserController;
@@ -93,6 +94,11 @@ Route::group(
                     'message' => 'Err uploaded file : '.$err->getMessage(),
                 ]);
             }
+        });
+
+        Route::group(['prefix' => 'master-data'], function () {
+            // Customer
+            Route::apiResource('customer', MasterCustomerController::class);
         });
     },
 );

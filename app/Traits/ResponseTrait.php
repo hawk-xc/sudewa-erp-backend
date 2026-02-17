@@ -31,7 +31,7 @@ trait ResponseTrait
      *
      * Returns the errors data if there is any error
      *
-     * @param object $errors
+     * @param string $errors
      * @return JsonResponse
      */
     public function responseError($errors, $message = 'Data is invalid', $status_code = JsonResponse::HTTP_BAD_REQUEST): JsonResponse
