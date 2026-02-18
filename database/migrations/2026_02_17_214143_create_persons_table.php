@@ -24,6 +24,7 @@ return new class extends Migration
             $table->string('name')->nullable(false);
             $table->string('address')->nullable(true);
             $table->string('phone')->nullable(true);
+            $table->string('npwp')->nullable(true);
             $table->timestamps();
         });
     }
