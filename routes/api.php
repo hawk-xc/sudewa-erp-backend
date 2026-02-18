@@ -8,9 +8,11 @@ use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\Role\RoleController;
 use App\Http\Controllers\User\UserController;
 use App\Http\Controllers\Permission\PermissionController;
+use App\Http\Controllers\MasterData\MasterBrandController;
 use App\Http\Controllers\MasterData\MasterAccountController;
 use App\Http\Controllers\MasterData\MasterCustomerController;
 use App\Http\Controllers\MasterData\MasterSupplierController;
+use App\Http\Controllers\MasterData\MasterUnitTypeController;
 use App\Http\Controllers\MasterData\MasterSparepartController;
 
 /*
@@ -103,6 +105,8 @@ Route::group(
         Route::group(['prefix' => 'master-data'], function () {
             Route::apiResource('customer', MasterCustomerController::class);
             Route::apiResource('supplier', MasterSupplierController::class);
+            Route::apiResource('brand', MasterBrandController::class);
+            Route::apiResource('unit-type', MasterUnitTypeController::class);
             Route::apiResource('sparepart', MasterSparepartController::class);
             Route::apiResource('account', MasterAccountController::class);
         });

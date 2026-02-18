@@ -29,14 +29,14 @@ class MasterSupplierController extends Controller
      */
     public function __construct(AuthRepository $ar)
     {
-        $this->middleware(['permission:master-data:list'])->only(['index']);
+        $this->middleware(['permission:master-data:list'])->only(['index', 'show']);
         $this->middleware(['permission:master-data:create'])->only('store');
-        $this->middleware(['permission:master-data:edit'])->only('update', 'activateUser', 'deactivateUser');
+        $this->middleware(['permission:master-data:edit'])->only('update');
         $this->middleware(['permission:master-data:delete'])->only(['destroy']);
 
         $this->authRepository = $ar;
 
-        $this->personTable = ['id', 'uuid', 'code', 'type', 'name', 'address', 'npwp', 'phone'];
+        $this->personTable = ['id', 'uuid', 'code', 'type', 'name', 'address', 'npwp', 'phone', 'created_at'];
     }
 
     public function index(Request $request) {
