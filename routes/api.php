@@ -1,14 +1,17 @@
 <?php
 
-use App\Http\Controllers\Auth\AuthController;
-use App\Http\Controllers\MasterData\MasterCustomerController;
-use App\Http\Controllers\Permission\PermissionController;
-use App\Http\Controllers\Role\RoleController;
-use App\Http\Controllers\User\UserController;
+use Illuminate\Support\Str;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
+use App\Http\Controllers\Auth\AuthController;
+use App\Http\Controllers\Role\RoleController;
+use App\Http\Controllers\User\UserController;
+use App\Http\Controllers\Permission\PermissionController;
+use App\Http\Controllers\MasterData\MasterAccountController;
+use App\Http\Controllers\MasterData\MasterCustomerController;
+use App\Http\Controllers\MasterData\MasterSupplierController;
+use App\Http\Controllers\MasterData\MasterSparepartController;
 
 /*
 |--------------------------------------------------------------------------
@@ -96,9 +99,12 @@ Route::group(
             }
         });
 
+        // Master Data
         Route::group(['prefix' => 'master-data'], function () {
-            // Customer
             Route::apiResource('customer', MasterCustomerController::class);
+            Route::apiResource('supplier', MasterSupplierController::class);
+            Route::apiResource('sparepart', MasterSparepartController::class);
+            Route::apiResource('account', MasterAccountController::class);
         });
     },
 );
