@@ -13,9 +13,12 @@ return new class extends Migration
     {
         Schema::create('companies', function (Blueprint $table) {
             $table->id();
-            $table->string('name')->nullable(false);
+            $table->uuid();
             $table->string('slug')->unique(true)->nullable(false);
+            $table->string('name')->nullable(false);
+            $table->string('code')->nullable(true);
             $table->text('description')->nullable(true);
+            $table->enum('type', ['office', 'transport_office'])->default('office');
             $table->timestamps();
         });
     }

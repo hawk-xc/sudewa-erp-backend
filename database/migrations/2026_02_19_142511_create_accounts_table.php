@@ -15,7 +15,7 @@ return new class extends Migration
             $table->id();
             $table->uuid();
             $table->string('code')->unique(true)->nullable(false);
-            $table->string('group_code')->unique(false)->nullable(true);
+            $table->string('group_code')->nullable(true);
             $table->string('name')->nullable(false);
             $table->string('description')->nullable(true);
             $table->enum('type', ['debet', 'credit'])->default('debet');

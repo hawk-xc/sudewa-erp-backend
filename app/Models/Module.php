@@ -17,13 +17,8 @@ class Module extends Model
         'description',
     ];
 
-    public function features()
-    {
-        return $this->belongsToMany(Feature::class, 'module_features');
-    }
-
     public function companies()
     {
-        return $this->belongsToMany(Company::class, 'company_modules');
+        return $this->belongsToMany(Company::class, 'company_has_modules');
     }
 }

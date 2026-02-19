@@ -99,7 +99,7 @@ class MasterAccountController extends Controller
                 'group_code' => 'nullable|string|max:50',
                 'name' => 'required|string|max:255',
                 'description' => 'nullable|string',
-                'type' => 'required|string|max:50',
+                'type' => 'required|in:debet,credit',
             ]);
 
             $account = DB::transaction(function () use ($validated) {
@@ -114,7 +114,7 @@ class MasterAccountController extends Controller
 
         } catch (\Illuminate\Validation\ValidationException $e) {
             return $this->responseError($e->errors(), 'Validation failed', 422);
-        } catch (\Exception $err) {
+        } catch (Exception $err) {
             Log::error('Error While storing Account data : '.$err->getMessage());
 
             return $this->responseError(null, 'Account creation failed', 500);
@@ -146,7 +146,7 @@ class MasterAccountController extends Controller
 
         } catch (\Illuminate\Validation\ValidationException $e) {
             return $this->responseError($e->errors(), 'Validation failed', 422);
-        } catch (\Exception $err) {
+        } catch (Exception $err) {
             Log::error('Error While updating Account data : '.$err->getMessage());
 
             return $this->responseError(null, 'Account update failed', 500);
@@ -162,9 +162,9 @@ class MasterAccountController extends Controller
                 $account->delete();
             });
 
-            return $this->responseSuccess([], '', 200);
+            return $this->responseSuccess([], "Account sucessfully Deleted", 200);
         } catch (Exception $err) {
-            return $this->responseError([], '', 500);
+            return $this->responseError([], "Account Not Found or Failed Deleted", 500);
         }
     }
 }

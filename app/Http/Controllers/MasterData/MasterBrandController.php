@@ -43,7 +43,7 @@ class MasterBrandController extends Controller
         try {
             $query = Brand::query();
 
-            $query->select('brandTable');
+            $query->select($this->brandTable);
 
             if ($request->filled('search')) {
                 $search = $request->search;
@@ -78,7 +78,8 @@ class MasterBrandController extends Controller
 
             return $this->responseSuccess($data, 'Brand list retrieved successfully', 200);
         } catch (\Exception $err) {
-            return $this->responseError(null, 'Error while trying to create Brand', 500);
+            Log::error("List Brand Error : " . $err->getMessage());
+            return $this->responseError(null, 'Error while trying to list Brand', 500);
         }
     }
 
@@ -106,8 +107,6 @@ class MasterBrandController extends Controller
 
                     $imagePath = 'brands/' . $fileName;
                 }
-
-                dd($request->image);
 
                 return Brand::create([
                     'name' => $request->name,

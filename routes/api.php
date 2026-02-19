@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Controllers\Auth\AuthController;
+use App\Http\Controllers\Global\GlobalCompanyController;
+use App\Http\Controllers\Global\GlobalModuleController;
 use App\Http\Controllers\MasterData\MasterAccountController;
 use App\Http\Controllers\MasterData\MasterBrandController;
 use App\Http\Controllers\MasterData\MasterCustomerController;
@@ -59,7 +61,13 @@ Route::group(
             Route::get('{id}', [PermissionController::class, 'show']);
         });
 
-        // Master Data
+        // Global API
+        Route::group(['prefix' => 'global'], function () {
+            Route::apiResource('company', GlobalCompanyController::class);
+            Route::apiResource('company-module', GlobalModuleController::class);
+        });
+
+        // Master Data API
         Route::group(['prefix' => 'master-data'], function () {
             Route::apiResource('account', MasterAccountController::class);
             Route::apiResource('customer', MasterCustomerController::class);

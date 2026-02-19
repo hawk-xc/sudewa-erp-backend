@@ -11,14 +11,11 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('module_features', function (Blueprint $table) {
+        Schema::create('company_has_modules', function (Blueprint $table) {
             $table->id();
-            $table->unsignedBigInteger('module_id');
-            $table->unsignedBigInteger('feature_id');
+            $table->foreignId('company_id')->nullable()->constrained()->onDelete('set null');
+            $table->foreignId('module_id')->nullable()->constrained()->onDelete('set null');
             $table->timestamps();
-
-            $table->foreign('module_id')->references('id')->on('modules')->onDelete('cascade');
-            $table->foreign('feature_id')->references('id')->on('features')->onDelete('cascade');
         });
     }
 
@@ -27,6 +24,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('module_features');
+        Schema::dropIfExists('company_has_modules');
     }
 };
