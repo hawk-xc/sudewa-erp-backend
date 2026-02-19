@@ -1,30 +1,16 @@
 <?php
 
-use Illuminate\Support\Str;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Route;
-use Illuminate\Support\Facades\Storage;
 use App\Http\Controllers\Auth\AuthController;
-use App\Http\Controllers\Role\RoleController;
-use App\Http\Controllers\User\UserController;
-use App\Http\Controllers\Permission\PermissionController;
-use App\Http\Controllers\MasterData\MasterBrandController;
 use App\Http\Controllers\MasterData\MasterAccountController;
+use App\Http\Controllers\MasterData\MasterBrandController;
 use App\Http\Controllers\MasterData\MasterCustomerController;
+use App\Http\Controllers\MasterData\MasterSparepartController;
 use App\Http\Controllers\MasterData\MasterSupplierController;
 use App\Http\Controllers\MasterData\MasterUnitTypeController;
-use App\Http\Controllers\MasterData\MasterSparepartController;
-
-/*
-|--------------------------------------------------------------------------
-| API Routes
-|--------------------------------------------------------------------------
-|
-| Here is where you can register API routes for your application. These
-| routes are loaded by the RouteServiceProvider within a group which
-| is assigned the "api" middleware group. Enjoy building your API!
-|
-*/
+use App\Http\Controllers\Permission\PermissionController;
+use App\Http\Controllers\Role\RoleController;
+use App\Http\Controllers\User\UserController;
+use Illuminate\Support\Facades\Route;
 
 Route::options('{any}', function () {
     return response()->json([], 200);
@@ -73,42 +59,14 @@ Route::group(
             Route::get('{id}', [PermissionController::class, 'show']);
         });
 
-        Route::post('upload-content', function (Request $request) {
-            $request->validate([
-                'name' => 'required|string',
-                'content' => 'required|file|max:2048',
-            ]);
-
-            $file = $request->file('content');
-            $fileExtension = $file->getClientOriginalExtension();
-
-            $fileName = time().Str::slug($request->name).'.'.$fileExtension;
-
-            try {
-                $fileMove = Storage::disk('minio')->putFileAs('content', $file, $fileName);
-                $fileUrl = Storage::disk('minio')->url($fileMove);
-
-                return json_encode([
-                    'status' => true,
-                    'message' => 'file successfully uploaded!',
-                    'file_url' => $fileUrl,
-                ]);
-            } catch (Exception $err) {
-                return json_encode([
-                    'status' => false,
-                    'message' => 'Err uploaded file : '.$err->getMessage(),
-                ]);
-            }
-        });
-
         // Master Data
         Route::group(['prefix' => 'master-data'], function () {
+            Route::apiResource('account', MasterAccountController::class);
             Route::apiResource('customer', MasterCustomerController::class);
             Route::apiResource('supplier', MasterSupplierController::class);
             Route::apiResource('brand', MasterBrandController::class);
             Route::apiResource('unit-type', MasterUnitTypeController::class);
             Route::apiResource('sparepart', MasterSparepartController::class);
-            Route::apiResource('account', MasterAccountController::class);
         });
     },
 );
