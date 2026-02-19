@@ -1,18 +1,19 @@
 <?php
 
+use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Auth\AuthController;
-use App\Http\Controllers\Global\GlobalCompanyController;
-use App\Http\Controllers\Global\GlobalModuleController;
-use App\Http\Controllers\MasterData\MasterAccountController;
-use App\Http\Controllers\MasterData\MasterBrandController;
-use App\Http\Controllers\MasterData\MasterCustomerController;
-use App\Http\Controllers\MasterData\MasterSparepartController;
-use App\Http\Controllers\MasterData\MasterSupplierController;
-use App\Http\Controllers\MasterData\MasterUnitTypeController;
-use App\Http\Controllers\Permission\PermissionController;
 use App\Http\Controllers\Role\RoleController;
 use App\Http\Controllers\User\UserController;
-use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Global\GlobalModuleController;
+use App\Http\Controllers\Global\GlobalCompanyController;
+use App\Http\Controllers\MasterData\MasterCashController;
+use App\Http\Controllers\Permission\PermissionController;
+use App\Http\Controllers\MasterData\MasterBrandController;
+use App\Http\Controllers\MasterData\MasterAccountController;
+use App\Http\Controllers\MasterData\MasterCustomerController;
+use App\Http\Controllers\MasterData\MasterSupplierController;
+use App\Http\Controllers\MasterData\MasterUnitTypeController;
+use App\Http\Controllers\MasterData\MasterSparepartController;
 
 Route::options('{any}', function () {
     return response()->json([], 200);
@@ -70,6 +71,7 @@ Route::group(
         // Master Data API
         Route::group(['prefix' => 'master-data'], function () {
             Route::apiResource('account', MasterAccountController::class);
+            Route::apiResource('cash', MasterCashController::class);
             Route::apiResource('customer', MasterCustomerController::class);
             Route::apiResource('supplier', MasterSupplierController::class);
             Route::apiResource('brand', MasterBrandController::class);
