@@ -1,0 +1,63 @@
+name: Deploy Application
+
+on:
+  push:
+    branches:
+      - development
+
+jobs:
+  build:
+    name: Build App
+    runs-on: ubuntu-latest
+    steps:
+      - name: Cloning Repo
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USER }}
+          key: ${{ secrets.KEY }}
+          port: ${{ secrets.PORT }}
+          script: |
+            whoami
+            pwd
+            echo "========= Github Action for Pulling Data"
+            cd /www/wwwroot/wajirabackend.hawk-dev.com/apps
+            git checkout development
+            git reset --hard
+            git pull origin development
+  deploy:
+    name: Deploy App
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Sync public directory
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USER }}
+          key: ${{ secrets.KEY }}
+          port: ${{ secrets.PORT }}
+          script: |
+            whoami
+            pwd
+            echo "========= Remove Previous Public Directory (Except index.php, etc)"
+            cd /www/wwwroot/wajirabackend.hawk-dev.com/apps
+            rm -rf assets vendor
+            echo "========= Sync Public Directory (Except index.php, etc)"
+            cd /www/wwwroot/wajirabackend.hawk-dev.com/apps
+      - name: Cleaning Cache, etc
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USER }}
+          key: ${{ secrets.KEY }}
+          port: ${{ secrets.PORT }}
+          script: |
+            whoami
+            pwd
+            echo "========= Clear Laravel Cache"
+            cd /www/wwwroot/wajirabackend.hawk-dev.com/apps
+            php artisan config:clear
+            php artisan cache:clear
+            php artisan view:clear
+            php artisan queue:restart
