@@ -24,7 +24,6 @@ class DatabaseSeeder extends Seeder
 
         // app flow pivot
         $this->call(CompanyHasModuleSeeder::class);
-        // $this->call(CompanyModuleSeeder::class);
-        // $this->call(ModuleFeatureSeeder::class);
+        $this->call(ModuleHasFeatureSeeder::class);
     }
 }

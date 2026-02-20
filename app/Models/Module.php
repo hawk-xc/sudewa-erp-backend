@@ -23,4 +23,9 @@ class Module extends Model
     {
         return $this->belongsToMany(Company::class, 'company_has_modules');
     }
+
+    public function features()
+    {
+        return $this->belongsToMany(Feature::class, 'module_has_features');
+    }
 }

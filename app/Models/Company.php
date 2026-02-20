@@ -27,6 +27,17 @@ class Company extends Model
         return $this->belongsToMany(Module::class, 'company_has_modules');
     }
 
+    public function features()
+    {
+        return Feature::query()
+            ->join('module_has_features', 'features.id', '=', 'module_has_features.feature_id')
+            ->join('modules', 'modules.id', '=', 'module_has_features.module_id')
+            ->join('company_has_modules', 'company_has_modules.module_id', '=', 'modules.id')
+            ->where('company_has_modules.company_id', $this->id)
+            ->select('features.*')
+            ->distinct();
+    }
+
     protected static function booted()
     {
         static::creating(function ($company) {

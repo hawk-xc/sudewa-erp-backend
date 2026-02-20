@@ -13,7 +13,10 @@ class FeatureSeeder extends Seeder
     public function run(): void
     {
         $features = [
+
+            // ===============================
             // Master Data Module
+            // ===============================
             [
                 'name' => 'Master Akun',
                 'slug' => 'chart-of-accounts',
@@ -50,11 +53,40 @@ class FeatureSeeder extends Seeder
                 'description' => 'User master data',
             ],
 
+            // === TAMBAHAN MASTER DATA BARU ===
+            [
+                'name' => 'Master Dealer',
+                'slug' => 'dealers',
+                'description' => 'Dealer master data',
+            ],
+            [
+                'name' => 'Master Tarif',
+                'slug' => 'tariffs',
+                'description' => 'Tariff master data',
+            ],
+            [
+                'name' => 'Master Driver',
+                'slug' => 'drivers',
+                'description' => 'Driver master data',
+            ],
+            [
+                'name' => 'Master Kendaraan',
+                'slug' => 'vehicles',
+                'description' => 'Vehicle master data',
+            ],
+
+            // ===============================
             // Transaction Module
+            // ===============================
             [
                 'name' => 'Arus Transaksi',
                 'slug' => 'transaction-flow',
                 'description' => 'Transaction flow records',
+            ],
+            [
+                'name' => 'Jurnal Transaksi',
+                'slug' => 'transaction-journal',
+                'description' => 'General transaction journal records',
             ],
             [
                 'name' => 'Pembelian Unit',
@@ -66,8 +98,20 @@ class FeatureSeeder extends Seeder
                 'slug' => 'unit-sales',
                 'description' => 'Unit sales transactions',
             ],
+            [
+                'name' => 'Faktur',
+                'slug' => 'invoices',
+                'description' => 'Invoice transaction records',
+            ],
+            [
+                'name' => 'Surat Jalan Ekspedisi',
+                'slug' => 'expedition-delivery-orders',
+                'description' => 'Expedition delivery order records',
+            ],
 
+            // ===============================
             // Warehouse Module
+            // ===============================
             [
                 'name' => 'Stok Unit',
                 'slug' => 'unit-inventory',
@@ -84,7 +128,9 @@ class FeatureSeeder extends Seeder
                 'description' => 'Unit dispatch records',
             ],
 
+            // ===============================
             // Finance Module
+            // ===============================
             [
                 'name' => 'Transaksi Kas Harian',
                 'slug' => 'daily-cash-transactions',
@@ -131,7 +177,9 @@ class FeatureSeeder extends Seeder
                 'description' => 'Accounts receivable collections',
             ],
 
-            // Laporan Module
+            // ===============================
+            // Reporting Module
+            // ===============================
             [
                 'name' => 'Laporan Transaksi Kas',
                 'slug' => 'cash-transaction-reports',
@@ -167,8 +215,54 @@ class FeatureSeeder extends Seeder
                 'slug' => 'inventory-reports',
                 'description' => 'Inventory reports',
             ],
+            [
+                'name' => 'Laporan Ekspedisi',
+                'slug' => 'expedition-reports',
+                'description' => 'Expedition activity reports',
+            ],
+            [
+                'name' => 'Laporan Pemakaian Kendaraan',
+                'slug' => 'vehicle-usage-reports',
+                'description' => 'Vehicle usage reports',
+            ],
+            [
+                'name' => 'Laporan STNK',
+                'slug' => 'stnk-reports',
+                'description' => 'STNK document reports',
+            ],
+            [
+                'name' => 'Laporan BPKB',
+                'slug' => 'bpkb-reports',
+                'description' => 'BPKB document reports',
+            ],
+            [
+                'name' => 'Laporan Nomor Polisi',
+                'slug' => 'vehicle-number-reports',
+                'description' => 'Vehicle registration number reports',
+            ],
+            [
+                'name' => 'Laporan Proses Ditlantas',
+                'slug' => 'ditlantas-process-reports',
+                'description' => 'Ditlantas processing reports',
+            ],
+            [
+                'name' => 'Laporan Register Samsat',
+                'slug' => 'samsat-register-reports',
+                'description' => 'Samsat registration reports',
+            ],
+            [
+                'name' => 'Laporan Register BPKB',
+                'slug' => 'bpkb-register-reports',
+                'description' => 'BPKB registration reports',
+            ],
+            [
+                'name' => 'Laporan BBN',
+                'slug' => 'bbn-reports',
+                'description' => 'BBN (Vehicle Title Transfer) reports',
+            ],
+
         ];
 
-        // Feature::insert($features);
+        Feature::insert($features);
     }
 }
