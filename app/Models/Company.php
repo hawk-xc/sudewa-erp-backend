@@ -2,9 +2,9 @@
 
 namespace App\Models;
 
-use Illuminate\Support\Str;
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Str;
 
 class Company extends Model
 {
@@ -13,9 +13,13 @@ class Company extends Model
     protected $table = 'companies';
 
     protected $fillable = [
+        'uuid',
         'name',
         'slug',
         'description',
+        'type',
+        'created_at',
+        'updated_at',
     ];
 
     public function modules()
@@ -23,30 +27,34 @@ class Company extends Model
         return $this->belongsToMany(Module::class, 'company_has_modules');
     }
 
-    public function features()
-    {
-        return $this->belongsToMany(Feature::class, 'module_features');
-    }
-
     protected static function booted()
     {
         static::creating(function ($company) {
             $slug = Str::slug($company->name);
+            $uuid = Str::uuid();
+
             $searchTheSlug = self::where('slug', $slug)->first();
+            $searchTheUuid = self::where('uuid', $uuid)->first();
 
             if ($searchTheSlug) {
-                $company->slug = $slug . '-' . Str::lower(Str::random(5));
+                $company->slug = $slug.'-'.Str::lower(Str::random(5));
             } else {
                 $company->slug = $slug;
+            }
+
+            if ($searchTheUuid) {
+                $company->uuid = Str::uuid();
+            } else {
+                $company->uuid = $uuid;
             }
         });
     }
 
-    public function scopeAssignModule(string $moduleName) 
+    public function scopeAssignModule(string $moduleName)
     {
         $modules = Module::select(['name'])->all();
 
-        if (!in_array($moduleName, $modules)) {
+        if (! in_array($moduleName, $modules)) {
             return false;
         }
 
