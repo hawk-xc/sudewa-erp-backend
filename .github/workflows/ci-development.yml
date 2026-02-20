@@ -6,11 +6,12 @@ on:
       - development
 
 jobs:
-  build:
-    name: Build App
+  deploy:
+    name: Deploy Laravel App
     runs-on: ubuntu-latest
+
     steps:
-      - name: Cloning Repo
+      - name: SSH Deploy
         uses: appleboy/ssh-action@master
         with:
           host: ${{ secrets.HOST }}
@@ -18,46 +19,24 @@ jobs:
           key: ${{ secrets.KEY }}
           port: ${{ secrets.PORT }}
           script: |
-            whoami
-            pwd
-            echo "========= Github Action for Pulling Data"
+            echo "========= Pull Latest Code ========="
             cd /www/wwwroot/wajirabackend.hawk-dev.com/apps
             git checkout development
             git reset --hard
             git pull origin development
-  deploy:
-    name: Deploy App
-    runs-on: ubuntu-latest
-    needs: build
-    steps:
-      - name: Sync public directory
-        uses: appleboy/ssh-action@master
-        with:
-          host: ${{ secrets.HOST }}
-          username: ${{ secrets.USER }}
-          key: ${{ secrets.KEY }}
-          port: ${{ secrets.PORT }}
-          script: |
-            whoami
-            pwd
-            echo "========= Remove Previous Public Directory (Except index.php, etc)"
-            cd /www/wwwroot/wajirabackend.hawk-dev.com/apps
-            rm -rf assets vendor
-            echo "========= Sync Public Directory (Except index.php, etc)"
-            cd /www/wwwroot/wajirabackend.hawk-dev.com/apps
-      - name: Cleaning Cache, etc
-        uses: appleboy/ssh-action@master
-        with:
-          host: ${{ secrets.HOST }}
-          username: ${{ secrets.USER }}
-          key: ${{ secrets.KEY }}
-          port: ${{ secrets.PORT }}
-          script: |
-            whoami
-            pwd
-            echo "========= Clear Laravel Cache"
-            cd /www/wwwroot/wajirabackend.hawk-dev.com/apps
+
+            echo "========= Install Composer ========="
+            composer install --no-dev --optimize-autoloader
+
+            echo "========= Clear Cache ========="
             php artisan config:clear
             php artisan cache:clear
             php artisan view:clear
+
+            echo "========= Optimize ========="
+            php artisan config:cache
+            php artisan route:cache
+            php artisan view:cache
+
+            echo "========= Restart Queue ========="
             php artisan queue:restart
