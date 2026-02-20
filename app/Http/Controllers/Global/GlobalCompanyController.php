@@ -4,32 +4,43 @@ namespace App\Http\Controllers\Global;
 
 use App\Http\Controllers\Controller;
 use App\Models\Company;
+use App\Models\Module;
 use App\Traits\ResponseTrait;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
 
 class GlobalCompanyController extends Controller
 {
     use ResponseTrait;
-    
+
+    protected $companyTable = [
+        'id',
+        'uuid',
+        'slug',
+        'name',
+        'code',
+        'description',
+        'type',
+        'created_at',
+    ];
+
     public function index()
     {
         try {
             $companies = Company::query();
-
-            $companies->latest()
-                ->paginate(10);
+            $companies->select($this->companyTable);
+            $companies->latest();
+            $companies->paginate(10);
 
             return $this->responseSuccess(
-                $companies,
+                $companies->get(),
                 'Company list retrieved successfully',
                 200
             );
 
         } catch (\Exception $e) {
-            Log::error('Error retrieving companies: ' . $e->getMessage());
+            Log::error('Error retrieving companies: '.$e->getMessage());
 
             return $this->responseError(
                 null,
@@ -43,13 +54,33 @@ class GlobalCompanyController extends Controller
     {
         try {
             $validated = $request->validate([
-                'name'        => 'required|string|max:255|unique:companies,name',
+                'name' => 'required|string|max:255|unique:companies,name',
                 'description' => 'nullable|string',
+                'type' => 'sometimes|in:office,transport_office',
+                'modules' => 'sometimes|string',
             ]);
 
+            if (isset($validated['modules'])) {
+                $validModules = ['master-data', 'transaction', 'warehouse', 'finance', 'report'];
+                $modules = explode(',', $validated['modules']);
+
+                foreach ($modules as $module) {
+                    if (! in_array($module, $validModules)) {
+                        return $this->responseError(
+                            null,
+                            'Invalid module name '.$module,
+                            422
+                        );
+                    } else {
+                        $validated['modules'] = $modules;
+                    }
+                }
+            }
             $company = DB::transaction(function () use ($validated) {
                 return Company::create($validated);
             });
+
+            $company->modules()->attach(Module::where('slug', $validated['modules'])->first()->pluck('id'));
 
             return $this->responseSuccess(
                 $company,
@@ -65,7 +96,7 @@ class GlobalCompanyController extends Controller
             );
 
         } catch (\Exception $e) {
-            Log::error('Error storing company: ' . $e->getMessage());
+            Log::error('Error storing company: '.$e->getMessage());
 
             return $this->responseError(
                 null,
@@ -78,7 +109,7 @@ class GlobalCompanyController extends Controller
     public function show(string $id)
     {
         try {
-            $company = Company::with(['modules', 'features'])->findOrFail($id);
+            $company = Company::with('modules')->findOrFail($id);
 
             return $this->responseSuccess(
                 $company,
@@ -101,7 +132,7 @@ class GlobalCompanyController extends Controller
             $company = Company::findOrFail($id);
 
             $validated = $request->validate([
-                'name'        => 'sometimes|required|string|max:255|unique:companies,name,' . $id,
+                'name' => 'sometimes|required|string|max:255|unique:companies,name,'.$id,
                 'description' => 'nullable|string',
             ]);
 
@@ -123,7 +154,7 @@ class GlobalCompanyController extends Controller
             );
 
         } catch (\Exception $e) {
-            Log::error('Error updating company: ' . $e->getMessage());
+            Log::error('Error updating company: '.$e->getMessage());
 
             return $this->responseError(
                 null,
@@ -149,7 +180,7 @@ class GlobalCompanyController extends Controller
             );
 
         } catch (\Exception $e) {
-            Log::error('Error deleting company: ' . $e->getMessage());
+            Log::error('Error deleting company: '.$e->getMessage());
 
             return $this->responseError(
                 null,
@@ -157,5 +188,41 @@ class GlobalCompanyController extends Controller
                 500
             );
         }
+    }
+
+    public function assignModule(Request $request, string $id)
+    {
+        $validated = $request->validate([
+            'modules' => 'required|string',
+        ]);
+
+        if (isset($validated['modules'])) {
+            $validModules = ['master-data', 'transaction', 'warehouse', 'finance', 'report'];
+            $modules = explode(',', $validated['modules']);
+
+            foreach ($modules as $module) {
+                if (! in_array($module, $validModules)) {
+                    return $this->responseError(
+                        null,
+                        'Invalid module name '.$module,
+                        422
+                    );
+                } else {
+                    $validated['modules'] = $modules;
+                }
+            }
+        }
+
+        $company = Company::findOrFail($id);
+
+        DB::transaction(function () use ($company, $validated) {
+            $company->modules()->sync(Module::where('slug', $validated['modules'])->first()->pluck('id'));
+        });
+
+        return $this->responseSuccess(
+            $company->fresh(),
+            'Module assigned successfully',
+            200
+        );
     }
 }

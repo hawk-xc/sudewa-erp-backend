@@ -1,19 +1,19 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Auth\AuthController;
-use App\Http\Controllers\Role\RoleController;
-use App\Http\Controllers\User\UserController;
-use App\Http\Controllers\Global\GlobalModuleController;
 use App\Http\Controllers\Global\GlobalCompanyController;
-use App\Http\Controllers\MasterData\MasterCashController;
-use App\Http\Controllers\Permission\PermissionController;
-use App\Http\Controllers\MasterData\MasterBrandController;
+use App\Http\Controllers\Global\GlobalModuleController;
 use App\Http\Controllers\MasterData\MasterAccountController;
+use App\Http\Controllers\MasterData\MasterBrandController;
+use App\Http\Controllers\MasterData\MasterCashController;
 use App\Http\Controllers\MasterData\MasterCustomerController;
+use App\Http\Controllers\MasterData\MasterSparepartController;
 use App\Http\Controllers\MasterData\MasterSupplierController;
 use App\Http\Controllers\MasterData\MasterUnitTypeController;
-use App\Http\Controllers\MasterData\MasterSparepartController;
+use App\Http\Controllers\Permission\PermissionController;
+use App\Http\Controllers\Role\RoleController;
+use App\Http\Controllers\User\UserController;
+use Illuminate\Support\Facades\Route;
 
 Route::options('{any}', function () {
     return response()->json([], 200);
@@ -65,7 +65,10 @@ Route::group(
         // Global API
         Route::group(['prefix' => 'global'], function () {
             Route::apiResource('company', GlobalCompanyController::class);
-            Route::apiResource('company-module', GlobalModuleController::class);
+            Route::apiResource('module', GlobalModuleController::class);
+
+            // Additional Route
+            Route::put('company-assign-module/{id}', [GlobalCompanyController::class, 'assignModule']);
         });
 
         // Master Data API
