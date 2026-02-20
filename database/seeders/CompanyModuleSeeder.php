@@ -31,7 +31,7 @@ class CompanyModuleSeeder extends Seeder
 
             foreach ($companyIds as $companyId) {
                 foreach ($moduleIds as $moduleId) {
-                    DB::table('company_modules')->insert([
+                    DB::table('company_has_modules')->insert([
                         'company_id' => $companyId,
                         'module_id' => $moduleId,
                     ]);

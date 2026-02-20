@@ -169,6 +169,6 @@ class FeatureSeeder extends Seeder
             ],
         ];
 
-        Feature::insert($features);
+        // Feature::insert($features);
     }
 }

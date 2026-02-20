@@ -59,29 +59,29 @@ class ModuleFeatureSeeder extends Seeder
             ],
         ];
 
-        foreach ($features as $featureGroup) {
+        // foreach ($features as $featureGroup) {
 
-            foreach ($featureGroup['features'] as $moduleSlug => $featureSlugs) {
+        //     foreach ($featureGroup['features'] as $moduleSlug => $featureSlugs) {
 
-                $moduleId = DB::table('modules')
-                    ->where('slug', $moduleSlug)
-                    ->value('id');
+        //         $moduleId = DB::table('modules')
+        //             ->where('slug', $moduleSlug)
+        //             ->value('id');
 
-                if (! $moduleId) {
-                    continue;
-                }
+        //         if (! $moduleId) {
+        //             continue;
+        //         }
 
-                $featureIds = DB::table('features')
-                    ->whereIn('slug', $featureSlugs)
-                    ->pluck('id');
+        //         $featureIds = DB::table('features')
+        //             ->whereIn('slug', $featureSlugs)
+        //             ->pluck('id');
 
-                foreach ($featureIds as $featureId) {
-                    DB::table('module_features')->insert([
-                        'module_id' => $moduleId,
-                        'feature_id' => $featureId,
-                    ]);
-                }
-            }
-        }
+        //         foreach ($featureIds as $featureId) {
+        //             DB::table('module_features')->insert([
+        //                 'module_id' => $moduleId,
+        //                 'feature_id' => $featureId,
+        //             ]);
+        //         }
+        //     }
+        // }
     }
 }
