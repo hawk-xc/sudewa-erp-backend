@@ -69,6 +69,7 @@ Route::group(
 
             // Additional Route
             Route::put('company-assign-module/{id}', [GlobalCompanyController::class, 'assignModule']);
+            Route::get('convert-idr-to-usd', [GlobalCompanyController::class, 'covertIdrToUsd']);
         });
 
         // Master Data API

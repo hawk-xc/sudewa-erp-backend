@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Global;
 use App\Http\Controllers\Controller;
 use App\Models\Company;
 use App\Models\Module;
+use App\Services\CurrencyService;
 use App\Traits\ResponseTrait;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -224,5 +225,26 @@ class GlobalCompanyController extends Controller
             'Module assigned successfully',
             200
         );
+    }
+
+    public function covertIdrToUsd(CurrencyService $currencyService, Request $request)
+    {
+        $request->validate([
+            'amount' => 'required|integer',
+        ]);
+
+        $usdAmount = $currencyService->convertIdrToUsd($request->amount);
+
+        if ($usdAmount) {
+            return $this->responseSuccess(
+                [
+                    'result' => $usdAmount,
+                ],
+                'IDR converted to USD',
+                200
+            );
+        } else {
+            return $this->responseError([], 'Currency Convert Service Error', 500);
+        }
     }
 }
