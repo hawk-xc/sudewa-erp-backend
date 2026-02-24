@@ -11,20 +11,16 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('persons', function (Blueprint $table) {
+        Schema::create('spareparts', function (Blueprint $table) {
             $table->id();
             $table->uuid();
-            // pic
-            $table->foreignId('user_id')
-                ->nullable(true)
-                ->constrained('users')
-                ->nullOnDelete();
+            $table->foreignId('sparepart_category_id')->nullable(true)->constrained('sparepart_categories')->nullOnDelete();
             $table->string('code')->unique()->nullable(false);
-            $table->enum('type', ['supplier', 'customer']);
             $table->string('name')->nullable(false);
-            $table->string('address')->nullable(true);
-            $table->string('phone')->nullable(true);
-            $table->string('npwp')->nullable(true);
+            $table->integer('capacity')->default(0);
+            $table->string('image')->nullable(true);
+            $table->enum('unit_type', ['pcs', 'set', 'box'])->default('pcs');
+            $table->decimal('price', 15, 2)->nullable(false);
             $table->timestamps();
         });
     }
@@ -34,6 +30,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('persons');
+        Schema::dropIfExists('spareparts');
     }
 };

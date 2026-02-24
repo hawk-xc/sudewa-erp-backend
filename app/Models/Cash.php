@@ -15,7 +15,8 @@ class Cash extends Model
         'account_id',
         'code',
         'description',
-        'type'
+        'amount',
+        'type',
     ];
 
     public function account()

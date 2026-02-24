@@ -13,11 +13,14 @@ return new class extends Migration
     {
         Schema::create('unit_types', function (Blueprint $table) {
             $table->id();
+            $table->uuid();
+            $table->foreignId('brand_id')->nullable()->constrained('brands')->nullOnDelete();
             $table->string('code')->unique(true)->nullable(false)->description('Unit Type Special Code');
-            $table->foreignId('brand_id')->nullable()->constrained()->onDelete('set null');
             $table->string('name')->nullable(false);
+            $table->integer('capacity')->default(0)->nullable(false);
             $table->string('image')->nullable(true)->default(null);
-            $table->string('type')->nullable(true)->default(null);
+            $table->string('unit_type')->nullable(true)->default(null);
+            $table->string('unit_model')->nullable(true)->default(null);
             $table->integer('netto_weight')->nullable(true);
             $table->integer('bruto_weight')->nullable(true);
             $table->timestamps();

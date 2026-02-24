@@ -11,11 +11,10 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('brands', function (Blueprint $table) {
+        Schema::create('sparepart_categories', function (Blueprint $table) {
             $table->id();
             $table->uuid();
             $table->string('name')->nullable(false);
-            $table->string('image')->nullable(true)->default(null);
             $table->timestamps();
         });
     }
@@ -25,6 +24,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('brands');
+        Schema::dropIfExists('sparepart_categories');
     }
 };

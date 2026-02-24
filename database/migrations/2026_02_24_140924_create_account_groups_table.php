@@ -11,11 +11,13 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('brands', function (Blueprint $table) {
+        Schema::create('account_groups', function (Blueprint $table) {
             $table->id();
-            $table->uuid();
-            $table->string('name')->nullable(false);
-            $table->string('image')->nullable(true)->default(null);
+
+            $table->foreignId('company_id')->constrained('companies')->cascadeOnDelete();
+
+            $table->string('group_code')->nullable(false);
+            $table->string('description')->nullable(true);
             $table->timestamps();
         });
     }
@@ -25,6 +27,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('brands');
+        Schema::dropIfExists('account_groups');
     }
 };
