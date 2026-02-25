@@ -13,6 +13,7 @@ return new class extends Migration
     {
         Schema::create('cashes', function (Blueprint $table) {
             $table->id();
+            $table->uuid();
             $table->foreignId('company_id')->constrained('companies')->onDelete('cascade');
             $table->string('code')->nullable(false);
             $table->string('description')->nullable(true);

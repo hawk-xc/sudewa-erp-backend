@@ -13,12 +13,12 @@ class MasterCashController extends Controller
 {
     use ResponseTrait;
 
-    protected $cashTable = ['id', 'account_id', 'code', 'type', 'created_at'];
+    protected $cashTable = ['id', 'company_id', 'code', 'type', 'created_at'];
 
     public function index(Request $request)
     {
         try {
-            $query = Cash::with('account');
+            $query = Cash::with('company');
 
             if ($request->filled('search')) {
                 $search = $request->search;
@@ -30,7 +30,7 @@ class MasterCashController extends Controller
                 });
             }
 
-            foreach (['account_id', 'type', 'code'] as $field) {
+            foreach (['company_id', 'type', 'code'] as $field) {
                 if ($request->filled($field)) {
                     $query->where($field, $request->$field);
                 }
@@ -69,10 +69,10 @@ class MasterCashController extends Controller
     {
         try {
             $validated = $request->validate([
-                'account_id'  => 'required|exists:accounts,id',
+                'company_id'  => 'required|exists:companies,id',
                 'code'        => 'required|string|max:50|unique:cashes,code',
                 'description' => 'nullable|string',
-                'type'        => 'required|string|max:50',
+                'type'        => 'required|string|max:50|in:cash,bank',
             ]);
 
             $cash = DB::transaction(function () use ($validated) {
@@ -80,7 +80,7 @@ class MasterCashController extends Controller
             });
 
             return $this->responseSuccess(
-                $cash->fresh('account'),
+                $cash->fresh('company'),
                 'Cash created successfully',
                 201
             );
@@ -106,7 +106,7 @@ class MasterCashController extends Controller
     public function show(string $id)
     {
         try {
-            $cash = Cash::select($this->cashTable)->with('account')->findOrFail($id);
+            $cash = Cash::select($this->cashTable)->with('company')->findOrFail($id);
 
             return $this->responseSuccess(
                 $cash,
@@ -129,7 +129,6 @@ class MasterCashController extends Controller
             $cash = Cash::findOrFail($id);
 
             $validated = $request->validate([
-                'account_id'  => 'sometimes|required|exists:accounts,id',
                 'code'        => 'sometimes|required|string|max:50|unique:cashes,code,' . $id,
                 'description' => 'nullable|string',
                 'type'        => 'sometimes|required|string|max:50',
@@ -140,7 +139,7 @@ class MasterCashController extends Controller
             });
 
             return $this->responseSuccess(
-                $cash->fresh('account'),
+                $cash->fresh('company'),
                 'Cash updated successfully',
                 200
             );
