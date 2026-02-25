@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Str;
 
 class Cash extends Model
 {
@@ -12,15 +13,23 @@ class Cash extends Model
     protected $table = 'cashes';
 
     protected $fillable = [
-        'account_id',
+        'uuid',
+        'company_id',
         'code',
         'description',
         'amount',
         'type',
     ];
 
-    public function account()
+    public function company()
     {
-        return $this->belongsTo(Account::class);
+        return $this->belongsTo(Company::class);
+    }
+
+    protected static function booted()
+    {
+        static::creating(function ($model) {
+            $model->uuid = (string) Str::uuid();
+        });
     }
 }

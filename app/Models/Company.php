@@ -38,6 +38,11 @@ class Company extends Model
             ->distinct();
     }
 
+    public function accountGroups()
+    {
+        return $this->hasMany(AccountGroup::class);
+    }
+
     protected static function booted()
     {
         static::creating(function ($company) {

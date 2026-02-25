@@ -13,17 +13,23 @@ class Account extends Model
     protected $table = 'accounts';
 
     protected $fillable = [
+        'uuid',
         'code',
-        'group_code',
+        'account_group_id',
         'name',
         'description',
         'type',
     ];
 
+    public function accountGroup()
+    {
+        return $this->belongsTo(AccountGroup::class);
+    }
+
     protected static function booted()
     {
-        static::creating(function ($account) {
-            $account->uuid = (string) Str::uuid();
+        static::creating(function ($model) {
+            $model->uuid = (string) Str::uuid();
         });
     }
 }

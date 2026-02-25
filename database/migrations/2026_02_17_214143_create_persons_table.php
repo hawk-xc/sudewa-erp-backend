@@ -14,6 +14,10 @@ return new class extends Migration
         Schema::create('persons', function (Blueprint $table) {
             $table->id();
             $table->uuid();
+            $table->foreignId('company_id')
+                ->nullable(false)
+                ->constrained('companies')
+                ->cascadeOnDelete();
             // pic
             $table->foreignId('user_id')
                 ->nullable(true)

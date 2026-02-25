@@ -14,6 +14,7 @@ return new class extends Migration
         Schema::create('sparepart_categories', function (Blueprint $table) {
             $table->id();
             $table->uuid();
+            $table->string('code')->unique()->nullable(false);
             $table->string('name')->nullable(false);
             $table->timestamps();
         });

@@ -2,9 +2,9 @@
 
 namespace App\Models;
 
-use Illuminate\Support\Str;
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Str;
 
 class Person extends Model
 {
@@ -15,17 +15,28 @@ class Person extends Model
     protected $fillable = [
         'uuid',
         'user_id',
+        'company_id',
         'code',
         'type',
         'name',
         'address',
         'npwp',
-        'phone'
+        'phone',
     ];
 
     public function user()
     {
-        $this->belongsTo(User::class, 'user_id', 'id');
+        return $this->belongsTo(User::class, 'user_id', 'id');
+    }
+
+    public function company()
+    {
+        return $this->belongsTo(Company::class, 'company_id', 'id');
+    }
+
+    public function unitTransactions()
+    {
+        return $this->hasMany(UnitTransaction::class);
     }
 
     protected static function booted()
