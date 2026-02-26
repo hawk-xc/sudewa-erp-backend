@@ -118,7 +118,7 @@ class MasterBrandController extends Controller
         } catch (\Exception $err) {
             Log::error('Error creating brand: ' . $err->getMessage());
 
-            return $this->responseError(null, 'Error creating brand', 500);
+            return $this->responseError($err->getMessage(), 'Error creating brand', 500);
         }
     }
 

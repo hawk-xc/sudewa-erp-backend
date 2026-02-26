@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Str;
 
 class UnitType extends Model
 {
@@ -24,5 +25,12 @@ class UnitType extends Model
     public function brand() 
     {
         return $this->belongsTo(Brand::class);
+    }
+
+    protected static function booted()
+    {
+        static::creating(function ($model) {
+            $model->uuid = (string) Str::uuid();
+        });
     }
 }
