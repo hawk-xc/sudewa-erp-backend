@@ -36,7 +36,7 @@ class MasterCustomerController extends Controller
 
         $this->authRepository = $ar;
 
-        $this->personTable = ['id', 'uuid', 'code', 'type', 'name', 'address', 'npwp', 'phone', 'created_at'];
+        $this->personTable = ['id', 'uuid', 'user_id', 'code', 'type', 'name', 'address', 'npwp', 'phone', 'created_at'];
     }
 
     public function index(Request $request) {
@@ -111,57 +111,54 @@ class MasterCustomerController extends Controller
 
     public function store(Request $request)
     {
-        $request->validate([
+        $validated = $request->validate([
+            'company_id' => 'nullable|integer|exists:companies,id',
+            'user_id' => 'nullable|integer|exists:users,id',
             'name' => 'required|string|max:249',
             'address' => 'sometimes|string|max:249',
             'phone' => 'sometimes|string|max:249',
-            'user_id' => 'sometimes|integer|exists:users,id',
             'npwp' => 'sometimes|string',
         ]);
 
         try {
-            $person = new Person();
-
-            DB::transaction(function () use ($person, $request) {
-                $person->user_id = $request->user_id;
-                $person->type = 'customer';
-                $person->code = $this->generateCode('customer');
-                $person->name = $request->name;
-                $person->address = $request->address;
-                $person->phone = $request->phone;
-                $person->npwp = $request->npwp;
-                $person->save();
+            $person = DB::transaction(function () use ($validated) {
+                $validated['code'] = $this->generateCode('customer'); 
+                $validated['type'] = 'customer';
+                return Person::create($validated);
             });
 
-            return $this->responseSuccess($person, 'Customer created successfully');
+            return $this->responseSuccess($person, 'Customer created successfully', 201);
         } catch (Exception $err) {
             Log::error('Error while trying create Person Data : ' . $err->getMessage());
 
-            return $this->responseError(null, 'Error while trying create Person Data', 500);
+            return $this->responseError($err->getMessage(), 'Error while trying create Person Data', 500);
         }
     }
 
     public function update(Request $request, string $id)
     {
         $request->validate([
+            'company_id' => 'sometimes|integer|exists:companies,id',
+            'user_id' => 'sometimes|integer|exists:users,id',
             'name' => 'sometimes|string|max:249',
             'address' => 'sometimes|string|max:249',
             'phone' => 'sometimes|string|max:249',
-            'user_id' => 'sometimes|integer|exists:users,id',
             'npwp' => 'sometimes|string',
         ]);
 
         try {
-            $person = Person::findOrFail($id);
-
-            $data = array_filter($request->only(['name', 'address', 'phone', 'user_id', 'npwp']), fn($value) => !is_null($value) && $value !== '');
+            $data = array_filter($request->only(['company_id', 'user_id', 'name', 'address', 'phone', 'npwp']), fn($value) => !is_null($value) && $value !== '');
 
             if (empty($data)) {
                 return $this->responseError(null, 'No data provided to update', 422);
             }
 
-            DB::transaction(function () use ($person, $data) {
+            $person = DB::transaction(function () use ($id, $data) {
+                $person = Person::findOrFail($id);
+                
                 $person->update($data);
+
+                return $person->fresh();
             });
 
             return $this->responseSuccess($person, 'Customer Update Successfully', 200);

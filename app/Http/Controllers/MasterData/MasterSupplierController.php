@@ -111,26 +111,20 @@ class MasterSupplierController extends Controller
 
     public function store(Request $request)
     {
-        $request->validate([
+        $validated = $request->validate([
+            'company_id' => 'nullable|integer|exists:companies,id',
+            'user_id' => 'nullable|integer|exists:users,id',
             'name' => 'required|string|max:249',
             'address' => 'sometimes|string|max:249',
             'phone' => 'sometimes|string|max:249',
-            'user_id' => 'sometimes|integer|exists:users,id',
             'npwp' => 'sometimes|string',
         ]);
 
         try {
-            $person = new Person();
-
-            DB::transaction(function () use ($person, $request) {
-                $person->user_id = $request->user_id;
-                $person->type = 'supplier';
-                $person->code = $this->generateCode('supplier');
-                $person->name = $request->name;
-                $person->address = $request->address;
-                $person->phone = $request->phone;
-                $person->npwp = $request->npwp;
-                $person->save();
+            $person = DB::transaction(function () use ($validated) {
+                $validated['type'] = 'supplier';
+                $validated['code'] = $this->generateCode('supplier');
+                return Person::create($validated);
             });
 
             return $this->responseSuccess($person, 'Supplier created successfully');
@@ -144,24 +138,27 @@ class MasterSupplierController extends Controller
     public function update(Request $request, string $id)
     {
         $request->validate([
+            'company_id' => 'nullable|integer|exists:companies,id',
+            'user_id' => 'nullable|integer|exists:users,id',
             'name' => 'sometimes|string|max:249',
             'address' => 'sometimes|string|max:249',
             'phone' => 'sometimes|string|max:249',
-            'user_id' => 'sometimes|integer|exists:users,id',
             'npwp' => 'sometimes|string',
         ]);
 
         try {
-            $person = Person::findOrFail($id);
-
             $data = array_filter($request->only(['name', 'address', 'phone', 'user_id', 'npwp']), fn($value) => !is_null($value) && $value !== '');
 
             if (empty($data)) {
                 return $this->responseError(null, 'No data provided to update', 422);
             }
 
-            DB::transaction(function () use ($person, $data) {
+            $person = DB::transaction(function () use ($id, $data) {
+                $person =  Person::findOrFail($id);
+                
                 $person->update($data);
+
+                return $person->fresh();
             });
 
             return $this->responseSuccess($person, 'Supplier Update Successfully', 200);

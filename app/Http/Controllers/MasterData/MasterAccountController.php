@@ -32,7 +32,7 @@ class MasterAccountController extends Controller
 
         $this->authRepository = $ar;
 
-        $this->accountTable = ['id', 'uuid', 'code', 'group_code', 'name', 'description', 'type', 'created_at'];
+        $this->accountTable = ['id', 'uuid', 'code', 'account_group_id', 'name', 'description', 'type', 'created_at'];
     }
 
     public function index(Request $request)
@@ -50,17 +50,21 @@ class MasterAccountController extends Controller
                     if ($caseSensitive) {
                         $q->where('name', 'LIKE BINARY', "%$search%")
                             ->orWhere('code', 'LIKE BINARY', "%$search%")
-                            ->orWhere('group_code', 'LIKE BINARY', "%$search%")
+                            ->orWhere('account_group_id', 'LIKE BINARY', "%$search%")
                             ->orWhere('description', 'LIKE BINARY', "%$search%")
                             ->orWhere('type', 'LIKE BINARY', "%$search%");
                     } else {
                         $q->where('name', 'like', "%$search%")
                             ->orWhere('code', 'like', "%$search%")
-                            ->orWhere('group_code', 'like', "%$search%")
+                            ->orWhere('account_group_id', 'like', "%$search%")
                             ->orWhere('description', 'like', "%$search%")
                             ->orWhere('type', 'like', "%$search%");
                     }
                 });
+            }
+
+            if ($request->filled('account_group_id')) {
+                $query->where('account_group_id', $request->account_group_id);
             }
 
             foreach ($this->accountTable as $field) {
@@ -71,9 +75,7 @@ class MasterAccountController extends Controller
 
             $allowedSort = $this->accountTable;
 
-            $sortBy = in_array($request->sort_by, $allowedSort)
-                ? $request->sort_by
-                : 'id';
+            $sortBy = in_array($request->sort_by, $allowedSort) ? $request->sort_by : 'id';
 
             $sortOrder = $request->sort_order === 'asc' ? 'asc' : 'desc';
 
@@ -85,9 +87,20 @@ class MasterAccountController extends Controller
 
             return $this->responseSuccess($data, 'Account list retrieved successfully', 200);
         } catch (Exception $err) {
-            Log::error('Error While retrieved Account data : '.$err->getMessage());
+            Log::error('Error While retrieved Account data : ' . $err->getMessage());
 
             return $this->responseError(null, 'Account list retrieved Failed', 500);
+        }
+    }
+
+    public function show(string $id)
+    {
+        try {
+            $account = Account::with('accountGroup')->select($this->accountTable)->findOrFail($id);
+
+            return $this->responseSuccess($account, 'Account retrieved successfully', 200);
+        } catch (Exception $err) {
+            return $this->responseError($err->getMessage(), 'Account Group not found', 404);
         }
     }
 
@@ -95,8 +108,8 @@ class MasterAccountController extends Controller
     {
         try {
             $validated = $request->validate([
+                'account_group_id' => 'required|integer|exists:account_groups,id',
                 'code' => 'required|string|max:50|unique:accounts,code',
-                'group_code' => 'nullable|string|max:50',
                 'name' => 'required|string|max:255',
                 'description' => 'nullable|string',
                 'type' => 'required|in:debet,credit',
@@ -106,16 +119,11 @@ class MasterAccountController extends Controller
                 return Account::create($validated);
             });
 
-            return $this->responseSuccess(
-                $account->fresh(),
-                'Account created successfully',
-                201
-            );
-
+            return $this->responseSuccess($account->fresh(), 'Account created successfully', 201);
         } catch (\Illuminate\Validation\ValidationException $e) {
             return $this->responseError($e->errors(), 'Validation failed', 422);
         } catch (Exception $err) {
-            Log::error('Error While storing Account data : '.$err->getMessage());
+            Log::error('Error While storing Account data : ' . $err->getMessage());
 
             return $this->responseError(null, 'Account creation failed', 500);
         }
@@ -124,32 +132,31 @@ class MasterAccountController extends Controller
     public function update(Request $request, string $id)
     {
         try {
-            $account = Account::findOrFail($id);
+            $account = Account::findOrFail((int) $id);
 
-            $validated = $request->validate([
-                'code' => 'sometimes|required|string|max:50|unique:accounts,code,'.$id,
-                'group_code' => 'nullable|string|max:50',
-                'name' => 'sometimes|required|string|max:255',
-                'description' => 'nullable|string',
-                'type' => 'sometimes|required|string|max:50',
-            ]);
+            if ($account) {
+                $validated = $request->validate([
+                    'account_group_id' => 'sometimes|integer|exists:account_groups,id',
+                    'code' => 'sometimes|required|string|max:50|unique:accounts,code,' . $id,
+                    'name' => 'sometimes|required|string|max:255',
+                    'description' => 'nullable|string',
+                    'type' => 'sometimes|required|in:debet,credit',
+                ]);
 
-            DB::transaction(function () use ($account, $validated) {
-                $account->update($validated);
-            });
+                DB::transaction(function () use ($account, $validated) {
+                    $account->update($validated);
+                });
 
-            return $this->responseSuccess(
-                $account->fresh(),
-                'Account updated successfully',
-                200
-            );
-
+                return $this->responseSuccess($account->fresh(), 'Account updated successfully', 200);
+            } else {
+                return $this->responseError(null, 'Account not found', 404);
+            }
         } catch (\Illuminate\Validation\ValidationException $e) {
             return $this->responseError($e->errors(), 'Validation failed', 422);
         } catch (Exception $err) {
-            Log::error('Error While updating Account data : '.$err->getMessage());
+            Log::error('Error While updating Account data : ' . $err->getMessage());
 
-            return $this->responseError(null, 'Account update failed', 500);
+            return $this->responseError($err->getMessage(), 'Account update failed', 500);
         }
     }
 
@@ -162,9 +169,9 @@ class MasterAccountController extends Controller
                 $account->delete();
             });
 
-            return $this->responseSuccess([], "Account sucessfully Deleted", 200);
+            return $this->responseSuccess([], 'Account sucessfully Deleted', 200);
         } catch (Exception $err) {
-            return $this->responseError([], "Account Not Found or Failed Deleted", 500);
+            return $this->responseError([], 'Account Not Found or Failed Deleted', 500);
         }
     }
 }

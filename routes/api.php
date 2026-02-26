@@ -4,6 +4,7 @@ use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\Global\GlobalCompanyController;
 use App\Http\Controllers\Global\GlobalModuleController;
 use App\Http\Controllers\MasterData\MasterAccountController;
+use App\Http\Controllers\MasterData\MasterAccountGroupController;
 use App\Http\Controllers\MasterData\MasterBrandController;
 use App\Http\Controllers\MasterData\MasterCashController;
 use App\Http\Controllers\MasterData\MasterCustomerController;
@@ -74,6 +75,7 @@ Route::group(
 
         // Master Data API
         Route::group(['prefix' => 'master-data'], function () {
+            Route::apiResource('account-group', MasterAccountGroupController::class);
             Route::apiResource('account', MasterAccountController::class);
             Route::apiResource('cash', MasterCashController::class);
             Route::apiResource('customer', MasterCustomerController::class);

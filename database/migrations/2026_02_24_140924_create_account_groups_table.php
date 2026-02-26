@@ -13,6 +13,7 @@ return new class extends Migration
     {
         Schema::create('account_groups', function (Blueprint $table) {
             $table->id();
+            $table->uuid();
 
             $table->foreignId('company_id')->constrained('companies')->cascadeOnDelete();
 

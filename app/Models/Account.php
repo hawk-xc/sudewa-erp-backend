@@ -13,9 +13,9 @@ class Account extends Model
     protected $table = 'accounts';
 
     protected $fillable = [
+        'account_group_id',
         'uuid',
         'code',
-        'account_group_id',
         'name',
         'description',
         'type',
