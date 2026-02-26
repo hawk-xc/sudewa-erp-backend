@@ -13,12 +13,12 @@ class MasterCashController extends Controller
 {
     use ResponseTrait;
 
-    protected $cashTable = ['id', 'company_id', 'code', 'type', 'created_at'];
+    protected $cashTable = ['id', 'uuid', 'company_id', 'code', 'description', 'type', 'created_at'];
 
     public function index(Request $request)
     {
         try {
-            $query = Cash::with('company');
+            $query = Cash::query()->select($this->cashTable);
 
             if ($request->filled('search')) {
                 $search = $request->search;
