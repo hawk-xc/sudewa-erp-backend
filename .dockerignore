@@ -1,8 +1,6 @@
 # Ignore development files
 .git
 .gitignore
-.env
-.env.*
 !.env.example
 
 # Ignore dependencies (will be installed in container)
