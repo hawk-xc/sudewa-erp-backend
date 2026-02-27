@@ -1,61 +1,45 @@
-# Base pakai CLI supaya bisa php artisan serve (tanpa Nginx/FPM)
-FROM php:8.3-alpine AS base
+FROM php:8.3-fpm
 
-# ----------------------------
-# 🧩 System & PHP extensions
-# ----------------------------
-RUN apk add --no-cache \
-    bash git zip unzip curl icu-dev libxml2-dev libzip-dev \
-    libpng-dev libjpeg-turbo-dev freetype-dev oniguruma-dev zlib-dev \
-    nodejs npm netcat-openbsd shadow cronie postgresql-dev \
- && mkdir -p /root/.cache/crontab \
- && mkdir -p /etc/cron.d \
- && docker-php-ext-configure gd --with-jpeg --with-freetype \
- && docker-php-ext-install -j$(nproc) \
-    gd intl pdo pdo_pgsql mbstring bcmath exif pcntl zip
+WORKDIR /app
 
-# ----------------------------
-# 🧰 Composer
-# ----------------------------
-COPY --from=composer:2.7 /usr/bin/composer /usr/bin/composer
-ENV COMPOSER_ALLOW_SUPERUSER=1 \
-    COMPOSER_MEMORY_LIMIT=-1
+# System dependencies
+RUN apt-get update && apt-get install -y \
+    git \
+    curl \
+    libzip-dev \
+    unzip \
+    libpng-dev \
+    default-mysql-client \
+    && rm -rf /var/lib/apt/lists/*
 
-WORKDIR /var/www
+# PHP extensions
+RUN docker-php-ext-install \
+    pdo \
+    pdo_mysql \
+    zip \
+    bcmath \
+    pcntl \
+    gd
 
-# ----------------------------
-# ⚡️ Layering: cache composer lebih efisien
-# ----------------------------
-COPY composer.json composer.lock* ./
-RUN composer install --no-interaction --prefer-dist --no-scripts || true
+# Redis
+RUN pecl install redis && docker-php-ext-enable redis
 
-# ----------------------------
-# 📦 Copy minimal files for production
-# (di dev mode akan di-override oleh volume mount)
-# ----------------------------
-COPY artisan ./
-COPY app ./app
-COPY bootstrap ./bootstrap
-COPY config ./config
-COPY database ./database
-COPY public ./public
-COPY resources ./resources
-COPY routes ./routes
-COPY server.php ./
+# Composer
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
-# ----------------------------
-# 🔐 Permissions (storage & cache)
-# ----------------------------
-RUN mkdir -p storage/app/public bootstrap/cache \
- && chown -R www-data:www-data storage bootstrap/cache \
- && chmod -R ug+rw storage bootstrap/cache
+# Copy source
+COPY . /app
 
-# ----------------------------
-# 🚪 Expose port (artisan serve)
-# ----------------------------
-EXPOSE 8000
+# Install PHP deps (INI KUNCI 🔥)
+RUN composer install \
+    --no-interaction \
+    --prefer-dist \
+    --optimize-autoloader
 
-# ----------------------------
-# ✅ Default CMD optional (boleh di-override di compose)
-# ----------------------------
-CMD ["php", "artisan", "serve", "--host=0.0.0.0", "--port=8000"]
+# Permission
+RUN chown -R www-data:www-data storage bootstrap/cache \
+    && chmod -R 775 storage bootstrap/cache
+
+EXPOSE 9000
+
+CMD ["php-fpm"]
