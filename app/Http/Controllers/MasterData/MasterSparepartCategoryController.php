@@ -3,17 +3,20 @@
 namespace App\Http\Controllers\MasterData;
 
 use App\Http\Controllers\Controller;
-use App\Models\Sparepart;
+use App\Models\SparepartCategory;
 use App\Models\UnitType;
 use App\Repositories\AuthRepository;
 use App\Traits\ResponseTrait;
+use Exception;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
-class MasterSparepartController extends Controller
+class MasterSparepartCategoryController extends Controller
 {
     use ResponseTrait;
 
-    protected $unitTypeTable;
+    protected $sparepartCategoryTable;
 
     protected AuthRepository $authRepository;
 
@@ -26,13 +29,15 @@ class MasterSparepartController extends Controller
 
         $this->authRepository = $ar;
 
-        $this->unitTypeTable = ['id', 'brand_id', 'name', 'capacity', 'unit_type', 'unit_model', 'price', 'netto_weight', 'bruto_weight', 'description', 'created_at'];
+        $this->sparepartCategoryTable = ['id', 'uuid', 'code', 'name', 'created_at'];
     }
 
     public function index(Request $request)
     {
         try {
-            $query = Sparepart::with('sparepartCategory');
+            $query = SparepartCategory::query();
+
+            $query->select($this->sparepartCategoryTable);
 
             if ($request->filled('search')) {
                 $search = $request->search;
@@ -44,30 +49,6 @@ class MasterSparepartController extends Controller
 
             if ($request->filled('brand_id')) {
                 $query->where('brand_id', $request->brand_id);
-            }
-
-            if ($request->filled('unit_type')) {
-                $query->where('unit_type', $request->unit_type);
-            }
-
-            if ($request->filled('model_type')) {
-                $query->where('model_type', $request->model_type);
-            }
-
-            if ($request->filled('min_netto_weight')) {
-                $query->where('netto_weight', '>=', $request->min_netto_weight);
-            }
-
-            if ($request->filled('max_netto_weight')) {
-                $query->where('netto_weight', '<=', $request->max_netto_weight);
-            }
-
-            if ($request->filled('min_bruto_weight')) {
-                $query->where('bruto_weight', '>=', $request->min_bruto_weight);
-            }
-
-            if ($request->filled('max_bruto_weight')) {
-                $query->where('bruto_weight', '<=', $request->max_bruto_weight);
             }
 
             $unitTypes = $request->filled('per_page') ? $query->paginate($request->per_page) : $query->get();
