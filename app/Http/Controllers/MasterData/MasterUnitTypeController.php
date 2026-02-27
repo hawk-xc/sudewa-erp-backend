@@ -17,9 +17,6 @@ class MasterUnitTypeController extends Controller
 
     protected $unitTypeTable;
 
-    /**
-     * @var AuthRepository
-     */
     protected AuthRepository $authRepository;
 
     public function __construct(AuthRepository $ar)
@@ -79,7 +76,7 @@ class MasterUnitTypeController extends Controller
 
             return $this->responseSuccess($unitTypes, 'Unit Types retrieved successfully', 200);
         } catch (Exception $err) {
-            Log::error('Error while trying get Unit Types : ' . $err->getMessage());
+            Log::error('Error while trying get Unit Types : '.$err->getMessage());
 
             return $this->responseError($err->getMessage(), 'Internal Server Error', 500);
         }
@@ -92,7 +89,7 @@ class MasterUnitTypeController extends Controller
 
             return $this->responseSuccess($unitType, 'Unit Type retrieved successfully', 200);
         } catch (Exception $err) {
-            Log::error('Error while trying get Unit Type : ' . $err->getMessage());
+            Log::error('Error while trying get Unit Type : '.$err->getMessage());
 
             return $this->responseError($err->getMessage(), 'Internal Server Error', 500);
         }
@@ -107,7 +104,6 @@ class MasterUnitTypeController extends Controller
             'capacity' => 'nullable|integer|max:500',
             'unit_type' => 'nullable|string|max:255',
             'unit_model' => 'nullable|string|max:255',
-            'price' => 'nullable|integer',
             'netto_weight' => 'nullable|integer|max:500',
             'bruto_weight' => 'nullable|integer|max:500',
             'description' => 'nullable|string',
@@ -125,29 +121,36 @@ class MasterUnitTypeController extends Controller
 
             return $this->responseSuccess($unitType->load('brand'), 'Unit Type created successfully', 201);
         } catch (Exception $err) {
-            Log::error('Error while trying create Unit Type : ' . $err->getMessage());
+            Log::error('Error while trying create Unit Type : '.$err->getMessage());
 
             return $this->responseError($err->getMessage(), 'Failed to create Unit Type', 500);
         }
     }
 
-    public function update(Request $request, $id)
+    public function update(Request $request, int $id)
     {
         $unitType = UnitType::findOrFail($id);
 
         $validated = $request->validate([
-            'company_id' => 'sometimes|exists:companies,id',
+            'brand_id' => 'sometimes|exists:brands,id',
             'name' => 'sometimes|string|max:255',
-            'code' => 'sometimes|string|max:255',
+            'capacity' => 'nullable|integer|max:500',
+            'unit_type' => 'nullable|string|max:255',
+            'unit_model' => 'nullable|string|max:255',
+            'price' => 'nullable|integer',
+            'netto_weight' => 'nullable|integer|max:500',
+            'bruto_weight' => 'nullable|integer|max:500',
             'description' => 'nullable|string',
         ]);
 
         try {
-            $unitType->update($validated);
+            DB::transaction(function () use ($validated, $unitType) {
+                $unitType->update($validated);
+            });
 
-            return $this->responseSuccess($unitType, 'Unit Type updated successfully', 200);
+            return $this->responseSuccess($unitType->fresh(), 'Unit Type updated successfully', 200);
         } catch (Exception $err) {
-            Log::error('Error while trying update Unit Type : ' . $err->getMessage());
+            Log::error('Error while trying update Unit Type : '.$err->getMessage());
 
             return $this->responseError(null, 'Internal Server Error', 500);
         }
@@ -161,7 +164,7 @@ class MasterUnitTypeController extends Controller
 
             return $this->responseSuccess(null, 'Unit Type deleted successfully', 200);
         } catch (Exception $err) {
-            Log::error('Error while trying delete Unit Type : ' . $err->getMessage());
+            Log::error('Error while trying delete Unit Type : '.$err->getMessage());
 
             return $this->responseError(null, 'Internal Server Error', 500);
         }

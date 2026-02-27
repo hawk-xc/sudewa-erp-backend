@@ -82,6 +82,7 @@ Route::group(
             Route::apiResource('supplier', MasterSupplierController::class);
             Route::apiResource('brand', MasterBrandController::class);
             Route::apiResource('unit-type', MasterUnitTypeController::class);
+            Route::apiResource('sparepart-group', MasterSparepartController::class);
             Route::apiResource('sparepart', MasterSparepartController::class);
         });
     },

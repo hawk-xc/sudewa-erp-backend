@@ -2,18 +2,17 @@
 
 namespace App\Http\Controllers\MasterData;
 
+use App\Http\Controllers\Controller;
 use App\Models\Brand;
+use App\Repositories\AuthRepository;
 use App\Traits\ResponseTrait;
-use Illuminate\Support\Str;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use App\Http\Controllers\Controller;
-use App\Repositories\AuthRepository;
-use Intervention\Image\ImageManager;
-
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Intervention\Image\Drivers\Gd\Driver;
+use Intervention\Image\ImageManager;
 
 class MasterBrandController extends Controller
 {
@@ -21,9 +20,6 @@ class MasterBrandController extends Controller
 
     protected $brandTable;
 
-    /**
-     * @var AuthRepository
-     */
     protected AuthRepository $authRepository;
 
     public function __construct(AuthRepository $ar)
@@ -78,7 +74,8 @@ class MasterBrandController extends Controller
 
             return $this->responseSuccess($data, 'Brand list retrieved successfully', 200);
         } catch (\Exception $err) {
-            Log::error("List Brand Error : " . $err->getMessage());
+            Log::error('List Brand Error : '.$err->getMessage());
+
             return $this->responseError(null, 'Error while trying to list Brand', 500);
         }
     }
@@ -99,13 +96,13 @@ class MasterBrandController extends Controller
 
                     $file = $request->file('image');
 
-                    $fileName = Str::uuid() . '.webp';
+                    $fileName = Str::uuid().'.webp';
 
                     $image = $manager->read($file)->toWebp(90);
 
-                    Storage::disk('public')->put('brands/' . $fileName, $image->toString());
+                    Storage::disk('public')->put('brands/'.$fileName, $image->toString());
 
-                    $imagePath = 'brands/' . $fileName;
+                    $imagePath = 'brands/'.$fileName;
                 }
 
                 return Brand::create([
@@ -116,7 +113,7 @@ class MasterBrandController extends Controller
 
             return $this->responseSuccess($brand, 'Brand created successfully', 201);
         } catch (\Exception $err) {
-            Log::error('Error creating brand: ' . $err->getMessage());
+            Log::error('Error creating brand: '.$err->getMessage());
 
             return $this->responseError($err->getMessage(), 'Error creating brand', 500);
         }
@@ -136,7 +133,7 @@ class MasterBrandController extends Controller
     public function update(Request $request, string $id)
     {
         $request->validate([
-            'name' => 'sometimes|string|max:249|unique:brands,name,' . $id,
+            'name' => 'sometimes|string|max:249|unique:brands,name,'.$id,
             'image' => 'sometimes|nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
         ]);
 
@@ -153,17 +150,17 @@ class MasterBrandController extends Controller
                 $manager = new ImageManager(new Driver());
 
                 $file = $request->file('image');
-                $fileName = Str::uuid() . '.webp';
+                $fileName = Str::uuid().'.webp';
 
                 $image = $manager->read($file)->toWebp(90);
 
-                Storage::disk('public')->put('brands/' . $fileName, $image->toString());
+                Storage::disk('public')->put('brands/'.$fileName, $image->toString());
 
                 if ($brand->image && Storage::disk('public')->exists($brand->image)) {
                     Storage::disk('public')->delete($brand->image);
                 }
 
-                $data['image'] = 'brands/' . $fileName;
+                $data['image'] = 'brands/'.$fileName;
             }
 
             if (empty($data)) {
@@ -176,7 +173,7 @@ class MasterBrandController extends Controller
 
             return $this->responseSuccess($brand->fresh(), 'Brand updated successfully', 200);
         } catch (\Exception $err) {
-            Log::error('Error updating brand: ' . $err->getMessage());
+            Log::error('Error updating brand: '.$err->getMessage());
 
             return $this->responseError(null, 'Error updating brand', 500);
         }

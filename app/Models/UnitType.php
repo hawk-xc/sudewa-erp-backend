@@ -17,12 +17,14 @@ class UnitType extends Model
         'brand_id',
         'name',
         'image',
-        'type',
+        'unit_type',
+        'unit_model',
+        'price',
         'netto_weight',
         'bruto_weight',
     ];
 
-    public function brand() 
+    public function brand()
     {
         return $this->belongsTo(Brand::class);
     }
