@@ -37,7 +37,7 @@ class MasterUnitTypeController extends Controller
             $query = UnitType::with([
                 'brand' => function ($query) {
                     $query->select('id', 'name', 'created_at');
-                },
+                }
             ]);
 
             if ($request->filled('search')) {
