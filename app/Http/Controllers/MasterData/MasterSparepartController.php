@@ -42,10 +42,6 @@ class MasterSparepartController extends Controller
                 });
             }
 
-            if ($request->filled('brand_id')) {
-                $query->where('brand_id', $request->brand_id);
-            }
-
             if ($request->filled('unit_type')) {
                 $query->where('unit_type', $request->unit_type);
             }

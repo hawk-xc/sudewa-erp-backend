@@ -8,6 +8,7 @@ use App\Http\Controllers\MasterData\MasterAccountGroupController;
 use App\Http\Controllers\MasterData\MasterBrandController;
 use App\Http\Controllers\MasterData\MasterCashController;
 use App\Http\Controllers\MasterData\MasterCustomerController;
+use App\Http\Controllers\MasterData\MasterSparepartCategoryController;
 use App\Http\Controllers\MasterData\MasterSparepartController;
 use App\Http\Controllers\MasterData\MasterSupplierController;
 use App\Http\Controllers\MasterData\MasterUnitTypeController;
@@ -71,6 +72,9 @@ Route::group(
             // Additional Route
             Route::put('company-assign-module/{id}', [GlobalCompanyController::class, 'assignModule']);
             Route::get('convert-idr-to-usd', [GlobalCompanyController::class, 'covertIdrToUsd']);
+            Route::group(['prefix' => 'company', 'as' => 'company.id'], function () {
+                Route::get('slug/{slug}', [GlobalCompanyController::class, 'showBySlug'])->name('by-slug');
+            });
         });
 
         // Master Data API
@@ -82,7 +86,7 @@ Route::group(
             Route::apiResource('supplier', MasterSupplierController::class);
             Route::apiResource('brand', MasterBrandController::class);
             Route::apiResource('unit-type', MasterUnitTypeController::class);
-            Route::apiResource('sparepart-group', MasterSparepartController::class);
+            Route::apiResource('sparepart-category', MasterSparepartCategoryController::class);
             Route::apiResource('sparepart', MasterSparepartController::class);
         });
     },

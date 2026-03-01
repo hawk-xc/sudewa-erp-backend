@@ -127,6 +127,26 @@ class GlobalCompanyController extends Controller
         }
     }
 
+    public function showBySlug(string $slug)
+    {
+        try {
+            $company = Company::with('modules')->where('slug', (string) $slug)->first();
+
+            return $this->responseSuccess(
+                $company,
+                'Company retrieved successfully',
+                200
+            );
+
+        } catch (\Exception $e) {
+            return $this->responseError(
+                null,
+                'Company not found',
+                404
+            );
+        }
+    }
+
     public function update(Request $request, string $id)
     {
         try {
