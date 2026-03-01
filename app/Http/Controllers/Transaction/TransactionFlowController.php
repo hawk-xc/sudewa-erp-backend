@@ -62,6 +62,14 @@ class TransactionFlowController extends Controller
                 ]);
             }
 
+            if ($request->description) {
+                $query->where('description', 'like', '%'.$request->description.'%');
+            }
+
+            if ($request->unit_transaction_id) {
+                $query->where('unit_transaction_id', $request->unit_transaction_id);
+            }
+
             $data = $query->latest()->paginate($request->per_page ?? 10);
 
             return $this->responseSuccess($data, 'Transaction Flows retrieved successfully', 200);
