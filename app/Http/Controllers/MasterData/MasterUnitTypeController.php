@@ -34,7 +34,11 @@ class MasterUnitTypeController extends Controller
     public function index(Request $request)
     {
         try {
-            $query = UnitType::with('brand');
+            $query = UnitType::with([
+                'brand' => function ($query) {
+                    $query->select('id', 'name', 'created_at');
+                }
+            ]);
 
             if ($request->filled('search')) {
                 $search = $request->search;
@@ -101,7 +105,7 @@ class MasterUnitTypeController extends Controller
             'code' => 'required|string|unique:unit_types,code',
             'brand_id' => 'required|exists:brands,id',
             'name' => 'required|string|max:255',
-            'capacity' => 'nullable|integer|max:500',
+            'capacity' => 'nullable|decimal:0,2|max:100',
             'unit_type' => 'nullable|string|max:255',
             'unit_model' => 'nullable|string|max:255',
             'netto_weight' => 'nullable|integer|max:500',
@@ -134,7 +138,7 @@ class MasterUnitTypeController extends Controller
         $validated = $request->validate([
             'brand_id' => 'sometimes|exists:brands,id',
             'name' => 'sometimes|string|max:255',
-            'capacity' => 'nullable|integer|max:500',
+            'capacity' => 'nullable|decimal:0,2|max:100',
             'unit_type' => 'nullable|string|max:255',
             'unit_model' => 'nullable|string|max:255',
             'price' => 'nullable|integer',

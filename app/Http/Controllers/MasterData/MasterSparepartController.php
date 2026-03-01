@@ -7,7 +7,10 @@ use App\Models\Sparepart;
 use App\Models\UnitType;
 use App\Repositories\AuthRepository;
 use App\Traits\ResponseTrait;
+use Exception;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class MasterSparepartController extends Controller
 {
@@ -26,13 +29,15 @@ class MasterSparepartController extends Controller
 
         $this->authRepository = $ar;
 
-        $this->unitTypeTable = ['id', 'brand_id', 'name', 'capacity', 'unit_type', 'unit_model', 'price', 'netto_weight', 'bruto_weight', 'description', 'created_at'];
+        $this->unitTypeTable = ['id', 'sparepart_category_id', 'code', 'name', 'capacity', 'unit_type', 'price', 'created_at'];
     }
 
     public function index(Request $request)
     {
         try {
-            $query = Sparepart::with('sparepartCategory');
+            $query = Sparepart::with(['sparepartCategory' => function ($query) {
+                $query->select(['id', 'code', 'name']);
+            }]);
 
             if ($request->filled('search')) {
                 $search = $request->search;
@@ -79,11 +84,11 @@ class MasterSparepartController extends Controller
     public function show($id)
     {
         try {
-            $unitType = UnitType::with('brand')->findOrFail($id);
+            $sparepart = Sparepart::with('sparepartCategory')->findOrFail($id);
 
-            return $this->responseSuccess($unitType, 'Unit Type retrieved successfully', 200);
+            return $this->responseSuccess($sparepart, 'Sparepart retrieved successfully', 200);
         } catch (Exception $err) {
-            Log::error('Error while trying get Unit Type : '.$err->getMessage());
+            Log::error('Error while trying get Sparepart : '.$err->getMessage());
 
             return $this->responseError($err->getMessage(), 'Internal Server Error', 500);
         }
@@ -92,53 +97,55 @@ class MasterSparepartController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'code' => 'required|string|unique:unit_types,code',
-            'brand_id' => 'required|exists:brands,id',
-            'name' => 'required|string|max:255',
-            'capacity' => 'nullable|integer|max:500',
-            'unit_type' => 'nullable|string|max:255',
-            'unit_model' => 'nullable|string|max:255',
+            'sparepart_category_id' => 'required|exists:sparepart_categories,id',
+            'code' => 'required|string|unique:spareparts,code',
             'price' => 'nullable|integer',
-            'netto_weight' => 'nullable|integer|max:500',
-            'bruto_weight' => 'nullable|integer|max:500',
-            'description' => 'nullable|string',
+            'name' => 'required|string|max:255',
+            'capacity' => 'nullable|decimal:0,2|max:100',
+            'unit_type' => 'nullable|string|max:255|in:pcs,set,box',
         ]);
 
         // null
         // $image = $request->file('image')->store('unit-types');
 
         try {
-            $unitType = DB::transaction(function () use ($validated) {
-                $unitType = UnitType::create($validated);
+            $sparepart = DB::transaction(function () use ($validated) {
+                $sparepart = Sparepart::create($validated);
 
-                return $unitType;
+                return $sparepart;
             });
 
-            return $this->responseSuccess($unitType->load('brand'), 'Unit Type created successfully', 201);
+            return $this->responseSuccess($sparepart, 'Sparepart created successfully', 201);
         } catch (Exception $err) {
-            Log::error('Error while trying create Unit Type : '.$err->getMessage());
+            Log::error('Error while trying create Sparepart : '.$err->getMessage());
 
-            return $this->responseError($err->getMessage(), 'Failed to create Unit Type', 500);
+            return $this->responseError($err->getMessage(), 'Failed to create Sparepart', 500);
         }
     }
 
     public function update(Request $request, $id)
     {
-        $unitType = UnitType::findOrFail($id);
+        $sparepart = Sparepart::findOrFail($id);
 
         $validated = $request->validate([
-            'company_id' => 'sometimes|exists:companies,id',
+            'sparepart_category_id' => 'sometimes|exists:sparepart_categories,id',
+            'code' => 'sometimes|string|unique:spareparts,code,'.$sparepart->id,
+            'price' => 'nullable|integer',
             'name' => 'sometimes|string|max:255',
-            'code' => 'sometimes|string|max:255',
-            'description' => 'nullable|string',
+            'capacity' => 'nullable|decimal:0,2|max:100',
+            'unit_type' => 'nullable|string|max:255|in:pcs,set,box',
         ]);
 
         try {
-            $unitType->update($validated);
+            $sparepart = DB::transaction(function() use ($request, $validated, $sparepart) {
+                $sparepart->update($validated);
 
-            return $this->responseSuccess($unitType, 'Unit Type updated successfully', 200);
+                return $sparepart;
+            });
+
+            return $this->responseSuccess($sparepart->fresh(), 'Sparepart updated successfully', 200);
         } catch (Exception $err) {
-            Log::error('Error while trying update Unit Type : '.$err->getMessage());
+            Log::error('Error while trying update Sparepart : '.$err->getMessage());
 
             return $this->responseError(null, 'Internal Server Error', 500);
         }

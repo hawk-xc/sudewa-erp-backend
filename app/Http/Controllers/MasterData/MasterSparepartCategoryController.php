@@ -28,7 +28,7 @@ class MasterSparepartCategoryController extends Controller
 
         $this->authRepository = $ar;
 
-        $this->sparepartCategoryTable = ['id', 'uuid', 'name', 'created_at'];
+        $this->sparepartCategoryTable = ['id', 'uuid', 'code', 'name', 'created_at'];
     }
 
     public function index(Request $request)
@@ -72,6 +72,7 @@ class MasterSparepartCategoryController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
+            'code' => 'required|string|unique:sparepart_categories,code|max:100',
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
         ]);

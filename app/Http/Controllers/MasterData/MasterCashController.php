@@ -80,7 +80,7 @@ class MasterCashController extends Controller
             });
 
             return $this->responseSuccess(
-                $cash->fresh('company'),
+                $cash->fresh(),
                 'Cash created successfully',
                 201
             );
@@ -139,7 +139,7 @@ class MasterCashController extends Controller
             });
 
             return $this->responseSuccess(
-                $cash->fresh('company'),
+                $cash->fresh(),
                 'Cash updated successfully',
                 200
             );
