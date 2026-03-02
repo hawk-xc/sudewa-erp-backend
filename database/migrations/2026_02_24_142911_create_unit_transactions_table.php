@@ -22,6 +22,9 @@ return new class extends Migration
             ])->default('purchase')->nullable(false);
             $table->integer('max_capacity')->default(0)->nullable(true);
             $table->enum('stock_state', [
+                'draft',
+                'cancel',
+                'rejected',
                 'prepare',
                 'inbound_purcase_order',
                 'inbound_incoming_goods',
