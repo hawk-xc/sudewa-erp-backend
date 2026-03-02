@@ -108,7 +108,7 @@ Route::group(
                 Route::apiResource('unit-transaction-item', UnitTransactionItemPurchaseController::class);
                 Route::apiResource('unit-transaction-billing', UnitTransactionBillingPurchaseController::class);
 
-                Route::put('{id}/update-state', [UnitTransactionPurchaseController::class, 'updateState'])->name('update-state');
+                Route::put('unit-transaction/{id}/update-state', [UnitTransactionPurchaseController::class, 'updateState'])->name('update-state');
             });
             
             // Unit Sales API

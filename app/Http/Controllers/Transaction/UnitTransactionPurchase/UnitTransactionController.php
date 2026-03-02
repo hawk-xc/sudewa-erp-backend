@@ -89,24 +89,6 @@ class UnitTransactionController extends Controller
         }
     }
 
-    public function edit(string $id)
-    {
-        try {
-            $data = UnitTransaction::findOrFail($id);
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Unit Transaction retrieved successfully',
-                'data' => $data
-            ], 200);
-        } catch (Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Unit Transaction not found'
-            ], 404);
-        }
-    }
-
     public function update(Request $request, string $id)
     {
         $unitTransaction = UnitTransaction::findOrFail($id);
