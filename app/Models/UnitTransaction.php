@@ -12,7 +12,7 @@ class UnitTransaction extends Model
 
     protected $table = 'unit_transactions';
 
-    protected $fillble = [
+    protected $fillable = [
         'uuid',
         'warehouse_id',
         'person_id',

@@ -13,6 +13,7 @@ return new class extends Migration
     {
         Schema::create('unit_transactions', function (Blueprint $table) {
             $table->id();
+            $table->uuid();
             $table->foreignId('warehouse_id')->nullable(true)->constrained('warehouses')->nullOnDelete();
             $table->foreignId('person_id')->nullable(true)->constrained('persons')->nullOnDelete();
             $table->string('code')->unique()->nullable(false);

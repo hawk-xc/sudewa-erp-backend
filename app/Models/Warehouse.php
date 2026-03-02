@@ -35,4 +35,9 @@ class Warehouse extends Model
     {
         return $this->belongsTo(Company::class);
     }
+
+    public function unitTransactions()
+    {
+        return $this->hasMany(UnitTransaction::class);
+    }
 }

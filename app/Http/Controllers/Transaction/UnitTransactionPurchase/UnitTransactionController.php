@@ -65,7 +65,7 @@ class UnitTransactionController extends Controller
             Log::error($e->getMessage());
             return response()->json([
                 'success' => false,
-                'message' => 'Internal Server Error'
+                'message' => $e->getMessage()
             ], 500);
         }
     }
