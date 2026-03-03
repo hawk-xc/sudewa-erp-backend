@@ -3,63 +3,174 @@
 namespace App\Http\Controllers\Transaction\UnitTransactionPurchase;
 
 use App\Http\Controllers\Controller;
+use App\Models\UnitTransactionItem;
+use App\Traits\ResponseTrait;
+use Exception;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class UnitTransactionItemController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
-    public function index()
+    use ResponseTrait;
+
+    protected $unitTransactionItemTable;
+
+    public function __construct()
     {
-        //
+        $this->middleware(['permission:transaction:list'])->only(['index', 'show']);
+        $this->middleware(['permission:transaction:create'])->only('store');
+        $this->middleware(['permission:transaction:edit'])->only('update');
+        $this->middleware(['permission:transaction:delete'])->only(['destroy']);
+
+        $this->unitTransactionItemTable = [
+            'id',
+            'uuid',
+            'unit_transaction_id',
+            'unit_type_id',
+            'sparepart_id',
+            'qty_total',
+            'price',
+            'bbn_price',
+            'hpp_per_unit_price',
+            'dpp_per_unit_price',
+            'ppn_per_unit_price',
+            'other_fee',
+            'created_at',
+        ];
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
-    public function create()
+    public function index(Request $request)
     {
-        //
+        try {
+            $query = UnitTransactionItem::query();
+
+            $query->select($this->unitTransactionItemTable)
+                ->with([
+                    'unitTransaction:id,uuid,code,warehouse_id',
+                ]);
+
+            if ($request->filled('search')) {
+                $search = $request->search;
+
+                $query->where(function ($q) use ($search) {
+                    $q->where('uuid', 'like', "%$search%")
+                        ->orWhere('qty_total', 'like', "%$search%")
+                        ->orWhere('price', 'like', "%$search%");
+                });
+            }
+
+            foreach ($this->unitTransactionItemTable as $field) {
+                if ($request->filled($field)) {
+                    $query->where($field, $request->$field);
+                }
+            }
+
+            $allowedSort = $this->unitTransactionItemTable;
+
+            $sortBy = in_array($request->sort_by, $allowedSort) ? $request->sort_by : 'id';
+            $sortOrder = $request->sort_order === 'asc' ? 'asc' : 'desc';
+
+            $query->orderBy($sortBy, $sortOrder);
+
+            $perPage = $request->per_page ?? 10;
+
+            $data = $query->paginate($perPage);
+
+            return $this->responseSuccess($data, 'Unit Transaction Item list retrieved successfully', 200);
+        } catch (Exception $err) {
+            Log::error('Error While retrieved Unit Transaction Item data : '.$err->getMessage());
+
+            return $this->responseError(null, 'Unit Transaction Item list retrieved Failed', 500);
+        }
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
-    public function store(Request $request)
-    {
-        //
-    }
-
-    /**
-     * Display the specified resource.
-     */
     public function show(string $id)
     {
-        //
+        try {
+            $item = UnitTransactionItem::with([
+                'unitTransaction:id,code',
+                'unitTransactionItemDetails:id,uuid',
+            ])->select($this->unitTransactionItemTable)->findOrFail($id);
+
+            return $this->responseSuccess($item, 'Unit Transaction Item retrieved successfully', 200);
+        } catch (Exception $err) {
+            return $this->responseError($err->getMessage(), 'Unit Transaction Item not found', 404);
+        }
     }
 
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(string $id)
+    public function store(Request $request)
     {
-        //
+        try {
+            $validated = $request->validate([
+                'unit_transaction_id' => 'required|integer|exists:unit_transactions,id',
+                'unit_type_id' => 'nullable|integer|exists:unit_types,id',
+                'sparepart_id' => 'nullable|integer|exists:spareparts,id',
+                'qty_total' => 'required|integer|min:1',
+                'price' => 'required|decimal:0,2',
+                'bbn_price' => 'nullable|decimal:0,2',
+                'expedition_fee' => 'nullable|decimal:0,2',
+                'other_fee' => 'nullable|decimal:0,2',
+            ]);
+
+            $item = DB::transaction(function () use ($validated) {
+                return UnitTransactionItem::create($validated);
+            });
+
+            return $this->responseSuccess($item->fresh('unitTransaction'), 'Unit Transaction Item created successfully', 201);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return $this->responseError($e->errors(), 'Validation failed', 422);
+        } catch (Exception $err) {
+            Log::error('Error While storing Unit Transaction Item data : '.$err->getMessage());
+
+            return $this->responseError(null, 'Unit Transaction Item creation failed', 500);
+        }
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
     public function update(Request $request, string $id)
     {
-        //
+        try {
+            $item = UnitTransactionItem::findOrFail((int) $id);
+
+            $validated = $request->validate([
+                'unit_transaction_id' => 'sometimes|integer|exists:unit_transactions,id',
+                'unit_type_id' => 'sometimes|nullable|integer|exists:unit_types,id',
+                'sparepart_id' => 'sometimes|nullable|integer|exists:spareparts,id',
+                'qty_total' => 'sometimes|integer|min:1',
+                'price' => 'sometimes|numeric',
+                'bbn_price' => 'nullable|numeric',
+                'hpp_per_unit_price' => 'nullable|numeric',
+                'dpp_per_unit_price' => 'nullable|numeric',
+                'ppn_per_unit_price' => 'nullable|numeric',
+                'other_fee' => 'nullable|numeric',
+            ]);
+
+            DB::transaction(function () use ($item, $validated) {
+                $item->update($validated);
+            });
+
+            return $this->responseSuccess($item->fresh(), 'Unit Transaction Item updated successfully', 200);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return $this->responseError($e->errors(), 'Validation failed', 422);
+        } catch (Exception $err) {
+            Log::error('Error While updating Unit Transaction Item data : '.$err->getMessage());
+
+            return $this->responseError($err->getMessage(), 'Unit Transaction Item update failed', 500);
+        }
     }
 
-    /**
-     * Remove the specified resource from storage.
-     */
     public function destroy(string $id)
     {
-        //
+        try {
+            $item = UnitTransactionItem::findOrFail($id);
+
+            DB::transaction(function () use ($item) {
+                $item->delete();
+            });
+
+            return $this->responseSuccess([], 'Unit Transaction Item sucessfully Deleted', 200);
+        } catch (Exception $err) {
+            return $this->responseError([], 'Unit Transaction Item Not Found or Failed Deleted', 500);
+        }
     }
 }

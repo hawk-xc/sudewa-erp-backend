@@ -101,16 +101,16 @@ Route::group(
         // Transaction API
         Route::group(['prefix' => 'transaction', 'as' => 'transaction.'], function () {
             Route::apiResource('transaction-flow', TransactionFlowController::class);
-            
+
             // Unit Purchase API
-            Route::group(['prefix' => 'unit-transaction-purchase', 'as' => 'unit-transaction-purchase.'], function() {
+            Route::group(['prefix' => 'unit-transaction-purchase', 'as' => 'unit-transaction-purchase.'], function () {
                 Route::apiResource('unit-transaction', UnitTransactionPurchaseController::class);
                 Route::apiResource('unit-transaction-item', UnitTransactionItemPurchaseController::class);
                 Route::apiResource('unit-transaction-billing', UnitTransactionBillingPurchaseController::class);
 
                 Route::put('unit-transaction/{id}/update-state', [UnitTransactionPurchaseController::class, 'updateState'])->name('update-state');
             });
-            
+
             // Unit Sales API
             // Route::group(['prefix' => 'unit-sales', 'as' => 'unit-sales.'], function() {
             //     Route::apiResource('unit-transaction', UnitSalesController::class);
