@@ -81,7 +81,7 @@ class UnitTransactionItemDetailController extends Controller
     public function show(string $id)
     {
         try {
-            $data = UnitTransactionItemDetail::with(['unitTransactionItem:id,uuid'])
+            $data = UnitTransactionItemDetail::with(['unitTransactionItem:id,uuid,price'])
                 ->select($this->unitTransactionItemDetailTable)
                 ->findOrFail($id);
 

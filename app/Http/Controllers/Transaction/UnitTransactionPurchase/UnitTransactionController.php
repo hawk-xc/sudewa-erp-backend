@@ -42,7 +42,7 @@ class UnitTransactionController extends Controller
             $query = UnitTransaction::query();
 
             $query->select($this->unitTransactionTable)
-                ->with(['warehouse', 'person', 'transactionFlow', 'unitTransactionBilling']);
+                ->with(['warehouse:id,uuid,name,capacity', 'person:id,uuid,code,name,type', 'transactionFlow:id,uuid,transaction_date,description', 'unitTransactionBilling:id,uuid,payment_at,is_paid']);
 
             if ($request->filled('search')) {
                 $search = $request->search;
