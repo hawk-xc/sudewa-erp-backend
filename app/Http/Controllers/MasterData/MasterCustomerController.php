@@ -2,25 +2,22 @@
 
 namespace App\Http\Controllers\MasterData;
 
-use Exception;
+use App\Http\Controllers\Controller;
 use App\Models\Person;
+use App\Repositories\AuthRepository;
 use App\Traits\PersonTrait;
-use Illuminate\Http\Request;
 use App\Traits\ResponseTrait;
+use Exception;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use App\Http\Controllers\Controller;
-use App\Repositories\AuthRepository;
 
 class MasterCustomerController extends Controller
 {
-    use ResponseTrait, PersonTrait;
+    use PersonTrait, ResponseTrait;
 
-    /**
-     * @var AuthRepository
-     */
     protected AuthRepository $authRepository;
-    
+
     // projection
     protected $personTable;
 
@@ -39,80 +36,84 @@ class MasterCustomerController extends Controller
         $this->personTable = ['id', 'uuid', 'user_id', 'code', 'type', 'name', 'address', 'npwp', 'phone', 'created_at'];
     }
 
-    public function index(Request $request) {
+    public function index(Request $request)
+    {
         $query = Person::query();
 
         $query->select($this->personTable)->where('type', 'customer');
 
         try {
-        if ($request->filled('search')) {
+            if ($request->filled('search')) {
 
-            $search = $request->search;
-            $caseSensitive = $request->boolean('case_sensitive');
+                $search = $request->search;
+                $caseSensitive = $request->boolean('case_sensitive');
 
-            $query->where(function ($q) use ($search, $caseSensitive) {
+                $query->where(function ($q) use ($search, $caseSensitive) {
 
-                if ($caseSensitive) {
-                    $q->where('name', 'LIKE BINARY', "%$search%")
-                      ->orWhere('code', 'LIKE BINARY', "%$search%")
-                      ->orWhere('phone', 'LIKE BINARY', "%$search%")
-                      ->orWhere('npwp', 'LIKE BINARY', "%$search%");
-                } else {
-                    $q->where('name', 'like', "%$search%")
-                      ->orWhere('code', 'like', "%$search%")
-                      ->orWhere('phone', 'like', "%$search%")
-                      ->orWhere('npwp', 'like', "%$search%");
-                }
+                    if ($caseSensitive) {
+                        $q->where('name', 'LIKE BINARY', "%$search%")
+                            ->orWhere('code', 'LIKE BINARY', "%$search%")
+                            ->orWhere('phone', 'LIKE BINARY', "%$search%")
+                            ->orWhere('npwp', 'LIKE BINARY', "%$search%");
+                    } else {
+                        $q->where('name', 'like', "%$search%")
+                            ->orWhere('code', 'like', "%$search%")
+                            ->orWhere('phone', 'like', "%$search%")
+                            ->orWhere('npwp', 'like', "%$search%");
+                    }
 
-            });
-        }
-
-        foreach ($this->personTable as $field) {
-            if ($request->filled($field)) {
-                $query->where($field, $request->$field);
+                });
             }
+
+            foreach ($this->personTable as $field) {
+                if ($request->filled($field)) {
+                    $query->where($field, $request->$field);
+                }
+            }
+
+            $allowedSort = $this->personTable;
+
+            $sortBy = in_array($request->sort_by, $allowedSort)
+                ? $request->sort_by
+                : 'id';
+
+            $sortOrder = $request->sort_order === 'asc' ? 'asc' : 'desc';
+
+            $query->orderBy($sortBy, $sortOrder);
+
+            $perPage = $request->per_page ?? 10;
+
+            $data = $query->paginate($perPage);
+
+            return $this->responseSuccess($data, 'Customer list retrieved successfully', 200);
+        } catch (Exception $err) {
+            Log::error('Error While retrieved Customer data : '.$err->getMessage());
+
+            return $this->responseError($err->getMessage(), 'Customer list retrieved Failed', 500);
         }
-
-        $allowedSort = $this->personTable;
-
-        $sortBy = in_array($request->sort_by, $allowedSort)
-            ? $request->sort_by
-            : 'id';
-
-        $sortOrder = $request->sort_order === 'asc' ? 'asc' : 'desc';
-
-        $query->orderBy($sortBy, $sortOrder);
-
-        $perPage = $request->per_page ?? 10;
-
-        $data = $query->paginate($perPage);
-
-        return $this->responseSuccess($data, "Customer list retrieved successfully", 200);
-    } catch (Exception $err) {
-        Log::error("Error While retrieved Customer data : " . $err->getMessage());
-        return $this->responseError(null, "Customer list retrieved Failed", 500);
-    }
     }
 
-    public function show(string $id) {
+    public function show(string $id)
+    {
         try {
             $person = Person::where('type', 'customer')->where('id', $id)->select($this->personTable)->first();
 
-            if (!$person) {
-                return $this->responseError(null, "Customer not found", 404);
+            if (! $person) {
+                return $this->responseError(null, 'Customer not found', 404);
             }
 
-            return $this->responseSuccess($person, "Customer retrieved successfully", 200);
+            return $this->responseSuccess($person, 'Customer retrieved successfully', 200);
         } catch (Exception $err) {
-            Log::error("Error While retrieved Customer data : " . $err->getMessage());
-            return $this->responseError(null, "Customer retrieved Failed", 500);
+            Log::error('Error While retrieved Customer data : '.$err->getMessage());
+
+            return $this->responseError($err->getMessage(), 'Customer retrieved Failed', 500);
         }
     }
 
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'company_id' => 'nullable|integer|exists:companies,id',
+            'company_id' => 'required|integer|exists:companies,id',
             'user_id' => 'nullable|integer|exists:users,id',
             'name' => 'required|string|max:249',
             'address' => 'sometimes|string|max:249',
@@ -122,14 +123,15 @@ class MasterCustomerController extends Controller
 
         try {
             $person = DB::transaction(function () use ($validated) {
-                $validated['code'] = $this->generateCode('customer'); 
+                $validated['code'] = $this->generateCode('customer');
                 $validated['type'] = 'customer';
+
                 return Person::create($validated);
             });
 
             return $this->responseSuccess($person, 'Customer created successfully', 201);
         } catch (Exception $err) {
-            Log::error('Error while trying create Person Data : ' . $err->getMessage());
+            Log::error('Error while trying create Person Data : '.$err->getMessage());
 
             return $this->responseError($err->getMessage(), 'Error while trying create Person Data', 500);
         }
@@ -147,7 +149,7 @@ class MasterCustomerController extends Controller
         ]);
 
         try {
-            $data = array_filter($request->only(['company_id', 'user_id', 'name', 'address', 'phone', 'npwp']), fn($value) => !is_null($value) && $value !== '');
+            $data = array_filter($request->only(['company_id', 'user_id', 'name', 'address', 'phone', 'npwp']), fn ($value) => ! is_null($value) && $value !== '');
 
             if (empty($data)) {
                 return $this->responseError(null, 'No data provided to update', 422);
@@ -155,7 +157,7 @@ class MasterCustomerController extends Controller
 
             $person = DB::transaction(function () use ($id, $data) {
                 $person = Person::findOrFail($id);
-                
+
                 $person->update($data);
 
                 return $person->fresh();
@@ -163,9 +165,9 @@ class MasterCustomerController extends Controller
 
             return $this->responseSuccess($person, 'Customer Update Successfully', 200);
         } catch (Exception $err) {
-            Log::error('Error while trying update Person data : ' . $err->getMessage());
+            Log::error('Error while trying update Person data : '.$err->getMessage());
 
-            return $this->responseError(null, 'Error while trying update Person data', 500);
+            return $this->responseError($err->getMessage(), 'Error while trying update Person data', 500);
         }
     }
 
@@ -177,8 +179,9 @@ class MasterCustomerController extends Controller
 
             return $this->responseSuccess([], 'Customer Deleted Successfully', 200);
         } catch (Exception $err) {
-            Log::error('Error while trying delete Customer data : ' . $err->getMessage());
-            return $this->responseError(null, 'Customer Deleted Failed');
+            Log::error('Error while trying delete Customer data : '.$err->getMessage());
+
+            return $this->responseError($err->getMessage(), 'Customer Deleted Failed');
         }
     }
 }
