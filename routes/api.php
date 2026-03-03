@@ -18,6 +18,7 @@ use App\Http\Controllers\Transaction\TransactionFlowController;
 use App\Http\Controllers\Transaction\UnitTransactionPurchase\UnitTransactionBillingController as UnitTransactionBillingPurchaseController;
 use App\Http\Controllers\Transaction\UnitTransactionPurchase\UnitTransactionController as UnitTransactionPurchaseController;
 use App\Http\Controllers\Transaction\UnitTransactionPurchase\UnitTransactionItemController as UnitTransactionItemPurchaseController;
+use App\Http\Controllers\Transaction\UnitTransactionPurchase\UnitTransactionItemDetailController as UnitTransactionItemDetailPurchaseController;
 use App\Http\Controllers\User\UserController;
 use App\Http\Controllers\Warehouse\WarehouseController;
 use Illuminate\Support\Facades\Route;
@@ -106,8 +107,10 @@ Route::group(
             Route::group(['prefix' => 'unit-transaction-purchase', 'as' => 'unit-transaction-purchase.'], function () {
                 Route::apiResource('unit-transaction', UnitTransactionPurchaseController::class);
                 Route::apiResource('unit-transaction-item', UnitTransactionItemPurchaseController::class);
+                Route::apiResource('unit-transaction-item-detail', UnitTransactionItemDetailPurchaseController::class);
                 Route::apiResource('unit-transaction-billing', UnitTransactionBillingPurchaseController::class);
 
+                // Additional Route
                 Route::put('unit-transaction/{id}/update-state', [UnitTransactionPurchaseController::class, 'updateState'])->name('update-state');
             });
 
