@@ -33,7 +33,7 @@ class MasterCustomerController extends Controller
 
         $this->authRepository = $ar;
 
-        $this->personTable = ['id', 'uuid', 'user_id', 'code', 'type', 'name', 'address', 'npwp', 'phone', 'created_at'];
+        $this->personTable = ['id', 'uuid', 'pic_name', 'code', 'type', 'name', 'address', 'npwp', 'phone', 'created_at'];
     }
 
     public function index(Request $request)
@@ -114,11 +114,11 @@ class MasterCustomerController extends Controller
     {
         $validated = $request->validate([
             'company_id' => 'required|integer|exists:companies,id',
-            'user_id' => 'nullable|integer|exists:users,id',
             'name' => 'required|string|max:249',
             'address' => 'sometimes|string|max:249',
             'phone' => 'sometimes|string|max:249',
             'npwp' => 'sometimes|string',
+            'pic_name' => 'nullable|string',
         ]);
 
         try {
@@ -141,15 +141,15 @@ class MasterCustomerController extends Controller
     {
         $request->validate([
             'company_id' => 'sometimes|integer|exists:companies,id',
-            'user_id' => 'sometimes|integer|exists:users,id',
             'name' => 'sometimes|string|max:249',
             'address' => 'sometimes|string|max:249',
             'phone' => 'sometimes|string|max:249',
             'npwp' => 'sometimes|string',
+            'pic_name' => 'sometimes|string',
         ]);
 
         try {
-            $data = array_filter($request->only(['company_id', 'user_id', 'name', 'address', 'phone', 'npwp']), fn ($value) => ! is_null($value) && $value !== '');
+            $data = array_filter($request->only(['company_id', 'pic_name', 'name', 'address', 'phone', 'npwp']), fn ($value) => ! is_null($value) && $value !== '');
 
             if (empty($data)) {
                 return $this->responseError(null, 'No data provided to update', 422);

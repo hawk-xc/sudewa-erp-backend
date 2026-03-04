@@ -21,7 +21,7 @@ class PersonSeeder extends Seeder
 
             Person::create([
                 'uuid' => (string) Str::uuid(),
-                'user_id' => null,
+                'pic_name' => 'Ahmad',
                 'company_id' => 1,
                 'code' => $type === 'supplier' ? $this->generateCode('supplier') : $this->generateCode('customer'),
                 'type' => $type,

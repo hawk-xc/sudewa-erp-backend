@@ -14,7 +14,6 @@ class Person extends Model
 
     protected $fillable = [
         'uuid',
-        'user_id',
         'company_id',
         'code',
         'type',
@@ -22,12 +21,8 @@ class Person extends Model
         'address',
         'npwp',
         'phone',
+        'pic_name',
     ];
-
-    public function user()
-    {
-        return $this->belongsTo(User::class, 'user_id', 'id');
-    }
 
     public function company()
     {
