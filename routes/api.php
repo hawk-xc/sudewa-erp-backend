@@ -100,6 +100,7 @@ Route::group(
 
             Route::get('warehouse-stock/{id}', [WarehouseController::class, 'getStock']);
             Route::get('warehouse-unit-transaction-data/{id}', [WarehouseController::class, 'getUnitTransaction']);
+            Route::get('warehouse-unit-transaction-item-data/{id}', [WarehouseController::class, 'getUnitTransactionItem']);
         });
 
         // Transaction API

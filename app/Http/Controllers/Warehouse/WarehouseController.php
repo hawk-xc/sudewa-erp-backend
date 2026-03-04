@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Warehouse;
 
 use App\Http\Controllers\Controller;
+use App\Models\UnitTransactionItem;
 use App\Models\Warehouse;
 use App\Repositories\AuthRepository;
 use App\Traits\ResponseTrait;
@@ -103,7 +104,7 @@ class WarehouseController extends Controller
     public function show(string $id)
     {
         try {
-            $data = Warehouse::with('company')->findOrFail($id);
+            $data = Warehouse::with('company', 'unitTransactions')->findOrFail($id);
 
             return response()->json([
                 'success' => true,
@@ -146,6 +147,18 @@ class WarehouseController extends Controller
 
             return $this->responseError(null, $err->getMessage(), 500);
         }
+    }
+
+    public function getUnitTransactionItem(Request $request, string $id)
+    {
+        $data = UnitTransactionItem::findOrFail($id)->with('unitTransactionItemDetails');
+
+        try {
+            return $this->responseSuccess($data, 'Successfully get unit transaction item data', 200);
+        } catch (Exception $err) {
+            return $this->responseError(null, 'Error while get unit transaction item data', 500);
+        }
+
     }
 
     public function getStock(Request $request, string $id)

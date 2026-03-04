@@ -89,8 +89,8 @@ class UnitTransactionItemController extends Controller
     {
         try {
             $item = UnitTransactionItem::with([
-                'unitTransaction:id,code',
-                'unitTransactionItemDetails:id,uuid',
+                'unitTransaction',
+                'unitTransactionItemDetails',
             ])->select($this->unitTransactionItemTable)->findOrFail($id);
 
             return $this->responseSuccess($item, 'Unit Transaction Item retrieved successfully', 200);
