@@ -97,6 +97,9 @@ Route::group(
         // Warehouse API
         Route::group(['prefix' => 'warehouse', 'as' => 'warehouse.'], function () {
             Route::apiResource('warehouse-data', WarehouseController::class);
+
+            Route::get('warehouse-stock/{id}', [WarehouseController::class, 'getStock']);
+            Route::get('warehouse-unit-transaction-data/{id}', [WarehouseController::class, 'getUnitTransaction']);
         });
 
         // Transaction API

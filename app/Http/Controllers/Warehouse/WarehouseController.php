@@ -16,6 +16,7 @@ class WarehouseController extends Controller
     use ResponseTrait;
 
     protected AuthRepository $authRepository;
+
     protected $warehouseTable;
 
     public function __construct(AuthRepository $ar)
@@ -34,10 +35,10 @@ class WarehouseController extends Controller
             'name',
             'capacity',
             'description',
-            'created_at'
+            'created_at',
         ];
     }
-    
+
     public function index(Request $request)
     {
         try {
@@ -45,12 +46,12 @@ class WarehouseController extends Controller
 
             $query->select($this->warehouseTable);
 
-        if ($request->company_id) {
+            if ($request->company_id) {
                 $query->where('company_id', $request->company_id);
             }
 
             if ($request->search) {
-                $query->where('name', 'like', '%' . $request->search . '%');
+                $query->where('name', 'like', '%'.$request->search.'%');
             }
 
             $data = $query->latest()->paginate($request->per_page ?? 10);
@@ -58,13 +59,14 @@ class WarehouseController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Warehouses retrieved successfully',
-                'data' => $data
+                'data' => $data,
             ], 200);
         } catch (Exception $e) {
             Log::error($e->getMessage());
+
             return response()->json([
                 'success' => false,
-                'message' => 'Internal Server Error'
+                'message' => 'Internal Server Error',
             ], 500);
         }
     }
@@ -86,13 +88,14 @@ class WarehouseController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Warehouse created successfully',
-                'data' => $data
+                'data' => $data,
             ], 201);
         } catch (Exception $e) {
             Log::error($e->getMessage());
+
             return response()->json([
                 'success' => false,
-                'message' => 'Internal Server Error'
+                'message' => 'Internal Server Error',
             ], 500);
         }
     }
@@ -105,13 +108,77 @@ class WarehouseController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Warehouse retrieved successfully',
-                'data' => $data
+                'data' => $data,
             ], 200);
         } catch (Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Warehouse not found'
+                'message' => 'Warehouse not found',
             ], 404);
+        }
+    }
+
+    public function getUnitTransaction(Request $request, string $id)
+    {
+        $type = $request->type;
+        $query = Warehouse::find($id)->unitTransactions();
+
+        try {
+            switch ($type) {
+                case 'inbound':
+                    $query = $query->where('type', 'purchase')->get();
+
+                    return $this->responseSuccess($query, 'Unit transaction data successfully fetched', 200);
+                    break;
+                case 'outbound':
+                    $query = $query->where('type', 'sales')->get();
+
+                    return $this->responseSuccess($query, 'Unit transaction data successfully fetched', 200);
+                    break;
+                default:
+                    $query = $query->get();
+
+                    return $this->responseSuccess($query, 'Unit transaction data successfully fetched', 200);
+                    break;
+            }
+        } catch (Exception $err) {
+            Log::error('Fetch Warehouse Unit Transaction : '.$err->getMessage());
+
+            return $this->responseError(null, $err->getMessage(), 500);
+        }
+    }
+
+    public function getStock(Request $request, string $id)
+    {
+        try {
+            $warehouse = Warehouse::with([
+                'unitTransactions.unitTransactionItems.unitTransactionItemDetails',
+            ])->findOrFail($id);
+
+            $stockInHand = 0;
+            $stockForecast = 0;
+
+            foreach ($warehouse->unitTransactions as $transaction) {
+
+                $totalDetails = $transaction->unitTransactionItems
+                    ->sum(fn ($item) => $item->unitTransactionItemDetails->count());
+
+                if ($transaction->type === 'purchase' && $transaction->is_stock_in_hand) {
+                    $stockInHand += $totalDetails;
+                } else {
+                    $stockForecast += $totalDetails;
+                }
+            }
+
+            return $this->responseSuccess([
+                'stock_in_hand' => $stockInHand,
+                'stock_forecast' => $stockForecast,
+            ], 'Successfully fetch warehouse stock data', 200);
+
+        } catch (Exception $err) {
+            Log::error('Error while fetch warehouse stock data : '.$err->getMessage());
+
+            return $this->responseError(null, $err->getMessage(), 500);
         }
     }
 
@@ -134,13 +201,14 @@ class WarehouseController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Warehouse updated successfully',
-                'data' => $warehouse->fresh()
+                'data' => $warehouse->fresh(),
             ], 200);
         } catch (Exception $e) {
             Log::error($e->getMessage());
+
             return response()->json([
                 'success' => false,
-                'message' => 'Internal Server Error'
+                'message' => 'Internal Server Error',
             ], 500);
         }
     }
@@ -156,13 +224,14 @@ class WarehouseController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Warehouse deleted successfully'
+                'message' => 'Warehouse deleted successfully',
             ], 200);
         } catch (Exception $e) {
             Log::error($e->getMessage());
+
             return response()->json([
                 'success' => false,
-                'message' => 'Internal Server Error'
+                'message' => 'Internal Server Error',
             ], 500);
         }
     }
