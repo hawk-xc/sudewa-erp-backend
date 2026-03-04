@@ -113,6 +113,10 @@ class UnitTransactionItemController extends Controller
                 'other_fee' => 'nullable|decimal:0,2',
             ]);
 
+            if (isset($request->unit_type_id) && isset($request->sparepart_id)) {
+                return $this->responseError(null, 'Select one between sparepart_id or unit_type_id', 422);
+            }
+
             $item = DB::transaction(function () use ($validated) {
                 return UnitTransactionItem::create($validated);
             });

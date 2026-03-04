@@ -32,7 +32,7 @@ class UnitTransactionBillingController extends Controller
             'cash_payment_amount',
             'payment_at',
             'is_paid',
-            'created_at'
+            'created_at',
         ];
     }
 
@@ -73,7 +73,8 @@ class UnitTransactionBillingController extends Controller
 
             return $this->responseSuccess($data, 'Unit Transaction Billing list retrieved successfully', 200);
         } catch (Exception $err) {
-            Log::error('Error While retrieved Unit Transaction Billing data : ' . $err->getMessage());
+            Log::error('Error While retrieved Unit Transaction Billing data : '.$err->getMessage());
+
             return $this->responseError(null, 'Unit Transaction Billing list retrieved Failed', 500);
         }
     }
@@ -95,6 +96,7 @@ class UnitTransactionBillingController extends Controller
     {
         try {
             $validated = $request->validate([
+                'company_id' => 'required|integer|exists:companies,id',
                 'unit_transaction_id' => 'required|integer|exists:unit_transactions,id|unique:unit_transaction_billings,unit_transaction_id',
                 'bca_payment_amount' => 'nullable|numeric|min:0',
                 'bca_payment_usd_amount' => 'nullable|numeric|min:0',
@@ -111,7 +113,8 @@ class UnitTransactionBillingController extends Controller
         } catch (\Illuminate\Validation\ValidationException $e) {
             return $this->responseError($e->errors(), 'Validation failed', 422);
         } catch (Exception $err) {
-            Log::error('Error While storing Unit Transaction Billing data : ' . $err->getMessage());
+            Log::error('Error While storing Unit Transaction Billing data : '.$err->getMessage());
+
             return $this->responseError(null, 'Unit Transaction Billing creation failed', 500);
         }
     }
@@ -122,7 +125,7 @@ class UnitTransactionBillingController extends Controller
             $billing = UnitTransactionBilling::findOrFail((int) $id);
 
             $validated = $request->validate([
-                'unit_transaction_id' => 'sometimes|integer|exists:unit_transactions,id|unique:unit_transaction_billings,unit_transaction_id,' . $id,
+                'unit_transaction_id' => 'sometimes|integer|exists:unit_transactions,id|unique:unit_transaction_billings,unit_transaction_id,'.$id,
                 'bca_payment_amount' => 'nullable|numeric|min:0',
                 'bca_payment_usd_amount' => 'nullable|numeric|min:0',
                 'cash_payment_amount' => 'nullable|numeric|min:0',
@@ -138,7 +141,8 @@ class UnitTransactionBillingController extends Controller
         } catch (\Illuminate\Validation\ValidationException $e) {
             return $this->responseError($e->errors(), 'Validation failed', 422);
         } catch (Exception $err) {
-            Log::error('Error While updating Unit Transaction Billing data : ' . $err->getMessage());
+            Log::error('Error While updating Unit Transaction Billing data : '.$err->getMessage());
+
             return $this->responseError($err->getMessage(), 'Unit Transaction Billing update failed', 500);
         }
     }
@@ -154,7 +158,8 @@ class UnitTransactionBillingController extends Controller
 
             return $this->responseSuccess([], 'Unit Transaction Billing successfully Deleted', 200);
         } catch (Exception $err) {
-            Log::error('Error While deleting Unit Transaction Billing data : ' . $err->getMessage());
+            Log::error('Error While deleting Unit Transaction Billing data : '.$err->getMessage());
+
             return $this->responseError([], 'Unit Transaction Billing Not Found or Failed Deleted', 500);
         }
     }

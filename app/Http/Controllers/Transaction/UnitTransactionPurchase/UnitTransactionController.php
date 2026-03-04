@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Transaction\UnitTransactionPurchase;
 use App\Http\Controllers\Controller;
 use App\Models\UnitTransaction;
 use App\Traits\ResponseTrait;
+use App\Traits\TransactionTrait;
 use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -12,7 +13,7 @@ use Illuminate\Support\Facades\Log;
 
 class UnitTransactionController extends Controller
 {
-    use ResponseTrait;
+    use ResponseTrait, TransactionTrait;
 
     protected $unitTransactionTable;
 
@@ -82,7 +83,7 @@ class UnitTransactionController extends Controller
     public function show(string $id)
     {
         try {
-            $data = UnitTransaction::with(['warehouse', 'person', 'transactionFlow', 'unitTransactionBilling'])
+            $data = UnitTransaction::with(['warehouse:id,uuid,name,capacity', 'person:id,uuid,code,type,name', 'transactionFlow:id,uuid,transaction_date,description', 'unitTransactionBilling', 'unitTransactionItems:id,unit_transaction_id,uuid,qty_total,price', 'unitTransactionItems.unitTransactionItemDetails:id,unit_transaction_item_id,uuid,color,machine_number,chassis_number'])
                 ->select($this->unitTransactionTable)
                 ->findOrFail($id);
 
@@ -98,11 +99,15 @@ class UnitTransactionController extends Controller
             $validated = $request->validate([
                 'warehouse_id' => 'required|integer|exists:warehouses,id',
                 'person_id' => 'required|integer|exists:persons,id',
-                'code' => 'required|string|max:255|unique:unit_transactions,code',
+                'code' => 'sometimes|string|max:255|unique:unit_transactions,code',
                 'type' => 'required|string|in:purchase,sales',
                 'max_capacity' => 'required|numeric|min:0|max:100',
                 'stock_state' => 'required|string|in:draft,cancel,rejected,prepare,inbound_purcase_order,inbound_incoming_goods,inbound_receipt,inbound_return,outbound_reserved,outbound_in_transit,outbound_delivered,outbound_return',
             ]);
+
+            if (! isset($request->code)) {
+                $validated['code'] = $this->generateCode('purchase');
+            }
 
             $data = DB::transaction(function () use ($validated) {
                 return UnitTransaction::create($validated);
@@ -114,7 +119,7 @@ class UnitTransactionController extends Controller
         } catch (Exception $err) {
             Log::error('Error While storing Unit Transaction data : '.$err->getMessage());
 
-            return $this->responseError(null, 'Unit Transaction creation failed', 500);
+            return $this->responseError($err->getMessage(), 'Unit Transaction creation failed', 500);
         }
     }
 
@@ -182,7 +187,7 @@ class UnitTransactionController extends Controller
         } catch (Exception $err) {
             Log::error('Error While deleting Unit Transaction data : '.$err->getMessage());
 
-            return $this->responseError([], 'Unit Transaction Not Found or Failed Deleted', 500);
+            return $this->responseError($err->getMessage(), 'Unit Transaction Not Found or Failed Deleted', 500);
         }
     }
 }
