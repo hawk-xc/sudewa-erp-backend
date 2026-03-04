@@ -18,6 +18,11 @@ class UnitTransactionItemDetail extends Model
         'color',
         'machine_number',
         'chassis_number',
+        'in_stock',
+    ];
+
+    protected $casts = [
+        'in_stock' => 'bool',
     ];
 
     protected static function booted()
