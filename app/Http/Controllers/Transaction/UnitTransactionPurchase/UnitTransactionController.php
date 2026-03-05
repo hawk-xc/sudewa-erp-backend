@@ -4,12 +4,14 @@ namespace App\Http\Controllers\Transaction\UnitTransactionPurchase;
 
 use App\Http\Controllers\Controller;
 use App\Models\UnitTransaction;
+use App\Models\Warehouse;
 use App\Traits\ResponseTrait;
 use App\Traits\TransactionTrait;
 use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
 
 class UnitTransactionController extends Controller
 {
@@ -105,6 +107,16 @@ class UnitTransactionController extends Controller
                 'stock_state' => 'required|string|in:draft,cancel,rejected,prepare,inbound_purcase_order,inbound_incoming_goods,inbound_receipt,inbound_return,outbound_reserved,outbound_in_transit,outbound_delivered,outbound_return',
             ]);
 
+            $warehouseData = Warehouse::findOrFail($request->warehouse_id);
+
+            $warehouseForecastCapacity = $warehouseData->capacity - $warehouseData->getWarehouseCapacityUsage();
+
+            if ($request->max_capacity > $warehouseForecastCapacity) {
+                throw ValidationException::withMessages([
+                    'max_capacity' => 'Warehouse capacity is not sufficient.',
+                ]);
+            }
+
             if (! isset($request->code)) {
                 $validated['code'] = $this->generateCode('purchase');
             }
@@ -114,7 +126,7 @@ class UnitTransactionController extends Controller
             });
 
             return $this->responseSuccess($data->fresh(), 'Unit Transaction created successfully', 201);
-        } catch (\Illuminate\Validation\ValidationException $e) {
+        } catch (ValidationException $e) {
             return $this->responseError($e->errors(), 'Validation failed', 422);
         } catch (Exception $err) {
             Log::error('Error While storing Unit Transaction data : '.$err->getMessage());

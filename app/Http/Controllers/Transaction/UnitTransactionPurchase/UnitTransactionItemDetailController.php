@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Transaction\UnitTransactionPurchase;
 
 use App\Http\Controllers\Controller;
+use App\Models\UnitTransactionItem;
 use App\Models\UnitTransactionItemDetail;
 use App\Traits\ResponseTrait;
 use Exception;
@@ -101,6 +102,16 @@ class UnitTransactionItemDetailController extends Controller
                 'chassis_number' => 'required|string|max:255|unique:unit_transaction_item_details,chassis_number',
             ]);
 
+            $item = UnitTransactionItem::findOrFail($request->unit_transaction_item_id);
+
+            $quantityChecker = $item->qty_total;
+
+            $currentCount = UnitTransactionItemDetail::where('unit_transaction_item_id', $item->id)->count();
+
+            if ($currentCount >= $quantityChecker) {
+                return $this->responseError(null, 'Unit Transaction Item Capacity Reach Maximum value', 422);
+            }
+
             $validated['color'] = strtoupper($request->color);
 
             $data = DB::transaction(function () use ($validated) {
@@ -113,7 +124,7 @@ class UnitTransactionItemDetailController extends Controller
         } catch (Exception $err) {
             Log::error('Error While storing Unit Transaction Item Detail data : '.$err->getMessage());
 
-            return $this->responseError(null, 'Unit Transaction Item Detail creation failed', 500);
+            return $this->responseError($err->getMessage(), 'Unit Transaction Item Detail creation failed', 500);
         }
     }
 

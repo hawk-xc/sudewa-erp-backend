@@ -40,4 +40,9 @@ class Warehouse extends Model
     {
         return $this->hasMany(UnitTransaction::class);
     }
+
+    public function scopeGetWarehouseCapacityUsage()
+    {
+        return $this->unitTransactions()->sum('max_capacity');
+    }
 }
