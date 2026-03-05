@@ -126,21 +126,18 @@ class WarehouseController extends Controller
 
         try {
             switch ($type) {
-                case 'inbound':
+                case 'purchase':
                     $query = $query->where('type', 'purchase')->get();
 
                     return $this->responseSuccess($query, 'Unit transaction data successfully fetched', 200);
-                    break;
-                case 'outbound':
+                case 'sales':
                     $query = $query->where('type', 'sales')->get();
 
                     return $this->responseSuccess($query, 'Unit transaction data successfully fetched', 200);
-                    break;
                 default:
                     $query = $query->get();
 
                     return $this->responseSuccess($query, 'Unit transaction data successfully fetched', 200);
-                    break;
             }
         } catch (Exception $err) {
             Log::error('Fetch Warehouse Unit Transaction : '.$err->getMessage());

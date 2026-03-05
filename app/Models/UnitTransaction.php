@@ -20,13 +20,11 @@ class UnitTransaction extends Model
         'type',
         'max_capacity',
         'stock_state',
-        'is_stock_in_hand',
     ];
 
     protected $casts = [
         'max_capacity' => 'decimal:2',
         'stock_state' => 'string',
-        'is_stock_in_hand' => 'bool',
     ];
 
     public function transactionFlow()
