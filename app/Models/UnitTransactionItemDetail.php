@@ -36,4 +36,42 @@ class UnitTransactionItemDetail extends Model
     {
         return $this->belongsTo(UnitTransactionItem::class);
     }
+
+    public function warehouseMovement()
+    {
+        return $this->hasOne(WarehouseMovement::class, 'unit_transaction_item_detail_id', 'id');
+    }
+
+    public function receiptStock()
+    {
+        $unitTransaction = $this->unitTransactionItem->unitTransaction;
+        $warehouse = $unitTransaction->warehouse;
+
+        return WarehouseMovement::firstOrCreate(
+            [
+                'unit_transaction_item_detail_id' => $this->id,
+                'status' => 'in',
+            ],
+            [
+                'warehouse_id' => $warehouse->id,
+                'unit_transaction_id' => $unitTransaction->id,
+                'status' => 'in',
+            ]
+        );
+    }
+
+    public function dispatchStock()
+    {
+        $movement = $this->warehouseMovement()->first();
+
+        if (! $movement) {
+            throw new \Exception('Vehicle not found in warehouse');
+        }
+
+        $movement->update([
+            'status' => 'out',
+        ]);
+
+        return $movement;
+    }
 }
