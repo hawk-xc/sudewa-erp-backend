@@ -15,10 +15,10 @@ use App\Http\Controllers\MasterData\MasterUnitTypeController;
 use App\Http\Controllers\Permission\PermissionController;
 use App\Http\Controllers\Role\RoleController;
 use App\Http\Controllers\Transaction\TransactionFlowController;
-use App\Http\Controllers\Transaction\UnitTransactionPurchase\UnitTransactionBillingController as UnitTransactionBillingPurchaseController;
-use App\Http\Controllers\Transaction\UnitTransactionPurchase\UnitTransactionController as UnitTransactionPurchaseController;
-use App\Http\Controllers\Transaction\UnitTransactionPurchase\UnitTransactionItemController as UnitTransactionItemPurchaseController;
-use App\Http\Controllers\Transaction\UnitTransactionPurchase\UnitTransactionItemDetailController as UnitTransactionItemDetailPurchaseController;
+use App\Http\Controllers\Transaction\UnitTransactionBillingController as UnitTransactionBillingPurchaseController;
+use App\Http\Controllers\Transaction\UnitTransactionController as UnitTransactionPurchaseController;
+use App\Http\Controllers\Transaction\UnitTransactionItemController as UnitTransactionItemPurchaseController;
+use App\Http\Controllers\Transaction\UnitTransactionItemDetailController as UnitTransactionItemDetailPurchaseController;
 use App\Http\Controllers\User\UserController;
 use App\Http\Controllers\Warehouse\WarehouseController;
 use Illuminate\Support\Facades\Route;
@@ -107,8 +107,8 @@ Route::group(
         Route::group(['prefix' => 'transaction', 'as' => 'transaction.'], function () {
             Route::apiResource('transaction-flow', TransactionFlowController::class);
 
-            // Unit Purchase API
-            Route::group(['prefix' => 'unit-transaction-purchase', 'as' => 'unit-transaction-purchase.'], function () {
+            // Unit Transaction API
+            Route::group(['prefix' => 'unit-transaction', 'as' => 'unit-transaction.'], function () {
                 Route::apiResource('unit-transaction', UnitTransactionPurchaseController::class);
                 Route::apiResource('unit-transaction-item', UnitTransactionItemPurchaseController::class);
                 Route::apiResource('unit-transaction-item-detail', UnitTransactionItemDetailPurchaseController::class);

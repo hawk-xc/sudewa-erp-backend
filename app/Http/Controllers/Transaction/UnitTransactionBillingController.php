@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\Transaction\UnitTransactionPurchase;
+namespace App\Http\Controllers\Transaction;
 
 use App\Http\Controllers\Controller;
 use App\Models\UnitTransactionBilling;

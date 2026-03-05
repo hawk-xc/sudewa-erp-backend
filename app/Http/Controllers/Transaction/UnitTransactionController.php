@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\Transaction\UnitTransactionPurchase;
+namespace App\Http\Controllers\Transaction;
 
 use App\Http\Controllers\Controller;
 use App\Models\UnitTransaction;
@@ -43,6 +43,14 @@ class UnitTransactionController extends Controller
     {
         try {
             $query = UnitTransaction::query();
+
+            if ($request->type) {
+                $query->where('type', match ($request->type) {
+                    'purchase' => 'purchase',
+                    'sales' => 'sales',
+                    default => null,
+                });
+            }
 
             $query->select($this->unitTransactionTable)
                 ->with(['warehouse:id,uuid,name,capacity', 'person:id,uuid,code,name,type', 'transactionFlow:id,uuid,transaction_date,description', 'unitTransactionBilling:id,uuid,payment_at,is_paid']);
@@ -111,14 +119,18 @@ class UnitTransactionController extends Controller
 
             $warehouseForecastCapacity = $warehouseData->capacity - $warehouseData->getWarehouseCapacityUsage();
 
-            if ($request->max_capacity > $warehouseForecastCapacity) {
+            if ($request->type === 'purchase' && $request->max_capacity > $warehouseForecastCapacity) {
                 throw ValidationException::withMessages([
                     'max_capacity' => 'Warehouse capacity is not sufficient.',
                 ]);
             }
 
             if (! isset($request->code)) {
-                $validated['code'] = $this->generateCode('purchase');
+                $validated['code'] = $this->generateCode(match ($request->type) {
+                    'purchase' => 'purchase',
+                    'sales' => 'sales',
+                    default => null,
+                });
             }
 
             $data = DB::transaction(function () use ($validated) {
@@ -154,7 +166,7 @@ class UnitTransactionController extends Controller
             });
 
             return $this->responseSuccess($unitTransaction->fresh(), 'Unit Transaction updated successfully', 200);
-        } catch (\Illuminate\Validation\ValidationException $e) {
+        } catch (ValidationException $e) {
             return $this->responseError($e->errors(), 'Validation failed', 422);
         } catch (Exception $err) {
             Log::error('Error While updating Unit Transaction data : '.$err->getMessage());
