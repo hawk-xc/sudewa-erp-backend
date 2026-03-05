@@ -101,17 +101,35 @@ class WarehouseController extends Controller
         }
     }
 
-    public function show(string $id)
+    public function show(Request $request, string $id)
     {
         try {
-            $data = Warehouse::with('company', 'unitTransactions')->findOrFail($id);
+            $data = Warehouse::with([
+                'company:id,uuid,code,slug,name',
+
+                'unitTransactions:id,uuid,warehouse_id,person_id,code,type,stock_state',
+
+                'unitTransactions.person:id,uuid,code,type,name',
+
+                'unitTransactions.unitTransactionItems:id,uuid,unit_transaction_id,unit_type_id,sparepart_id,qty_total',
+
+                'unitTransactions.unitTransactionItems.unitType:id,uuid,code,name,unit_type,unit_model',
+                'unitTransactions.unitTransactionItems.sparepart:id,uuid,code,name',
+
+                'unitTransactions.unitTransactionItems.unitTransactionItemDetails:id,uuid,unit_transaction_item_id,color,machine_number,chassis_number,in_stock',
+
+                'unitTransactions.unitTransactionItems.unitTransactionItemDetails.warehouseMovement:id,uuid,unit_transaction_item_detail_id,status',
+            ])->findOrFail($id);
 
             return response()->json([
                 'success' => true,
                 'message' => 'Warehouse retrieved successfully',
                 'data' => $data,
             ], 200);
-        } catch (Exception $e) {
+
+        } catch (Exception $err) {
+            Log::error('Error while processing warehouse data : '.$err->getMessage());
+
             return response()->json([
                 'success' => false,
                 'message' => 'Warehouse not found',
@@ -122,7 +140,7 @@ class WarehouseController extends Controller
     public function getUnitTransaction(Request $request, string $id)
     {
         $type = $request->type;
-        $query = Warehouse::find($id)->unitTransactions();
+        $query = Warehouse::find((int) $id)->unitTransactions();
 
         try {
             switch ($type) {

@@ -35,6 +35,16 @@ class UnitTransactionItem extends Model
         return $this->belongsTo(UnitTransaction::class);
     }
 
+    public function unitType()
+    {
+        return $this->belongsTo(UnitType::class);
+    }
+
+    public function sparepart()
+    {
+        return $this->belongsTo(Sparepart::class);
+    }
+
     public function unitTransactionItemDetails()
     {
         return $this->hasMany(UnitTransactionItemDetail::class);

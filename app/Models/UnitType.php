@@ -29,6 +29,11 @@ class UnitType extends Model
         return $this->belongsTo(Brand::class);
     }
 
+    public function unitTransactionItems()
+    {
+        return $this->hasMany(UnitTransactionItem::class);
+    }
+
     protected static function booted()
     {
         static::creating(function ($model) {
