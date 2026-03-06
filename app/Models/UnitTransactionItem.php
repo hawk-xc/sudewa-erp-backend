@@ -22,6 +22,12 @@ class UnitTransactionItem extends Model
         'bbn_price',
         'expedition_fee',
         'other_fee',
+        'hpp_per_unit_price',
+        'dpp_per_unit_price',
+        'ppn_per_unit_price',
+        'hpp_total_price',
+        'ppn_total_price',
+        'ppn_percentage',
     ];
 
     protected $casts = [
