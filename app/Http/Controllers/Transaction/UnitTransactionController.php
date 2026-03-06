@@ -189,7 +189,7 @@ class UnitTransactionController extends Controller
             });
 
             return $this->responseSuccess($unitTransaction->fresh(), 'Unit Transaction state updated successfully', 200);
-        } catch (\Illuminate\Validation\ValidationException $e) {
+        } catch (ValidationException $e) {
             return $this->responseError($e->errors(), 'Validation failed', 422);
         } catch (Exception $err) {
             Log::error('Error While updating Unit Transaction state : '.$err->getMessage());
@@ -207,7 +207,7 @@ class UnitTransactionController extends Controller
                 $data->delete();
             });
 
-            return $this->responseSuccess([], 'Unit Transaction successfully Deleted', 200);
+            return $this->responseSuccess($data, 'Unit Transaction successfully Deleted', 200);
         } catch (Exception $err) {
             Log::error('Error While deleting Unit Transaction data : '.$err->getMessage());
 

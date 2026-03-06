@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Transaction;
 
 use App\Http\Controllers\Controller;
+use App\Models\UnitTransaction;
 use App\Models\UnitTransactionItem;
 use App\Traits\ResponseTrait;
 use Exception;
@@ -113,6 +114,17 @@ class UnitTransactionItemController extends Controller
                 'other_fee' => 'nullable|decimal:0,2',
             ]);
 
+            $unitTransaction = UnitTransaction::findOrFail($request->unit_transaction_id);
+            $unitTransactionItems = $unitTransaction->unitTransactionItems;
+
+            if ($request->qty_total > $unitTransaction->max_capacity - $unitTransactionItems->sum('qty_total')) {
+                return $this->responseError('QTY total reach max value', 'Validation failed', 422);
+            }
+
+            if ($unitTransactionItems->where('unit_type_id', $request->unit_type_id)->isNotEmpty()) {
+                return $this->responseError('Unit Type Already Exist in this unit transaction data', 'Validation failed', 422);
+            }
+
             if (isset($request->unit_type_id) && isset($request->sparepart_id)) {
                 return $this->responseError(null, 'Select one between sparepart_id or unit_type_id', 422);
             }
@@ -127,14 +139,14 @@ class UnitTransactionItemController extends Controller
         } catch (Exception $err) {
             Log::error('Error While storing Unit Transaction Item data : '.$err->getMessage());
 
-            return $this->responseError(null, 'Unit Transaction Item creation failed', 500);
+            return $this->responseError($err->getMessage(), 'Unit Transaction Item creation failed', 500);
         }
     }
 
     public function update(Request $request, string $id)
     {
         try {
-            $item = UnitTransactionItem::findOrFail((int) $id);
+            $item = UnitTransactionItem::findOrFail($id);
 
             $validated = $request->validate([
                 'unit_transaction_id' => 'sometimes|integer|exists:unit_transactions,id',
@@ -148,6 +160,22 @@ class UnitTransactionItemController extends Controller
                 'ppn_per_unit_price' => 'nullable|numeric',
                 'other_fee' => 'nullable|numeric',
             ]);
+
+            $unitTransactionId = $validated['unit_transaction_id'] ?? $item->unit_transaction_id;
+            $unitTypeId = $validated['unit_type_id'] ?? $item->unit_type_id;
+
+            $exists = UnitTransactionItem::where('unit_transaction_id', $unitTransactionId)
+                ->where('unit_type_id', $unitTypeId)
+                ->where('id', '!=', $item->id) // penting: ignore dirinya sendiri
+                ->exists();
+
+            if ($exists) {
+                return $this->responseError(
+                    'Unit Type Already Exist in this unit transaction data',
+                    'Validation failed',
+                    422
+                );
+            }
 
             DB::transaction(function () use ($item, $validated) {
                 $item->update($validated);
