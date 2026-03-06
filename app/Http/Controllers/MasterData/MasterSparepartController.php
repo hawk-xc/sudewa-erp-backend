@@ -4,7 +4,6 @@ namespace App\Http\Controllers\MasterData;
 
 use App\Http\Controllers\Controller;
 use App\Models\Sparepart;
-use App\Models\UnitType;
 use App\Repositories\AuthRepository;
 use App\Traits\ResponseTrait;
 use Exception;
@@ -137,7 +136,7 @@ class MasterSparepartController extends Controller
         ]);
 
         try {
-            $sparepart = DB::transaction(function() use ($request, $validated, $sparepart) {
+            $sparepart = DB::transaction(function () use ($validated, $sparepart) {
                 $sparepart->update($validated);
 
                 return $sparepart;
@@ -147,21 +146,21 @@ class MasterSparepartController extends Controller
         } catch (Exception $err) {
             Log::error('Error while trying update Sparepart : '.$err->getMessage());
 
-            return $this->responseError(null, 'Internal Server Error', 500);
+            return $this->responseError($err->getMessage(), 'Internal Server Error', 500);
         }
     }
 
     public function destroy($id)
     {
         try {
-            $unitType = UnitType::findOrFail($id);
+            $unitType = Sparepart::findOrFail($id);
             $unitType->delete();
 
-            return $this->responseSuccess(null, 'Unit Type deleted successfully', 200);
+            return $this->responseSuccess($unitType, 'Unit Type deleted successfully', 200);
         } catch (Exception $err) {
             Log::error('Error while trying delete Unit Type : '.$err->getMessage());
 
-            return $this->responseError(null, 'Internal Server Error', 500);
+            return $this->responseError($err->getMessage(), 'Internal Server Error', 500);
         }
     }
 }
