@@ -15,9 +15,12 @@ use App\Http\Controllers\MasterData\MasterUnitTypeController;
 use App\Http\Controllers\Permission\PermissionController;
 use App\Http\Controllers\Role\RoleController;
 use App\Http\Controllers\Transaction\TransactionFlowController;
-use App\Http\Controllers\Transaction\UnitPurchaseController;
-use App\Http\Controllers\Transaction\UnitSalesController;
+use App\Http\Controllers\Transaction\UnitTransactionBillingController as UnitTransactionBillingPurchaseController;
+use App\Http\Controllers\Transaction\UnitTransactionController as UnitTransactionPurchaseController;
+use App\Http\Controllers\Transaction\UnitTransactionItemController as UnitTransactionItemPurchaseController;
+use App\Http\Controllers\Transaction\UnitTransactionItemDetailController as UnitTransactionItemDetailPurchaseController;
 use App\Http\Controllers\User\UserController;
+use App\Http\Controllers\Warehouse\WarehouseController;
 use Illuminate\Support\Facades\Route;
 
 Route::options('{any}', function () {
@@ -29,9 +32,7 @@ Route::group(
         'middleware' => 'api',
     ],
     function () {
-        /**
-         * Authentication Module
-         */
+        // Auth API
         Route::group(['prefix' => 'auth', 'as' => 'users.'], function () {
             Route::post('login', [AuthController::class, 'login']);
             Route::post('logout', [AuthController::class, 'logout']);
@@ -93,11 +94,36 @@ Route::group(
             Route::apiResource('sparepart', MasterSparepartController::class);
         });
 
+        // Warehouse API
+        Route::group(['prefix' => 'warehouse', 'as' => 'warehouse.'], function () {
+            Route::apiResource('warehouse-data', WarehouseController::class);
+
+            Route::get('warehouse-stock/{id}', [WarehouseController::class, 'getStock']);
+            Route::get('warehouse-unit-transaction-data/{id}', [WarehouseController::class, 'getUnitTransaction']);
+            Route::get('warehouse-unit-transaction-item-data/{id}', [WarehouseController::class, 'getUnitTransactionItem']);
+        });
+
         // Transaction API
         Route::group(['prefix' => 'transaction', 'as' => 'transaction.'], function () {
             Route::apiResource('transaction-flow', TransactionFlowController::class);
-            Route::apiResource('unit-purchase', UnitPurchaseController::class);
-            Route::apiResource('unit-sales', UnitSalesController::class);
+
+            // Unit Transaction API
+            Route::group(['prefix' => 'unit-transaction', 'as' => 'unit-transaction.'], function () {
+                Route::apiResource('unit-transaction', UnitTransactionPurchaseController::class);
+                Route::apiResource('unit-transaction-item', UnitTransactionItemPurchaseController::class);
+                Route::apiResource('unit-transaction-item-detail', UnitTransactionItemDetailPurchaseController::class);
+                Route::apiResource('unit-transaction-billing', UnitTransactionBillingPurchaseController::class);
+
+                // Additional Route
+                Route::put('unit-transaction/{id}/update-state', [UnitTransactionPurchaseController::class, 'updateState'])->name('update-state');
+            });
+
+            // Unit Sales API
+            // Route::group(['prefix' => 'unit-sales', 'as' => 'unit-sales.'], function() {
+            //     Route::apiResource('unit-transaction', UnitSalesController::class);
+            //     Route::apiResource('unit-transaction-item', UnitSalesController::class);
+            //     Route::apiResource('unit-transaction-billing', UnitSalesController::class);
+            // });
         });
     },
 );

@@ -13,13 +13,13 @@ class UnitType extends Model
     protected $table = 'unit_types';
 
     protected $fillable = [
+        'uuid',
         'code',
         'brand_id',
         'name',
         'image',
         'unit_type',
         'unit_model',
-        'price',
         'netto_weight',
         'bruto_weight',
     ];
@@ -27,6 +27,11 @@ class UnitType extends Model
     public function brand()
     {
         return $this->belongsTo(Brand::class);
+    }
+
+    public function unitTransactionItems()
+    {
+        return $this->hasMany(UnitTransactionItem::class);
     }
 
     protected static function booted()

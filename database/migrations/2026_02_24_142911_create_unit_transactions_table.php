@@ -13,6 +13,7 @@ return new class extends Migration
     {
         Schema::create('unit_transactions', function (Blueprint $table) {
             $table->id();
+            $table->uuid();
             $table->foreignId('warehouse_id')->nullable(true)->constrained('warehouses')->nullOnDelete();
             $table->foreignId('person_id')->nullable(true)->constrained('persons')->nullOnDelete();
             $table->string('code')->unique()->nullable(false);
@@ -22,6 +23,9 @@ return new class extends Migration
             ])->default('purchase')->nullable(false);
             $table->integer('max_capacity')->default(0)->nullable(true);
             $table->enum('stock_state', [
+                'draft',
+                'cancel',
+                'rejected',
                 'prepare',
                 'inbound_purcase_order',
                 'inbound_incoming_goods',

@@ -28,6 +28,11 @@ class Sparepart extends Model
         return $this->belongsTo(SparepartCategory::class);
     }
 
+    public function unitTransactionItems()
+    {
+        return $this->hasMany(UnitTransactionItem::class);
+    }
+
     protected static function booted()
     {
         static::creating(function ($model) {

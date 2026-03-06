@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Str;
 
 class UnitTransactionItem extends Model
 {
@@ -19,9 +20,8 @@ class UnitTransactionItem extends Model
         'qty_total',
         'price',
         'bbn_price',
-        'hpp_per_unit_price',
-        'dpp_per_unit_price',
-        'ppn_per_unit_price',
+        'expedition_fee',
+        'other_fee',
     ];
 
     protected $casts = [
@@ -35,9 +35,19 @@ class UnitTransactionItem extends Model
         return $this->belongsTo(UnitTransaction::class);
     }
 
-    public function item()
+    public function unitType()
     {
-        return $this->belongsTo(Item::class);
+        return $this->belongsTo(UnitType::class);
+    }
+
+    public function sparepart()
+    {
+        return $this->belongsTo(Sparepart::class);
+    }
+
+    public function unitTransactionItemDetails()
+    {
+        return $this->hasMany(UnitTransactionItemDetail::class);
     }
 
     protected static function booted()
