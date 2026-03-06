@@ -13,13 +13,13 @@ class UnitType extends Model
     protected $table = 'unit_types';
 
     protected $fillable = [
+        'uuid',
         'code',
         'brand_id',
         'name',
         'image',
         'unit_type',
         'unit_model',
-        'price',
         'netto_weight',
         'bruto_weight',
     ];
