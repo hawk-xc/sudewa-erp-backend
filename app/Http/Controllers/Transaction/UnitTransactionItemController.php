@@ -129,7 +129,27 @@ class UnitTransactionItemController extends Controller
                 return $this->responseError(null, 'Select one between sparepart_id or unit_type_id', 422);
             }
 
-            $item = DB::transaction(function () use ($validated) {
+            $item = DB::transaction(function () use ($request, $validated) {
+
+                $additional_fee =
+                    ($request->bbn_price ?? 0) +
+                    ($request->expedition_fee ?? 0) +
+                    ($request->other_fee ?? 0);
+
+                $hpp = $request->price - $additional_fee;
+
+                $dpp = ceil($hpp / 1.11);
+
+                $ppn = floor($dpp * 0.11);
+
+                $validated['hpp_per_unit_price'] = $hpp;
+                $validated['dpp_per_unit_price'] = $dpp;
+                $validated['ppn_per_unit_price'] = $ppn;
+
+                $validated['hpp_total_price'] = $hpp * $request->qty_total;
+                $validated['dpp_total_price'] = $dpp * $request->qty_total;
+                $validated['ppn_total_price'] = $ppn * $request->qty_total;
+
                 return UnitTransactionItem::create($validated);
             });
 
