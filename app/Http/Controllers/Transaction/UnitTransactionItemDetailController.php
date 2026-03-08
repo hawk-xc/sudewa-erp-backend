@@ -31,6 +31,7 @@ class UnitTransactionItemDetailController extends Controller
             'color',
             'machine_number',
             'chassis_number',
+            'in_stock',
             'created_at',
         ];
     }
@@ -41,7 +42,7 @@ class UnitTransactionItemDetailController extends Controller
             $query = UnitTransactionItemDetail::query();
 
             $query->select($this->unitTransactionItemDetailTable)
-                ->with(['unitTransactionItem:id,uuid']);
+                ->with(['unitTransactionItem:id,uuid,price']);
 
             if ($request->filled('search')) {
                 $search = $request->search;
@@ -82,7 +83,7 @@ class UnitTransactionItemDetailController extends Controller
     public function show(string $id)
     {
         try {
-            $data = UnitTransactionItemDetail::with(['unitTransactionItem:id,uuid,price'])
+            $data = UnitTransactionItemDetail::with(['unitTransactionItem:id,uuid,unit_transaction_id,unit_type_id,sparepart_id,price', 'unitTransactionItem.unitType:id,uuid,brand_id,code,name,unit_type,unit_model', 'unitTransactionItem.unitType.brand:id,uuid,name', 'unitTransactionItem.sparepart:id,uuid,sparepart_category_id,code,name', 'unitTransactionItem.sparepart.sparepartCategory:id,uuid,code,name', 'unitTransactionItem.unitTransaction:id,uuid,warehouse_id,person_id,code,type,stock_state'])
                 ->select($this->unitTransactionItemDetailTable)
                 ->findOrFail($id);
 
