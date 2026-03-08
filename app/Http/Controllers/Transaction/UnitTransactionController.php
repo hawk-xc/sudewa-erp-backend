@@ -161,6 +161,34 @@ class UnitTransactionController extends Controller
                 'stock_state' => 'sometimes|string|in:draft,cancel,rejected,prepare,inbound_purcase_order,inbound_incoming_goods,inbound_receipt,inbound_return,outbound_reserved,outbound_in_transit,outbound_delivered,outbound_return',
             ]);
 
+            if (isset($request->stock_state)) {
+                $unitTransactionItems = $unitTransaction->unitTransactionItems;
+
+                switch ($request->stock_state) {
+                    case 'inbound_receipt':
+                        foreach ($unitTransactionItems as $unitTransactionItem) {
+                            $unitTransactionItem->update(['stock_state' => 'inbound_receipt']);
+                            $unitTransactionItemDetails = $unitTransactionItem->unitTransactionItemDetails;
+
+                            foreach ($unitTransactionItemDetails as $unitTransactionItemDetail) {
+                                $unitTransactionItemDetail->update(['in_stock' => true]);
+                            }
+                        }
+
+                        break;
+                    default:
+                        foreach ($unitTransactionItems as $unitTransactionItem) {
+                            $unitTransactionItem->update(['stock_state' => $request->stock_state]);
+                            $unitTransactionItemDetails = $unitTransactionItem->unitTransactionItemDetails;
+
+                            foreach ($unitTransactionItemDetails as $unitTransactionItemDetail) {
+                                $unitTransactionItemDetail->update(['in_stock' => false]);
+                            }
+                        }
+                        break;
+                }
+            }
+
             DB::transaction(function () use ($unitTransaction, $validated) {
                 $unitTransaction->update($validated);
             });
@@ -183,6 +211,40 @@ class UnitTransactionController extends Controller
             $validated = $request->validate([
                 'stock_state' => 'required|string|in:draft,cancel,rejected,prepare,inbound_purcase_order,inbound_incoming_goods,inbound_receipt,inbound_return,outbound_reserved,outbound_in_transit,outbound_delivered,outbound_return',
             ]);
+
+            $unitTransactionItems = $unitTransaction->unitTransactionItems;
+
+            switch ($request->stock_state) {
+                case 'inbound_receipt':
+                    if ($unitTransaction->type == 'purchase') {
+                        foreach ($unitTransactionItems as $unitTransactionItem) {
+                            $unitTransactionItem->update(['stock_state' => 'inbound_receipt']);
+                            $unitTransactionItemDetails = $unitTransactionItem->unitTransactionItemDetails;
+
+                            foreach ($unitTransactionItemDetails as $unitTransactionItemDetail) {
+                                $unitTransactionItemDetail->update(['in_stock' => true]);
+                            }
+                        }
+                    } else {
+                        return $this->responseError(null, 'Unit Transaction state not valid', 500);
+                    }
+
+                    break;
+                default:
+                    if ($unitTransaction->type == 'sales') {
+                        foreach ($unitTransactionItems as $unitTransactionItem) {
+                            $unitTransactionItem->update(['stock_state' => $request->stock_state]);
+                            $unitTransactionItemDetails = $unitTransactionItem->unitTransactionItemDetails;
+
+                            foreach ($unitTransactionItemDetails as $unitTransactionItemDetail) {
+                                $unitTransactionItemDetail->update(['in_stock' => false]);
+                            }
+                        }
+                        break;
+                    } else {
+                        return $this->responseError(null, 'Unit Transaction state not valid', 500);
+                    }
+            }
 
             DB::transaction(function () use ($unitTransaction, $validated) {
                 $unitTransaction->update($validated);
