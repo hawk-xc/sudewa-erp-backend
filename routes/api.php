@@ -109,13 +109,14 @@ Route::group(
 
             // Unit Transaction API
             Route::group(['prefix' => 'unit-transaction', 'as' => 'unit-transaction.'], function () {
+                // Additional Route
+                Route::put('unit-transaction/{id}/update-state', [UnitTransactionPurchaseController::class, 'updateState'])->name('update-state');
+                Route::get('unit-transaction-item/get-formula', [UnitTransactionItemPurchaseController::class, 'getFormula'])->name('get-formula');
+
                 Route::apiResource('unit-transaction', UnitTransactionPurchaseController::class);
                 Route::apiResource('unit-transaction-item', UnitTransactionItemPurchaseController::class);
                 Route::apiResource('unit-transaction-item-detail', UnitTransactionItemDetailPurchaseController::class);
                 Route::apiResource('unit-transaction-billing', UnitTransactionBillingPurchaseController::class);
-
-                // Additional Route
-                Route::put('unit-transaction/{id}/update-state', [UnitTransactionPurchaseController::class, 'updateState'])->name('update-state');
             });
 
             // Unit Sales API

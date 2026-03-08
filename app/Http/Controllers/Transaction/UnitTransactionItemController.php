@@ -163,6 +163,48 @@ class UnitTransactionItemController extends Controller
         }
     }
 
+    public function getFormula(Request $request)
+    {
+        $request->validate([
+            'qty_total' => 'nullable|integer|min:1',
+            'price' => 'nullable|numeric|min:0',
+            'bbn_price' => 'nullable|numeric|min:0',
+            'expedition_fee' => 'nullable|numeric|min:0',
+            'other_fee' => 'nullable|numeric|min:0',
+        ]);
+
+        $qty = $request->qty_total ?? 0;
+        $price = $request->price ?? 0;
+
+        $bbn = $request->bbn_price ?? 0;
+        $expedition = $request->expedition_fee ?? 0;
+        $other = $request->other_fee ?? 0;
+
+        $additional_fee = $bbn + $expedition + $other;
+
+        $hpp = $price - $additional_fee;
+
+        $dpp = ceil($hpp / 1.11);
+
+        $ppn = floor($dpp * 0.11);
+
+        $result = [
+            'bbn_price' => (int) $bbn,
+            'expedition_fee' => (int) $expedition,
+            'other_fee' => (int) $other,
+
+            'hpp_per_unit_price' => (int) $hpp,
+            'dpp_per_unit_price' => (int) $dpp,
+            'ppn_per_unit_price' => (int) $ppn,
+
+            'hpp_total_price' => (int) $hpp * $qty,
+            'dpp_total_price' => (int) $dpp * $qty,
+            'ppn_total_price' => (int) $ppn * $qty,
+        ];
+
+        return $this->responseSuccess((object) $result, 'Transaction Item Formula', 200);
+    }
+
     public function update(Request $request, string $id)
     {
         try {
