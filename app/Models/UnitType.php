@@ -40,4 +40,21 @@ class UnitType extends Model
             $model->uuid = (string) Str::uuid();
         });
     }
+
+    public function getRealStock(int $warehouseId)
+    {
+        return UnitTransactionItemDetail::where('in_stock', true)
+            ->whereHas('unitTransactionItem', function ($query) {
+                $query->where('unit_type_id', $this->id);
+            })
+            ->whereHas('unitTransactionItem.unitTransaction', function ($query) use ($warehouseId) {
+                $query->where('warehouse_id', $warehouseId);
+            })
+            ->count();
+    }
+
+    public function getForecastStock(int $warehouseId)
+    {
+
+    }
 }
