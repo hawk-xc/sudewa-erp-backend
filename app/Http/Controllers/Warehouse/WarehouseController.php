@@ -4,7 +4,9 @@ namespace App\Http\Controllers\Warehouse;
 
 use App\Http\Controllers\Controller;
 use App\Models\UnitTransactionItem;
+use App\Models\UnitTransactionItemDetail;
 use App\Models\Warehouse;
+use App\Models\WarehouseMovement;
 use App\Repositories\AuthRepository;
 use App\Traits\ResponseTrait;
 use Exception;
@@ -179,32 +181,31 @@ class WarehouseController extends Controller
     public function getStock(Request $request, string $id)
     {
         try {
-            $warehouse = Warehouse::with([
-                'unitTransactions.unitTransactionItems.unitTransactionItemDetails',
-            ])->findOrFail($id);
 
-            $stockInHand = 0;
-            $stockForecast = 0;
+            $warehouse = Warehouse::findOrFail($id);
 
-            foreach ($warehouse->unitTransactions as $transaction) {
+            $stockInHand = WarehouseMovement::where('warehouse_id', $warehouse->id)
+                ->where('status', 'in')
+                ->whereHas('unitTransactionItemDetail', function ($q) {
+                    $q->where('in_stock', true);
+                })
+                ->count();
 
-                $totalDetails = $transaction->unitTransactionItems
-                    ->sum(fn ($item) => $item->unitTransactionItemDetails->count());
+            $stockForecast = UnitTransactionItemDetail::where('in_stock', false)
+                ->whereHas('unitTransactionItem.unitTransaction', function ($q) use ($warehouse) {
+                    $q->where('warehouse_id', $warehouse->id)
+                    ->where('type', 'purchase');
+                })
+                ->count();
 
-                if ($transaction->type === 'purchase' && $transaction->is_stock_in_hand) {
-                    $stockInHand += $totalDetails;
-                } else {
-                    $stockForecast += $totalDetails;
-                }
-            }
-
-            return $this->responseSuccess([
+            return $this->responseSuccess((object) [
                 'stock_in_hand' => $stockInHand,
                 'stock_forecast' => $stockForecast,
             ], 'Successfully fetch warehouse stock data', 200);
 
         } catch (Exception $err) {
-            Log::error('Error while fetch warehouse stock data : '.$err->getMessage());
+
+            Log::error('Error while fetch warehouse stock data : ' . $err->getMessage());
 
             return $this->responseError(null, $err->getMessage(), 500);
         }

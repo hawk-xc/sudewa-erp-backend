@@ -22,17 +22,17 @@ class WarehouseMovement extends Model
 
     public function warehouse()
     {
-        $this->belongsTo(Warehouse::class, 'warehouse_id', 'id');
+        return $this->belongsTo(Warehouse::class, 'warehouse_id', 'id');
     }
 
     public function unitTransaction()
     {
-        $this->belongsTo(UnitTransaction::class, 'unit_transction_id', 'id');
+        return $this->belongsTo(UnitTransaction::class, 'unit_transction_id', 'id');
     }
 
     public function unitTransactionItemDetail()
     {
-        $this->belongsTo(UnitTransactionItemDetail::class, 'unit_transaction_item_detail_id', 'id');
+        return $this->belongsTo(UnitTransactionItemDetail::class, 'unit_transaction_item_detail_id', 'id');
     }
 
     protected static function boot()
