@@ -131,6 +131,14 @@ class UnitTransactionItemController extends Controller
             $unitTransaction = UnitTransaction::findOrFail($request->unit_transaction_id);
             $unitTransactionItems = $unitTransaction->unitTransactionItems;
 
+            if ($unitTransaction->unitTransactionBilling()->exists()) {
+                return $this->responseError(
+                    'Cannot create data. The selected unit transaction has already been billed.',
+                    'Validation failed',
+                    422
+                );
+            }
+
             // Unit Type Stock Guard
             if ($unitTransaction->type == 'sales') {
                 $unitTypeRealStock = UnitType::findOrFail((int) $request->unit_type_id)->getRealStock($unitTransaction->warehouse->id);
