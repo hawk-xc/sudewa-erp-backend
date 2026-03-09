@@ -211,6 +211,78 @@ class WarehouseController extends Controller
         }
     }
 
+    public function getWarehouseStock(Request $request, string $id)
+    {
+        try {
+
+            $warehouse = Warehouse::findOrFail($id);
+
+            $stocks = WarehouseMovement::where('warehouse_id', $warehouse->id)
+                ->where('status', 'in')
+                ->whereHas('unitTransactionItemDetail', function ($q) {
+                    $q->where('in_stock', true);
+                })
+                ->with([
+                    'unitTransactionItemDetail.unitTransactionItem.unitType:id,uuid,code,name,unit_type,unit_model',
+                ])
+                ->get();
+
+            $available = $stocks
+                ->groupBy(function ($item) {
+                    return $item->unitTransactionItemDetail
+                        ->unitTransactionItem
+                        ->unitType
+                        ->id;
+                })
+                ->map(function ($items) {
+
+                    $unitType = $items->first()
+                        ->unitTransactionItemDetail
+                        ->unitTransactionItem
+                        ->unitType;
+
+                    return [
+                        'unit_type' => $unitType,
+                        'stock_available' => $items->count(),
+                        'stock_forecast' => 0,
+                    ];
+                });
+
+            $forecast = UnitTransactionItemDetail::where('in_stock', false)
+                ->whereHas('unitTransactionItem.unitTransaction', function ($q) use ($warehouse) {
+                    $q->where('warehouse_id', $warehouse->id)
+                    ->where('type', 'purchase');
+                })
+                ->with([
+                    'unitTransactionItem.unitType:id,uuid,code,name,unit_type,unit_model'
+                ])
+                ->get()
+                ->groupBy(function ($item) {
+                    return $item->unitTransactionItem
+                        ->unitType
+                        ->id;
+                });
+
+            $result = $available->map(function ($row, $unitTypeId) use ($forecast) {
+
+                if (isset($forecast[$unitTypeId])) {
+                    $row['stock_forecast'] = $forecast[$unitTypeId]->count();
+                }
+
+                return $row;
+            })->values();
+
+            return $this->responseSuccess(
+                $result,
+                'Successfully fetch warehouse stock data',
+                200
+            );
+
+        } catch (Exception $err) {
+            return $this->responseError(null, $err->getMessage(), 500);
+        }
+    }
+
     public function update(Request $request, string $id)
     {
         $warehouse = Warehouse::findOrFail($id);
