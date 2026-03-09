@@ -25,6 +25,7 @@ return new class extends Migration
             $table->decimal('dpp_per_unit_price', 15, 2)->default(0)->nullable(false);
             $table->decimal('ppn_per_unit_price', 15, 2)->default(0)->nullable(false);
             $table->decimal('hpp_total_price', 15, 2)->default(0)->nullable(false);
+            $table->decimal('dpp_total_price', 15, 2)->default(0)->nullable(false);
             $table->decimal('ppn_total_price', 15, 2)->default(0)->nullable(false);
             $table->decimal('expedition_fee', 15, 2)->default(0)->nullable(false);
             $table->decimal('other_fee', 15, 2)->default(0)->nullable(false);

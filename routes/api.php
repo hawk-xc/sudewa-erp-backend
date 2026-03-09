@@ -15,9 +15,10 @@ use App\Http\Controllers\MasterData\MasterUnitTypeController;
 use App\Http\Controllers\Permission\PermissionController;
 use App\Http\Controllers\Role\RoleController;
 use App\Http\Controllers\Transaction\TransactionFlowController;
-use App\Http\Controllers\Transaction\UnitTransactionPurchase\UnitTransactionBillingController as UnitTransactionBillingPurchaseController;
-use App\Http\Controllers\Transaction\UnitTransactionPurchase\UnitTransactionController as UnitTransactionPurchaseController;
-use App\Http\Controllers\Transaction\UnitTransactionPurchase\UnitTransactionItemController as UnitTransactionItemPurchaseController;
+use App\Http\Controllers\Transaction\UnitTransactionBillingController as UnitTransactionBillingPurchaseController;
+use App\Http\Controllers\Transaction\UnitTransactionController as UnitTransactionPurchaseController;
+use App\Http\Controllers\Transaction\UnitTransactionItemController as UnitTransactionItemPurchaseController;
+use App\Http\Controllers\Transaction\UnitTransactionItemDetailController as UnitTransactionItemDetailPurchaseController;
 use App\Http\Controllers\User\UserController;
 use App\Http\Controllers\Warehouse\WarehouseController;
 use Illuminate\Support\Facades\Route;
@@ -95,22 +96,30 @@ Route::group(
 
         // Warehouse API
         Route::group(['prefix' => 'warehouse', 'as' => 'warehouse.'], function () {
+            Route::get('warehouse-stock/{id}', [WarehouseController::class, 'getStock']);
+            Route::get('warehouse-get-stock/{id}', [WarehouseController::class, 'getWarehouseStock']);
+            Route::get('warehouse-unit-transaction-data/{id}', [WarehouseController::class, 'getUnitTransaction']);
+            Route::get('warehouse-unit-transaction-item-data/{id}', [WarehouseController::class, 'getUnitTransactionItem']);
+
             Route::apiResource('warehouse-data', WarehouseController::class);
         });
 
         // Transaction API
         Route::group(['prefix' => 'transaction', 'as' => 'transaction.'], function () {
             Route::apiResource('transaction-flow', TransactionFlowController::class);
-            
-            // Unit Purchase API
-            Route::group(['prefix' => 'unit-transaction-purchase', 'as' => 'unit-transaction-purchase.'], function() {
+
+            // Unit Transaction API
+            Route::group(['prefix' => 'unit-transaction', 'as' => 'unit-transaction.'], function () {
+                // Additional Route
+                Route::put('unit-transaction/{id}/update-state', [UnitTransactionPurchaseController::class, 'updateState'])->name('update-state');
+                Route::get('unit-transaction-item/get-formula', [UnitTransactionItemPurchaseController::class, 'getFormula'])->name('get-formula');
+
                 Route::apiResource('unit-transaction', UnitTransactionPurchaseController::class);
                 Route::apiResource('unit-transaction-item', UnitTransactionItemPurchaseController::class);
+                Route::apiResource('unit-transaction-item-detail', UnitTransactionItemDetailPurchaseController::class);
                 Route::apiResource('unit-transaction-billing', UnitTransactionBillingPurchaseController::class);
-
-                Route::put('{id}/update-state', [UnitTransactionPurchaseController::class, 'updateState'])->name('update-state');
             });
-            
+
             // Unit Sales API
             // Route::group(['prefix' => 'unit-sales', 'as' => 'unit-sales.'], function() {
             //     Route::apiResource('unit-transaction', UnitSalesController::class);

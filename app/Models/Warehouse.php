@@ -35,4 +35,19 @@ class Warehouse extends Model
     {
         return $this->belongsTo(Company::class);
     }
+
+    public function unitTransactions()
+    {
+        return $this->hasMany(UnitTransaction::class);
+    }
+
+    public function scopeGetWarehouseCapacityUsage()
+    {
+        return $this->unitTransactions()->sum('max_capacity');
+    }
+
+    public function warehouseMovements()
+    {
+        return $this->hasMany(WarehouseMovement::class, 'warehouse_id', 'id');
+    }
 }

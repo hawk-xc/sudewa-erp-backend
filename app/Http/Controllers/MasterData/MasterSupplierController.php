@@ -2,25 +2,22 @@
 
 namespace App\Http\Controllers\MasterData;
 
-use Exception;
+use App\Http\Controllers\Controller;
 use App\Models\Person;
+use App\Repositories\AuthRepository;
 use App\Traits\PersonTrait;
-use Illuminate\Http\Request;
 use App\Traits\ResponseTrait;
+use Exception;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use App\Http\Controllers\Controller;
-use App\Repositories\AuthRepository;
 
 class MasterSupplierController extends Controller
 {
-    use ResponseTrait, PersonTrait;
+    use PersonTrait, ResponseTrait;
 
-    /**
-     * @var AuthRepository
-     */
     protected AuthRepository $authRepository;
-    
+
     // projection
     protected $personTable;
 
@@ -36,76 +33,80 @@ class MasterSupplierController extends Controller
 
         $this->authRepository = $ar;
 
-        $this->personTable = ['id', 'uuid', 'code', 'type', 'name', 'address', 'npwp', 'phone', 'created_at'];
+        $this->personTable = ['id', 'uuid', 'code', 'type', 'name', 'address', 'npwp', 'phone', 'created_at', 'pic_name'];
     }
 
-    public function index(Request $request) {
+    public function index(Request $request)
+    {
         $query = Person::query();
 
         $query->select($this->personTable)->where('type', 'supplier');
 
         try {
-        if ($request->filled('search')) {
+            if ($request->filled('search')) {
 
-            $search = $request->search;
-            $caseSensitive = $request->boolean('case_sensitive');
+                $search = $request->search;
+                $caseSensitive = $request->boolean('case_sensitive');
 
-            $query->where(function ($q) use ($search, $caseSensitive) {
+                $query->where(function ($q) use ($search, $caseSensitive) {
 
-                if ($caseSensitive) {
-                    $q->where('name', 'LIKE BINARY', "%$search%")
-                      ->orWhere('code', 'LIKE BINARY', "%$search%")
-                      ->orWhere('phone', 'LIKE BINARY', "%$search%")
-                      ->orWhere('npwp', 'LIKE BINARY', "%$search%");
-                } else {
-                    $q->where('name', 'like', "%$search%")
-                      ->orWhere('code', 'like', "%$search%")
-                      ->orWhere('phone', 'like', "%$search%")
-                      ->orWhere('npwp', 'like', "%$search%");
-                }
+                    if ($caseSensitive) {
+                        $q->where('name', 'LIKE BINARY', "%$search%")
+                            ->orWhere('code', 'LIKE BINARY', "%$search%")
+                            ->orWhere('phone', 'LIKE BINARY', "%$search%")
+                            ->orWhere('npwp', 'LIKE BINARY', "%$search%");
+                    } else {
+                        $q->where('name', 'like', "%$search%")
+                            ->orWhere('code', 'like', "%$search%")
+                            ->orWhere('phone', 'like', "%$search%")
+                            ->orWhere('npwp', 'like', "%$search%");
+                    }
 
-            });
-        }
-
-        foreach ($this->personTable as $field) {
-            if ($request->filled($field)) {
-                $query->where($field, $request->$field);
+                });
             }
+
+            foreach ($this->personTable as $field) {
+                if ($request->filled($field)) {
+                    $query->where($field, $request->$field);
+                }
+            }
+
+            $allowedSort = $this->personTable;
+
+            $sortBy = in_array($request->sort_by, $allowedSort)
+                ? $request->sort_by
+                : 'id';
+
+            $sortOrder = $request->sort_order === 'asc' ? 'asc' : 'desc';
+
+            $query->orderBy($sortBy, $sortOrder);
+
+            $perPage = $request->per_page ?? 10;
+
+            $data = $query->paginate($perPage);
+
+            return $this->responseSuccess($data, 'Supplier list retrieved successfully', 200);
+        } catch (Exception $err) {
+            Log::error('Error While retrieved Supplier data : '.$err->getMessage());
+
+            return $this->responseError(null, 'Supplier list retrieved Failed', 500);
         }
-
-        $allowedSort = $this->personTable;
-
-        $sortBy = in_array($request->sort_by, $allowedSort)
-            ? $request->sort_by
-            : 'id';
-
-        $sortOrder = $request->sort_order === 'asc' ? 'asc' : 'desc';
-
-        $query->orderBy($sortBy, $sortOrder);
-
-        $perPage = $request->per_page ?? 10;
-
-        $data = $query->paginate($perPage);
-
-        return $this->responseSuccess($data, "Supplier list retrieved successfully", 200);
-    } catch (Exception $err) {
-        Log::error("Error While retrieved Supplier data : " . $err->getMessage());
-        return $this->responseError(null, "Supplier list retrieved Failed", 500);
-    }
     }
 
-    public function show(string $id) {
+    public function show(string $id)
+    {
         try {
             $person = Person::where('type', 'supplier')->where('id', $id)->select($this->personTable)->first();
 
-            if (!$person) {
-                return $this->responseError(null, "Supplier not found", 404);
+            if (! $person) {
+                return $this->responseError(null, 'Supplier not found', 404);
             }
 
-            return $this->responseSuccess($person, "Supplier retrieved successfully", 200);
+            return $this->responseSuccess($person, 'Supplier retrieved successfully', 200);
         } catch (Exception $err) {
-            Log::error("Error While retrieved Supplier data : " . $err->getMessage());
-            return $this->responseError(null, "Supplier retrieved Failed", 500);
+            Log::error('Error While retrieved Supplier data : '.$err->getMessage());
+
+            return $this->responseError(null, 'Supplier retrieved Failed', 500);
         }
     }
 
@@ -113,23 +114,24 @@ class MasterSupplierController extends Controller
     {
         $validated = $request->validate([
             'company_id' => 'nullable|integer|exists:companies,id',
-            'user_id' => 'nullable|integer|exists:users,id',
             'name' => 'required|string|max:249',
             'address' => 'sometimes|string|max:249',
             'phone' => 'sometimes|string|max:249',
             'npwp' => 'sometimes|string',
+            'pic_name' => 'nullable|string',
         ]);
 
         try {
             $person = DB::transaction(function () use ($validated) {
                 $validated['type'] = 'supplier';
                 $validated['code'] = $this->generateCode('supplier');
+
                 return Person::create($validated);
             });
 
             return $this->responseSuccess($person, 'Supplier created successfully');
         } catch (Exception $err) {
-            Log::error('Error while trying create Supplier Data : ' . $err->getMessage());
+            Log::error('Error while trying create Supplier Data : '.$err->getMessage());
 
             return $this->responseError(null, 'Error while trying create Supplier Data', 500);
         }
@@ -139,23 +141,23 @@ class MasterSupplierController extends Controller
     {
         $request->validate([
             'company_id' => 'nullable|integer|exists:companies,id',
-            'user_id' => 'nullable|integer|exists:users,id',
             'name' => 'sometimes|string|max:249',
             'address' => 'sometimes|string|max:249',
             'phone' => 'sometimes|string|max:249',
             'npwp' => 'sometimes|string',
+            'pic_name' => 'nullable|string',
         ]);
 
         try {
-            $data = array_filter($request->only(['name', 'address', 'phone', 'user_id', 'npwp']), fn($value) => !is_null($value) && $value !== '');
+            $data = array_filter($request->only(['name', 'address', 'phone', 'pic_name', 'npwp']), fn ($value) => ! is_null($value) && $value !== '');
 
             if (empty($data)) {
                 return $this->responseError(null, 'No data provided to update', 422);
             }
 
             $person = DB::transaction(function () use ($id, $data) {
-                $person =  Person::findOrFail($id);
-                
+                $person = Person::findOrFail($id);
+
                 $person->update($data);
 
                 return $person->fresh();
@@ -163,7 +165,7 @@ class MasterSupplierController extends Controller
 
             return $this->responseSuccess($person, 'Supplier Update Successfully', 200);
         } catch (Exception $err) {
-            Log::error('Error while trying update Supplier data : ' . $err->getMessage());
+            Log::error('Error while trying update Supplier data : '.$err->getMessage());
 
             return $this->responseError(null, 'Error while trying update Supplier data', 500);
         }
@@ -177,9 +179,9 @@ class MasterSupplierController extends Controller
 
             return $this->responseSuccess([], 'Supplier Deleted Successfully', 200);
         } catch (Exception $err) {
-            Log::error('Error while trying delete Supplier data : ' . $err->getMessage());
+            Log::error('Error while trying delete Supplier data : '.$err->getMessage());
+
             return $this->responseError(null, 'Supplier Deleted Failed');
         }
     }
 }
-

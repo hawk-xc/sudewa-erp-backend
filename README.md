@@ -42,3 +42,9 @@ chmod 744 install.sh
 https://deraly-dev-workspace.postman.co/workspace/Deraly-Dev-Workspace-Workspace~e9e32e9f-cd9e-4ac6-87e4-c2d77795e00e/collection/39336331-2189027e-e1d7-4b6e-b46a-cd2264fcf5fb?action=share&creator=39336331&active-environment=39336331-6ccd793e-2c31-4457-9637-9328c569efe7
 
 # Developed by Deraly Digital Innovation
+
+# After docker up
+
+docker exec -it backend php artisan key:generate
+docker exec -it backend php artisan migrate
+docker exec -it backend php artisan optimize:clear

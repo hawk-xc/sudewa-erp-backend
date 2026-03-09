@@ -12,7 +12,7 @@ class UnitTransaction extends Model
 
     protected $table = 'unit_transactions';
 
-    protected $fillble = [
+    protected $fillable = [
         'uuid',
         'warehouse_id',
         'person_id',
@@ -27,6 +27,11 @@ class UnitTransaction extends Model
         'stock_state' => 'string',
     ];
 
+    public function person()
+    {
+        return $this->belongsTo(Person::class);
+    }
+
     public function transactionFlow()
     {
         return $this->hasOne(TransactionFlow::class);
@@ -37,14 +42,14 @@ class UnitTransaction extends Model
         return $this->hasOne(UnitTransactionBilling::class);
     }
 
+    public function unitTransactionItems()
+    {
+        return $this->hasMany(UnitTransactionItem::class);
+    }
+
     public function warehouse()
     {
         return $this->belongsTo(Warehouse::class);
-    }
-
-    public function person()
-    {
-        return $this->belongsTo(Person::class);
     }
 
     protected static function booted()

@@ -13,13 +13,13 @@ class UnitType extends Model
     protected $table = 'unit_types';
 
     protected $fillable = [
+        'uuid',
         'code',
         'brand_id',
         'name',
         'image',
         'unit_type',
         'unit_model',
-        'price',
         'netto_weight',
         'bruto_weight',
     ];
@@ -29,10 +29,36 @@ class UnitType extends Model
         return $this->belongsTo(Brand::class);
     }
 
+    public function unitTransactionItems()
+    {
+        return $this->hasMany(UnitTransactionItem::class);
+    }
+
     protected static function booted()
     {
         static::creating(function ($model) {
             $model->uuid = (string) Str::uuid();
         });
+    }
+
+    public function getRealStock(int $warehouseId)
+    {
+        return UnitTransactionItemDetail::where('in_stock', true)
+            ->whereHas('unitTransactionItem', function ($query) {
+                $query->where('unit_type_id', $this->id);
+            })
+            ->whereHas('unitTransactionItem.unitTransaction', function ($query) use ($warehouseId) {
+                $query->where('warehouse_id', $warehouseId);
+            })
+            ->count();
+    }
+
+    public function getForecastStock(int $warehouseId)
+    {
+        return UnitTransactionItemDetail::whereHas('unitTransactionItem', function ($query) {
+            $query->where('unit_type_id', $this->id);
+        })->whereHas('unitTransactionItem.unitTransaction', function ($query) use ($warehouseId) {
+            $query->where('warehouse_id', $warehouseId);
+        })->count();
     }
 }

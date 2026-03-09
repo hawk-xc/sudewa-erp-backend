@@ -6,16 +6,17 @@ use App\Http\Controllers\Controller;
 use App\Models\TransactionFlow;
 use App\Repositories\AuthRepository;
 use App\Traits\ResponseTrait;
+use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Exception;
 
 class TransactionFlowController extends Controller
 {
     use ResponseTrait;
 
     protected AuthRepository $authRepository;
+
     protected $transactionFlowTable;
 
     public function __construct(AuthRepository $ar)
@@ -40,7 +41,7 @@ class TransactionFlowController extends Controller
             'bank_idr_credit',
             'cash_idr_debit',
             'cash_idr_credit',
-            'created_at'
+            'created_at',
         ];
     }
 
@@ -58,7 +59,7 @@ class TransactionFlowController extends Controller
             if ($request->start_date && $request->end_date) {
                 $query->whereBetween('transaction_date', [
                     $request->start_date,
-                    $request->end_date
+                    $request->end_date,
                 ]);
             }
 
@@ -76,6 +77,7 @@ class TransactionFlowController extends Controller
 
         } catch (Exception $e) {
             Log::error('Error fetching Transaction Flows: '.$e->getMessage());
+
             return $this->responseError(null, 'Internal Server Error', 500);
         }
     }
@@ -91,6 +93,7 @@ class TransactionFlowController extends Controller
 
         } catch (Exception $e) {
             Log::error('Error fetching Transaction Flow: '.$e->getMessage());
+
             return $this->responseError(null, 'Transaction Flow not found', 404);
         }
     }
@@ -119,6 +122,7 @@ class TransactionFlowController extends Controller
 
         } catch (Exception $e) {
             Log::error('Error creating Transaction Flow: '.$e->getMessage());
+
             return $this->responseError(null, 'Internal Server Error', 500);
         }
     }
@@ -149,6 +153,7 @@ class TransactionFlowController extends Controller
 
         } catch (Exception $e) {
             Log::error('Error updating Transaction Flow: '.$e->getMessage());
+
             return $this->responseError(null, 'Internal Server Error', 500);
         }
     }
@@ -169,6 +174,7 @@ class TransactionFlowController extends Controller
 
         } catch (Exception $e) {
             Log::error('Error deleting Transaction Flow: '.$e->getMessage());
+
             return $this->responseError(null, 'Internal Server Error', 500);
         }
     }
