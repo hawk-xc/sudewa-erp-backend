@@ -43,6 +43,11 @@ class UnitTransactionItemController extends Controller
 
     public function index(Request $request)
     {
+        $request->validate([
+            'type' => 'nullable|in:purchase,sales',
+            'warehouse_id' => 'nullable|integer|exists:warehouses,id',
+        ]);
+
         try {
             $query = UnitTransactionItem::query();
 
@@ -58,6 +63,12 @@ class UnitTransactionItemController extends Controller
                     $q->where('uuid', 'like', "%$search%")
                         ->orWhere('qty_total', 'like', "%$search%")
                         ->orWhere('price', 'like', "%$search%");
+                });
+            }
+
+            if ($request->filled('type') && in_array($request->type, ['purchase', 'sales'])) {
+                $query->whereHas('unitTransaction', function ($searchQuery) use ($request) {
+                    $searchQuery->where('type', $request->type);
                 });
             }
 
@@ -82,7 +93,7 @@ class UnitTransactionItemController extends Controller
         } catch (Exception $err) {
             Log::error('Error While retrieved Unit Transaction Item data : '.$err->getMessage());
 
-            return $this->responseError(null, 'Unit Transaction Item list retrieved Failed', 500);
+            return $this->responseError($err->getMessage(), 'Unit Transaction Item list retrieved Failed', 500);
         }
     }
 
@@ -127,6 +138,10 @@ class UnitTransactionItemController extends Controller
 
             if (isset($request->unit_type_id) && isset($request->sparepart_id)) {
                 return $this->responseError(null, 'Select one between sparepart_id or unit_type_id', 422);
+            }
+
+            if ($unitTransaction->type == 'sales') {
+
             }
 
             $item = DB::transaction(function () use ($request, $validated) {
@@ -222,6 +237,26 @@ class UnitTransactionItemController extends Controller
                 'ppn_per_unit_price' => 'nullable|numeric',
                 'other_fee' => 'nullable|numeric',
             ]);
+
+            // transaction billing paid guard
+            if ($item->unitTransaction->unitTransactionBilling->is_paid) {
+                return $this->responseError(
+                    'Cannot update unit transaction data, unit transaction had billing data and status paid',
+                    'Validation failed',
+                    422
+                );
+            }
+
+            // SSOT guard
+            if ($request->unit_type_id) {
+                if ($item->unitTransactionItemDetails->count() > 0) {
+                    return $this->responseError(
+                        'Cannot update unit_type_id, because this unit transaction item has unit transaction item details data',
+                        'Validation failed',
+                        422
+                    );
+                }
+            }
 
             $unitTransactionId = $validated['unit_transaction_id'] ?? $item->unit_transaction_id;
             $unitTypeId = $validated['unit_type_id'] ?? $item->unit_type_id;
