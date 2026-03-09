@@ -55,6 +55,10 @@ class UnitType extends Model
 
     public function getForecastStock(int $warehouseId)
     {
-
+        return UnitTransactionItemDetail::whereHas('unitTransactionItem', function ($query) {
+            $query->where('unit_type_id', $this->id);
+        })->whereHas('unitTransactionItem.unitTransaction', function ($query) use ($warehouseId) {
+            $query->where('warehouse_id', $warehouseId);
+        })->count();
     }
 }

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Transaction;
 use App\Http\Controllers\Controller;
 use App\Models\UnitTransaction;
 use App\Models\UnitTransactionItem;
+use App\Models\UnitType;
 use App\Traits\ResponseTrait;
 use Exception;
 use Illuminate\Http\Request;
@@ -121,27 +122,62 @@ class UnitTransactionItemController extends Controller
                 'qty_total' => 'required|integer|min:1',
                 'price' => 'required|decimal:0,2',
                 'bbn_price' => 'nullable|decimal:0,2',
-                'expedition_fee' => 'nullable|decimal:0,2',
-                'other_fee' => 'nullable|decimal:0,2',
+                'hpp_per_unit_price' => 'nullable|numeric',
+                'dpp_per_unit_price' => 'nullable|numeric',
+                'ppn_per_unit_price' => 'nullable|numeric',
+                'other_fee' => 'nullable|numeric',
             ]);
 
             $unitTransaction = UnitTransaction::findOrFail($request->unit_transaction_id);
             $unitTransactionItems = $unitTransaction->unitTransactionItems;
 
-            if ($request->qty_total > $unitTransaction->max_capacity - $unitTransactionItems->sum('qty_total')) {
-                return $this->responseError('QTY total reach max value', 'Validation failed', 422);
+            // Unit Type Stock Guard
+            if ($unitTransaction->type == 'sales') {
+                $unitTypeRealStock = UnitType::findOrFail((int) $request->unit_type_id)->getRealStock($unitTransaction->warehouse->id);
+
+                // Stock Guard
+                if ($unitTypeRealStock == 0) {
+                    return $this->responseError(
+                        'Cannot create data. The selected unit type has no stock available in the warehouse.',
+                        'Validation failed',
+                        422
+                    );
+                }
+
+                // Quota Guard
+                if ($request->qty_total > $unitTypeRealStock) {
+                    return $this->responseError(
+                        'Cannot create data. The requested quantity exceeds the available stock in the warehouse.',
+                        'Validation failed',
+                        422
+                    );
+                }
             }
 
+            // unit transaction stock guard
+            if ($request->qty_total > $unitTransaction->max_capacity - $unitTransactionItems->sum('qty_total')) {
+                return $this->responseError(
+                    'Cannot create data. The quantity exceeds the remaining transaction capacity.',
+                    'Validation failed',
+                    422
+                );
+            }
+
+            // duplicate unit type guard
             if ($unitTransactionItems->where('unit_type_id', $request->unit_type_id)->isNotEmpty()) {
-                return $this->responseError('Unit Type Already Exist in this unit transaction data', 'Validation failed', 422);
+                return $this->responseError(
+                    'Cannot create data. The selected unit type already exists in this unit transaction.',
+                    'Validation failed',
+                    422
+                );
             }
 
             if (isset($request->unit_type_id) && isset($request->sparepart_id)) {
-                return $this->responseError(null, 'Select one between sparepart_id or unit_type_id', 422);
-            }
-
-            if ($unitTransaction->type == 'sales') {
-
+                return $this->responseError(
+                    'Cannot create data. Please select either unit_type_id or sparepart_id, not both.',
+                    'Validation failed',
+                    422
+                );
             }
 
             $item = DB::transaction(function () use ($request, $validated) {
@@ -238,10 +274,64 @@ class UnitTransactionItemController extends Controller
                 'other_fee' => 'nullable|numeric',
             ]);
 
-            // transaction billing paid guard
-            if ($item->unitTransaction->unitTransactionBilling->is_paid) {
+            if ($request->filled('unit_transaction_id')) {
+                $unitTransaction = UnitTransaction::findOrFail($request->unit_transaction_id);
+                $unitTransactionItems = $unitTransaction->unitTransactionItems;
+
+                // Unit Type Stock Guard
+                if ($unitTransaction->type == 'sales') {
+                    $unitTypeRealStock = UnitType::findOrFail((int) $request->unit_type_id)->getRealStock($unitTransaction->warehouse->id);
+
+                    // Stock Guard
+                    if ($unitTypeRealStock == 0) {
+                        return $this->responseError(
+                            'Cannot create data. The selected unit type has no stock available in the warehouse.',
+                            'Validation failed',
+                            422
+                        );
+                    }
+
+                    // Quota Guard
+                    if ($request->qty_total > $unitTypeRealStock) {
+                        return $this->responseError(
+                            'Cannot create data. The requested quantity exceeds the available stock in the warehouse.',
+                            'Validation failed',
+                            422
+                        );
+                    }
+                }
+
+                // unit transaction stock guard
+                if ($request->qty_total > $unitTransaction->max_capacity - $unitTransactionItems->sum('qty_total')) {
+                    return $this->responseError(
+                        'Cannot create data. The quantity exceeds the remaining transaction capacity.',
+                        'Validation failed',
+                        422
+                    );
+                }
+
+                // duplicate unit type guard
+                if ($unitTransactionItems->where('unit_type_id', $request->unit_type_id)->isNotEmpty()) {
+                    return $this->responseError(
+                        'Cannot create data. The selected unit type already exists in this unit transaction.',
+                        'Validation failed',
+                        422
+                    );
+                }
+
+                // transaction billing paid guard
+                if ($item->unitTransaction->unitTransactionBilling->is_paid) {
+                    return $this->responseError(
+                        'Cannot update unit transaction data, unit transaction had billing data and status paid',
+                        'Validation failed',
+                        422
+                    );
+                }
+            }
+
+            if ($request->filled('unit_type_id') && isset($request->sparepart_id)) {
                 return $this->responseError(
-                    'Cannot update unit transaction data, unit transaction had billing data and status paid',
+                    'Cannot create data. Please select either unit_type_id or sparepart_id, not both.',
                     'Validation failed',
                     422
                 );
@@ -263,7 +353,7 @@ class UnitTransactionItemController extends Controller
 
             $exists = UnitTransactionItem::where('unit_transaction_id', $unitTransactionId)
                 ->where('unit_type_id', $unitTypeId)
-                ->where('id', '!=', $item->id) // penting: ignore dirinya sendiri
+                ->where('id', '!=', $item->id)
                 ->exists();
 
             if ($exists) {
