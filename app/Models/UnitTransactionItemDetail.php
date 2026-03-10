@@ -72,6 +72,10 @@ class UnitTransactionItemDetail extends Model
             'status' => 'out',
         ]);
 
+        UnitTransactionItemDetail::findOrFail($movement->unitTransactionItemDetail->id)->update([
+            'in_stock' => false,
+        ]);
+
         return $movement;
     }
 }
