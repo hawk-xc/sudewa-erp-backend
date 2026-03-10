@@ -103,11 +103,21 @@ class UnitTransactionItemDetailController extends Controller
                 'chassis_number' => 'required|string|max:255|unique:unit_transaction_item_details,chassis_number',
             ]);
 
-            $item = UnitTransactionItem::findOrFail($request->unit_transaction_item_id);
+            $unitItemTransaction = UnitTransactionItem::findOrFail($request->unit_transaction_item_id);
 
-            $quantityChecker = $item->qty_total;
+            $unitTransactionGetType = $unitItemTransaction->unitTransaction->type;
 
-            $currentCount = UnitTransactionItemDetail::where('unit_transaction_item_id', $item->id)->count();
+            if ($unitTransactionGetType == 'sales') {
+                return $this->responseError(
+                    'Cannot create data. this operation only use in purchase state',
+                    'Validation failed',
+                    422
+                );
+            }
+
+            $quantityChecker = $unitItemTransaction->qty_total;
+
+            $currentCount = UnitTransactionItemDetail::where('unit_transaction_item_id', $unitItemTransaction->id)->count();
 
             if ($currentCount >= $quantityChecker) {
                 return $this->responseError(null, 'Unit Transaction Item Capacity Reach Maximum value', 422);
@@ -133,6 +143,17 @@ class UnitTransactionItemDetailController extends Controller
     {
         try {
             $detail = UnitTransactionItemDetail::findOrFail((int) $id);
+
+            $unitItemTransaction = UnitTransactionItem::findOrFail($detail->unit_transaction_item_id);
+            $unitTransactionGetType = $unitItemTransaction->unitTransaction->type;
+
+            if ($unitTransactionGetType == 'sales') {
+                return $this->responseError(
+                    'Cannot create data. this operation only use in purchase state',
+                    'Validation failed',
+                    422
+                );
+            }
 
             $validated = $request->validate([
                 'unit_transaction_item_id' => 'sometimes|integer|exists:unit_transaction_items,id',
@@ -161,6 +182,17 @@ class UnitTransactionItemDetailController extends Controller
     {
         try {
             $detail = UnitTransactionItemDetail::findOrFail($id);
+
+            $unitItemTransaction = UnitTransactionItem::findOrFail($detail->unit_transaction_item_id);
+            $unitTransactionGetType = $unitItemTransaction->unitTransaction->type;
+
+            if ($unitTransactionGetType == 'sales') {
+                return $this->responseError(
+                    'Cannot create data. this operation only use in purchase state',
+                    'Validation failed',
+                    422
+                );
+            }
 
             DB::transaction(function () use ($detail) {
                 $detail->delete();
