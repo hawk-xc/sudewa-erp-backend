@@ -208,7 +208,7 @@ class UnitTransactionController extends Controller
                 })
                 ->get();
 
-            if ($validDetails->isEmpty()) {
+            if ($unitTransaction->type == 'purchase' && $validDetails->isEmpty()) {
                 return $this->responseError(
                     null,
                     'Selected unit transaction item details not found in this transaction',
