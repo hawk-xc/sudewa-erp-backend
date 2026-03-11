@@ -94,9 +94,19 @@ class UnitTransactionController extends Controller
     public function show(string $id)
     {
         try {
-            $data = UnitTransaction::with(['warehouse:id,uuid,name,capacity', 'person:id,uuid,code,type,name', 'transactionFlow:id,uuid,transaction_date,description', 'unitTransactionBilling', 'unitTransactionItems:id,unit_transaction_id,uuid,qty_total,price', 'unitTransactionItems.unitTransactionItemDetails:id,unit_transaction_item_id,uuid,color,machine_number,chassis_number'])
+            $data = UnitTransaction::with([
+                'warehouse:id,uuid,name,capacity',
+                'person:id,uuid,code,type,name',
+                'transactionFlow:id,uuid,transaction_date,description',
+                'unitTransactionBilling',
+                'unitTransactionItems:id,unit_transaction_id,uuid,qty_total,price,dpp_total_price,ppn_total_price',
+                'unitTransactionItems.unitTransactionItemDetails:id,unit_transaction_item_id,uuid,color,machine_number,chassis_number',
+            ])
                 ->select($this->unitTransactionTable)
                 ->findOrFail($id);
+            $data->unit_transaction_item_total_dpp = $data->unitTransactionItems->sum('dpp_total_price');
+            $data->unit_transaction_item_total_ppn = $data->unitTransactionItems->sum('ppn_total_price');
+            $data->unit_transaction_item_bruto_total = $data->getBrutoAmount();
 
             return $this->responseSuccess($data, 'Unit Transaction retrieved successfully', 200);
         } catch (Exception $err) {

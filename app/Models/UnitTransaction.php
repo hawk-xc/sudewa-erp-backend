@@ -52,6 +52,17 @@ class UnitTransaction extends Model
         return $this->belongsTo(Warehouse::class);
     }
 
+    public function getBrutoAmount()
+    {
+        $unitTransactions = $this->unitTransactionItems();
+        $total_dpp = $unitTransactions->sum('dpp_total_price');
+        $total_ppn = $unitTransactions->sum('ppn_total_price');
+        $bbn_price = $unitTransactions->sum('bbn_price');
+        $other_fee = $unitTransactions->sum('other_fee');
+
+        return $total_dpp + $total_ppn + $bbn_price + $other_fee;
+    }
+
     protected static function booted()
     {
         static::creating(function ($model) {

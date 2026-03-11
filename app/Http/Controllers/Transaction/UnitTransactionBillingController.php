@@ -3,12 +3,14 @@
 namespace App\Http\Controllers\Transaction;
 
 use App\Http\Controllers\Controller;
+use App\Models\UnitTransaction;
 use App\Models\UnitTransactionBilling;
 use App\Traits\ResponseTrait;
 use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
 
 class UnitTransactionBillingController extends Controller
 {
@@ -30,6 +32,9 @@ class UnitTransactionBillingController extends Controller
             'bca_payment_amount',
             'bca_payment_usd_amount',
             'cash_payment_amount',
+            'bca_payment_liability',
+            'bca_payment_usd_liability',
+            'cash_payment_liability',
             'payment_at',
             'is_paid',
             'created_at',
@@ -102,20 +107,71 @@ class UnitTransactionBillingController extends Controller
                 'bca_payment_usd_amount' => 'nullable|numeric|min:0',
                 'cash_payment_amount' => 'nullable|numeric|min:0',
                 'payment_at' => 'nullable|date',
-                'is_paid' => 'required|boolean',
+                'is_paid' => 'sometimes|boolean',
             ]);
+
+            $unitTransaction = UnitTransaction::findOrFail($request->unit_transaction_id);
+            $unitTransactionBrutoTotal = $unitTransaction->getBrutoAmount();
+
+            if ((int) $unitTransaction->warehouse->company_id !== (int) $request->company_id) {
+                throw ValidationException::withMessages([
+                    'company_id' => 'Company don\'t have this unit transaction!.',
+                ]);
+            }
+
+            $bcaPayment = $request->bca_payment_amount ?? 0;
+            $cashPayment = $request->cash_payment_amount ?? 0;
+
+            $totalIdrPayment = $bcaPayment + $cashPayment;
+
+            if ($request->bca_payment_amount > $cashPayment) {
+                throw ValidationException::withMessages([
+                    'bca_payment_amount' => 'Total IDR Bca payment (BCA) cannot exceed the transaction bruto amount.',
+                ]);
+            }
+            if ($request->cash_payment_amount > $unitTransactionBrutoTotal) {
+                throw ValidationException::withMessages([
+                    'cash_payment_amount' => 'Total IDR Cash payment (Cash) cannot exceed the transaction bruto amount.',
+                ]);
+            }
+
+            $bca_payment_liability = 0;
+            $cash_payment_liability = 0;
+
+            if ($totalIdrPayment < $unitTransactionBrutoTotal) {
+                $remaining = $unitTransactionBrutoTotal - $totalIdrPayment;
+
+                if ($cashPayment < $remaining) {
+                    $cash_payment_liability = $remaining;
+                } else {
+                    $bca_payment_liability = $remaining;
+                }
+            }
+
+            $validated['bca_payment_liability'] = $bca_payment_liability;
+            $validated['cash_payment_liability'] = $cash_payment_liability;
+            $validated['bca_payment_usd_liability'] = 0;
+
+            if ($bca_payment_liability == 0 && $cash_payment_liability == 0 && ! $request->filled('is_paid')) {
+                $validated['is_paid'] = true;
+
+                // change inbound_purcase_order state
+                $unitTransaction->update(['stock_state' => 'inbound_purcase_order']);
+            } else {
+                $validated['is_paid'] = $request->filled('is_paid') ?? false;
+            }
 
             $data = DB::transaction(function () use ($validated) {
                 return UnitTransactionBilling::create($validated);
             });
 
             return $this->responseSuccess($data->fresh(), 'Unit Transaction Billing created successfully', 201);
-        } catch (\Illuminate\Validation\ValidationException $e) {
-            return $this->responseError($e->errors(), 'Validation failed', 422);
+        } catch (ValidationException $err) {
+            return $this->responseError($err->errors(), 'Validation failed', 422);
         } catch (Exception $err) {
             Log::error('Error While storing Unit Transaction Billing data : '.$err->getMessage());
 
-            return $this->responseError(null, 'Unit Transaction Billing creation failed', 500);
+            return $this->responseError($err->getMessage(), 'Unit Transaction Billing creation failed', 500);
         }
     }
 
@@ -125,7 +181,6 @@ class UnitTransactionBillingController extends Controller
             $billing = UnitTransactionBilling::findOrFail((int) $id);
 
             $validated = $request->validate([
-                'unit_transaction_id' => 'sometimes|integer|exists:unit_transactions,id|unique:unit_transaction_billings,unit_transaction_id,'.$id,
                 'bca_payment_amount' => 'nullable|numeric|min:0',
                 'bca_payment_usd_amount' => 'nullable|numeric|min:0',
                 'cash_payment_amount' => 'nullable|numeric|min:0',
@@ -133,12 +188,63 @@ class UnitTransactionBillingController extends Controller
                 'is_paid' => 'sometimes|boolean',
             ]);
 
+            $unitTransaction = UnitTransaction::findOrFail($billing->unit_transaction_id);
+
+            $remainingBcaLiability = $billing->bca_payment_liability;
+            $remainingCashLiability = $billing->cash_payment_liability;
+
+            $bcaPayment = $request->bca_payment_amount ?? 0;
+            $cashPayment = $request->cash_payment_amount ?? 0;
+
+            if ($bcaPayment > $remainingBcaLiability) {
+                throw ValidationException::withMessages([
+                    'bca_payment_amount' => 'BCA payment cannot exceed remaining BCA liability.',
+                ]);
+            }
+
+            if ($cashPayment > $remainingCashLiability) {
+                throw ValidationException::withMessages([
+                    'cash_payment_amount' => 'Cash payment cannot exceed remaining Cash liability.',
+                ]);
+            }
+
+            $validated['bca_payment_liability'] =
+                $remainingBcaLiability - $bcaPayment;
+
+            $validated['cash_payment_liability'] =
+                $remainingCashLiability - $cashPayment;
+
+            $validated['bca_payment_usd_liability'] = 0;
+
+            $validated['bca_payment_amount'] =
+                $billing->bca_payment_amount + $bcaPayment;
+
+            $validated['cash_payment_amount'] =
+                $billing->cash_payment_amount + $cashPayment;
+
+            if (
+                (int) $validated['bca_payment_liability'] == 0 &&
+                (int) $validated['cash_payment_liability'] == 0
+            ) {
+
+                $validated['is_paid'] = true;
+
+                $unitTransaction->update([
+                    'stock_state' => 'inbound_purcase_order',
+                ]);
+            }
+
             DB::transaction(function () use ($billing, $validated) {
                 $billing->update($validated);
             });
 
-            return $this->responseSuccess($billing->fresh(), 'Unit Transaction Billing updated successfully', 200);
-        } catch (\Illuminate\Validation\ValidationException $e) {
+            return $this->responseSuccess(
+                $billing->fresh(),
+                'Unit Transaction Billing updated successfully',
+                200
+            );
+
+        } catch (ValidationException $e) {
             return $this->responseError($e->errors(), 'Validation failed', 422);
         } catch (Exception $err) {
             Log::error('Error While updating Unit Transaction Billing data : '.$err->getMessage());
