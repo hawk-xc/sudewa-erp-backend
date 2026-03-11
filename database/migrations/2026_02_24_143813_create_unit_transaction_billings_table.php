@@ -18,6 +18,9 @@ return new class extends Migration
             $table->decimal('bca_payment_amount', 15, 2)->nullable(false)->default(0);
             $table->decimal('bca_payment_usd_amount', 10, 2)->nullable(false)->default(0);
             $table->decimal('cash_payment_amount', 15, 2)->nullable(false)->default(0);
+            $table->decimal('bca_payment_liability', 15, 2)->nullable(false)->default(0);
+            $table->decimal('bca_payment_usd_liability', 10, 2)->nullable(false)->default(0);
+            $table->decimal('cash_payment_liability', 15, 2)->nullable(false)->default(0);
             $table->dateTime('payment_at')->default(now());
             $table->tinyInteger('is_paid')->default(0);
             $table->timestamps();

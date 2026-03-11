@@ -18,6 +18,9 @@ class UnitTransactionBilling extends Model
         'bca_payment_amount',
         'bca_payment_usd_amount',
         'cash_payment_amount',
+        'bca_payment_liability',
+        'bca_payment_usd_liability',
+        'cash_payment_liability',
         'payment_at',
         'is_paid',
     ];
@@ -27,6 +30,9 @@ class UnitTransactionBilling extends Model
         'bca_payment_amount' => 'decimal:2',
         'bca_payment_usd_amount' => 'decimal:2',
         'cash_payment_amount' => 'decimal:2',
+        'bca_payment_liability' => 'decimal:2',
+        'bca_payment_usd_liability' => 'decimal:2',
+        'cash_payment_liability' => 'decimal:2',
         'is_paid' => 'boolean',
     ];
 
