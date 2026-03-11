@@ -32,6 +32,9 @@ class UnitTransactionBillingController extends Controller
             'bca_payment_amount',
             'bca_payment_usd_amount',
             'cash_payment_amount',
+            'bca_payment_liability',
+            'bca_payment_usd_liability',
+            'cash_payment_liability',
             'payment_at',
             'is_paid',
             'created_at',
@@ -104,10 +107,17 @@ class UnitTransactionBillingController extends Controller
                 'bca_payment_usd_amount' => 'nullable|numeric|min:0',
                 'cash_payment_amount' => 'nullable|numeric|min:0',
                 'payment_at' => 'nullable|date',
-                'is_paid' => 'required|boolean',
+                'is_paid' => 'sometimes|boolean',
             ]);
 
-            $unitTransactionBrutoTotal = UnitTransaction::findOrFail($request->unit_transaction_id)->getBrutoAmount();
+            $unitTransaction = UnitTransaction::findOrFail($request->unit_transaction_id);
+            $unitTransactionBrutoTotal = $unitTransaction->getBrutoAmount();
+
+            if ($unitTransaction->warehouse->company_id !== $request->company_id) {
+                throw ValidationException::withMessages([
+                    'company_id' => 'Company don\'t have this unit transaction!.',
+                ]);
+            }
 
             $bcaPayment = $request->bca_payment_amount ?? 0;
             $cashPayment = $request->cash_payment_amount ?? 0;
@@ -141,6 +151,15 @@ class UnitTransactionBillingController extends Controller
             $validated['bca_payment_liability'] = $bca_payment_liability;
             $validated['cash_payment_liability'] = $cash_payment_liability;
             $validated['bca_payment_usd_liability'] = 0;
+
+            if ($bca_payment_liability == 0 && $cash_payment_liability == 0 && ! $request->filled('is_paid')) {
+                $validated['is_paid'] = true;
+
+                // change inbound_purcase_order state
+                $unitTransaction->update(['stock_state' => 'inbound_purcase_order']);
+            } else {
+                $validated['is_paid'] = $request->filled('is_paid') ?? false;
+            }
 
             $data = DB::transaction(function () use ($validated) {
                 return UnitTransactionBilling::create($validated);
