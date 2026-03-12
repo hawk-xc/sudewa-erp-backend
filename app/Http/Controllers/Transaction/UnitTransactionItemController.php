@@ -400,4 +400,21 @@ class UnitTransactionItemController extends Controller
             return $this->responseError([], 'Unit Transaction Item Not Found or Failed Deleted', 500);
         }
     }
+
+    public function bulkDelete(string $id)
+    {
+        try {
+            $item = UnitTransactionItem::findOrFail($id);
+
+            DB::transaction(function () use ($item) {
+                foreach ($item->unitTransactionItemDetails as $itemDetail) {
+                    $itemDetail->delete();
+                }
+            });
+
+            return $this->responseSuccess((object) null, 'Unit Transaction Item Detail sucessfully Deleted', 200);
+        } catch (Exception $err) {
+            return $this->responseError(null, 'Unit Transaction Item Detail Not Found or Failed Deleted', 500);
+        }
+    }
 }

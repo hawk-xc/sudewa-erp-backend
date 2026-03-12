@@ -113,6 +113,7 @@ Route::group(
                 // Additional Route
                 Route::put('unit-transaction/{id}/update-state', [UnitTransactionPurchaseController::class, 'updateState'])->name('update-state');
                 Route::get('unit-transaction-item/get-formula', [UnitTransactionItemPurchaseController::class, 'getFormula'])->name('get-formula');
+                Route::delete('unit-transaction-item/transcation-item-detail-bulk-delete/{id}', [UnitTransactionItemPurchaseController::class, 'bulkDelete'])->name('bulk-delete');
 
                 Route::apiResource('unit-transaction', UnitTransactionPurchaseController::class);
                 Route::apiResource('unit-transaction-item', UnitTransactionItemPurchaseController::class);
