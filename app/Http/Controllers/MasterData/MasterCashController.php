@@ -25,8 +25,8 @@ class MasterCashController extends Controller
 
                 $query->where(function ($q) use ($search) {
                     $q->where('code', 'like', "%$search%")
-                      ->orWhere('description', 'like', "%$search%")
-                      ->orWhere('type', 'like', "%$search%");
+                        ->orWhere('description', 'like', "%$search%")
+                        ->orWhere('type', 'like', "%$search%");
                 });
             }
 
@@ -55,7 +55,7 @@ class MasterCashController extends Controller
             );
 
         } catch (\Exception $e) {
-            Log::error('Error retrieving cash list: ' . $e->getMessage());
+            Log::error('Error retrieving cash list: '.$e->getMessage());
 
             return $this->responseError(
                 null,
@@ -69,10 +69,10 @@ class MasterCashController extends Controller
     {
         try {
             $validated = $request->validate([
-                'company_id'  => 'required|exists:companies,id',
-                'code'        => 'required|string|max:50|unique:cashes,code',
+                'company_id' => 'required|exists:companies,id',
+                'code' => 'required|string|max:50|unique:cashes,code',
                 'description' => 'nullable|string',
-                'type'        => 'required|string|max:50|in:cash,bank',
+                'type' => 'required|string|max:50|in:cash,bank',
             ]);
 
             $cash = DB::transaction(function () use ($validated) {
@@ -93,7 +93,7 @@ class MasterCashController extends Controller
             );
 
         } catch (\Exception $e) {
-            Log::error('Error storing cash: ' . $e->getMessage());
+            Log::error('Error storing cash: '.$e->getMessage());
 
             return $this->responseError(
                 null,
@@ -129,9 +129,9 @@ class MasterCashController extends Controller
             $cash = Cash::findOrFail($id);
 
             $validated = $request->validate([
-                'code'        => 'sometimes|required|string|max:50|unique:cashes,code,' . $id,
+                'code' => 'sometimes|required|string|max:50|unique:cashes,code,'.$id,
                 'description' => 'nullable|string',
-                'type'        => 'sometimes|required|string|max:50',
+                'type' => 'sometimes|required|string|max:50',
             ]);
 
             DB::transaction(function () use ($cash, $validated) {
@@ -152,7 +152,7 @@ class MasterCashController extends Controller
             );
 
         } catch (\Exception $e) {
-            Log::error('Error updating cash: ' . $e->getMessage());
+            Log::error('Error updating cash: '.$e->getMessage());
 
             return $this->responseError(
                 null,
@@ -178,7 +178,7 @@ class MasterCashController extends Controller
             );
 
         } catch (\Exception $e) {
-            Log::error('Error deleting cash: ' . $e->getMessage());
+            Log::error('Error deleting cash: '.$e->getMessage());
 
             return $this->responseError(
                 null,
