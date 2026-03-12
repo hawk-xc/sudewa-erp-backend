@@ -28,17 +28,13 @@ class MasterUnitTypeController extends Controller
 
         $this->authRepository = $ar;
 
-        $this->unitTypeTable = ['id', 'brand_id', 'name', 'capacity', 'unit_type', 'unit_model', 'price', 'netto_weight', 'bruto_weight', 'description', 'created_at'];
+        $this->unitTypeTable = ['id', 'brand_id', 'name', 'capacity', 'unit_type', 'unit_model', 'price', 'netto_weight', 'bruto_weight', 'description', 'buy_price', 'sell_price', 'created_at'];
     }
 
     public function index(Request $request)
     {
         try {
-            $query = UnitType::with([
-                'brand' => function ($query) {
-                    $query->select('id', 'name', 'created_at');
-                },
-            ]);
+            $query = UnitType::with('brand:id,name');
 
             if ($request->filled('search')) {
                 $search = $request->search;
@@ -109,12 +105,14 @@ class MasterUnitTypeController extends Controller
             'unit_type' => 'nullable|string|max:255',
             'unit_model' => 'nullable|string|max:255',
             'netto_weight' => 'nullable|integer|max:500',
-            'bruto_weight' => 'nullable|integer|max:500',
+            // 'bruto_weight' => 'nullable|integer|max:500',
+            'buy_price' => 'nullable|integer',
+            'sell_price' => 'nullable|integer',
             'description' => 'nullable|string',
         ]);
 
-        // null
-        // $image = $request->file('image')->store('unit-types');
+        // bruto formula
+        $validated['bruto_weight'] = $validated['netto_weight'] + 3;
 
         try {
             $unitType = DB::transaction(function () use ($validated) {
@@ -143,9 +141,14 @@ class MasterUnitTypeController extends Controller
             'unit_model' => 'nullable|string|max:255',
             'price' => 'nullable|integer',
             'netto_weight' => 'nullable|integer|max:500',
-            'bruto_weight' => 'nullable|integer|max:500',
+            // 'bruto_weight' => 'nullable|integer|max:500',
+            'buy_price' => 'nullable|integer',
+            'sell_price' => 'nullable|integer',
             'description' => 'nullable|string',
         ]);
+
+        // bruto formula in Kg
+        $validated['bruto_weight'] = $validated['netto_weight'] + 3;
 
         try {
             DB::transaction(function () use ($validated, $unitType) {
