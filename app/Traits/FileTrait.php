@@ -3,34 +3,31 @@
 namespace App\Traits;
 
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 
 trait FileTrait
 {
-    public function storeFile(UploadedFile $file, string $storage)
+    public function storeFile(UploadedFile $file, string $folder)
     {
         if (! $file) {
             return null;
         }
 
-        $path = public_path($storage);
-
-        if (! file_exists($path)) {
-            mkdir($path, 0755, true);
-        }
-
         $filename = time().'_'.uniqid().'.'.$file->getClientOriginalExtension();
 
-        $file->move($path, $filename);
+        $path = $file->storeAs($folder, $filename, 'public');
 
-        return $filename;
+        return $path;
     }
 
-    public function destroyFile(string $path)
+    public function destroyFile(?string $path)
     {
-        $fullPath = public_path($path);
+        if (! $path) {
+            return false;
+        }
 
-        if (file_exists($fullPath)) {
-            unlink($fullPath);
+        if (Storage::disk('public')->exists($path)) {
+            Storage::disk('public')->delete($path);
 
             return true;
         }
