@@ -72,6 +72,8 @@ class UnitTypeSeeder extends Seeder
                 'unit_model' => $motor['name'],
                 'netto_weight' => rand(90, 140),
                 'bruto_weight' => rand(100, 160),
+                'buy_price' => rand(10000000, 50000000),
+                'sell_price' => rand(10000000, 50000000),
                 'created_at' => now(),
                 'updated_at' => now(),
             ];
@@ -92,6 +94,8 @@ class UnitTypeSeeder extends Seeder
                 'unit_model' => 'Model '.($i + 1),
                 'netto_weight' => rand(90, 140),
                 'bruto_weight' => rand(100, 160),
+                'buy_price' => rand(10000000, 50000000),
+                'sell_price' => rand(10000000, 50000000),
                 'created_at' => now(),
                 'updated_at' => now(),
             ];

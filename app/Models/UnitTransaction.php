@@ -63,6 +63,24 @@ class UnitTransaction extends Model
         return $total_dpp + $total_ppn + $bbn_price + $other_fee;
     }
 
+    public function getSumAmount(string $columnName): ?int
+    {
+        $validColumnName = [
+            'dpp_total_price',
+            'ppn_total_price',
+            'bbn_price',
+            'other_fee',
+        ];
+
+        if (! in_array($columnName, $validColumnName)) {
+            return null;
+        }
+
+        $unitTransactions = $this->unitTransactionItems();
+
+        return (int) $unitTransactions->sum((string) $columnName);
+    }
+
     protected static function booted()
     {
         static::creating(function ($model) {

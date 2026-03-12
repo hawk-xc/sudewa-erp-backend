@@ -3,9 +3,10 @@
 namespace App\Http\Controllers\Transaction;
 
 use App\Http\Controllers\Controller;
+use App\Models\Company;
+use App\Models\Person;
 use App\Models\UnitTransaction;
 use App\Models\UnitTransactionItemDetail;
-use App\Models\Warehouse;
 use App\Traits\ResponseTrait;
 use App\Traits\TransactionTrait;
 use Exception;
@@ -54,7 +55,7 @@ class UnitTransactionController extends Controller
             }
 
             $query->select($this->unitTransactionTable)
-                ->with(['warehouse:id,uuid,name,capacity', 'person:id,uuid,code,name,type', 'transactionFlow:id,uuid,transaction_date,description', 'unitTransactionBilling:id,uuid,payment_at,is_paid']);
+                ->with(['warehouse:id,uuid,name,capacity', 'person:id,uuid,code,name,type', 'transactionFlow:id,uuid,transaction_date,description', 'unitTransactionBilling:id,uuid,unit_transaction_id,bca_payment_amount,bca_payment_usd_amount,cash_payment_amount,bca_payment_liability,bca_payment_usd_liability,cash_payment_liability,payment_at,is_paid']);
 
             if ($request->filled('search')) {
                 $search = $request->search;
@@ -83,11 +84,21 @@ class UnitTransactionController extends Controller
 
             $data = $query->paginate($perPage);
 
+            $data->getCollection()->transform(function ($item) {
+                $item->transaction_bruto_total = $item->getBrutoAmount();
+                $item->transaction_dpp_total = $item->getSumAmount('dpp_total_price');
+                $item->transaction_ppn_total = $item->getSumAmount('ppn_total_price');
+                $item->transaction_bbn_total = $item->getSumAmount('bbn_price');
+                $item->transaction_other_fee = $item->getSumAmount('other_fee');
+
+                return $item;
+            });
+
             return $this->responseSuccess($data, 'Unit Transaction list retrieved successfully', 200);
         } catch (Exception $err) {
             Log::error('Error While retrieved Unit Transaction data : '.$err->getMessage());
 
-            return $this->responseError(null, 'Unit Transaction list retrieved Failed', 500);
+            return $this->responseError($err->getMessage(), 'Unit Transaction list retrieved Failed', 500);
         }
     }
 
@@ -118,7 +129,7 @@ class UnitTransactionController extends Controller
     {
         try {
             $validated = $request->validate([
-                'warehouse_id' => 'required|integer|exists:warehouses,id',
+                'company_id' => 'required|integer|exists:companies,id',
                 'person_id' => 'required|integer|exists:persons,id',
                 'code' => 'sometimes|string|max:255|unique:unit_transactions,code',
                 'type' => 'required|string|in:purchase,sales',
@@ -126,7 +137,22 @@ class UnitTransactionController extends Controller
                 'stock_state' => 'required|string|in:draft,cancel,rejected,prepare,inbound_purcase_order,inbound_incoming_goods,inbound_receipt,inbound_return,outbound_reserved,outbound_in_transit,outbound_delivered,outbound_return',
             ]);
 
-            $warehouseData = Warehouse::findOrFail($request->warehouse_id);
+            $warehouseData = Company::findOrFail($request->company_id)->warehouse;
+            $personData = Person::findOrFail($request->person_id);
+
+            $personType = $personData->type;
+
+            if ($request->type === 'purchase' && $personType !== 'supplier') {
+                throw ValidationException::withMessages([
+                    'person_id' => 'For purchase transaction, person must be a supplier.',
+                ]);
+            }
+
+            if ($request->type === 'sales' && $personType !== 'customer') {
+                throw ValidationException::withMessages([
+                    'person_id' => 'For sales transaction, person must be a customer.',
+                ]);
+            }
 
             $warehouseForecastCapacity = $warehouseData->capacity - $warehouseData->getWarehouseCapacityUsage();
 
@@ -135,6 +161,8 @@ class UnitTransactionController extends Controller
                     'max_capacity' => 'Warehouse capacity is not sufficient.',
                 ]);
             }
+
+            $validated['warehouse_id'] = $warehouseData->id;
 
             if (! isset($request->code)) {
                 $validated['code'] = $this->generateCode(match ($request->type) {
