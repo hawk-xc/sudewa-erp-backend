@@ -28,7 +28,7 @@ class MasterSparepartController extends Controller
 
         $this->authRepository = $ar;
 
-        $this->unitTypeTable = ['id', 'sparepart_category_id', 'code', 'name', 'capacity', 'unit_type', 'price', 'created_at'];
+        $this->unitTypeTable = ['id', 'sparepart_category_id', 'code', 'name', 'capacity', 'unit_type', 'buy_price', 'sell_price', 'created_at'];
     }
 
     public function index(Request $request)
@@ -98,7 +98,8 @@ class MasterSparepartController extends Controller
         $validated = $request->validate([
             'sparepart_category_id' => 'required|exists:sparepart_categories,id',
             'code' => 'required|string|unique:spareparts,code',
-            'price' => 'nullable|integer',
+            'buy_price' => 'nullable|integer',
+            'sell_price' => 'nullable|integer',
             'name' => 'required|string|max:255',
             'capacity' => 'nullable|decimal:0,2|max:100',
             'unit_type' => 'nullable|string|max:255|in:pcs,set,box',
@@ -129,7 +130,8 @@ class MasterSparepartController extends Controller
         $validated = $request->validate([
             'sparepart_category_id' => 'sometimes|exists:sparepart_categories,id',
             'code' => 'sometimes|string|unique:spareparts,code,'.$sparepart->id,
-            'price' => 'nullable|integer',
+            'buy_price' => 'nullable|integer',
+            'sell_price' => 'nullable|integer',
             'name' => 'sometimes|string|max:255',
             'capacity' => 'nullable|decimal:0,2|max:100',
             'unit_type' => 'nullable|string|max:255|in:pcs,set,box',
