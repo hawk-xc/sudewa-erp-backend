@@ -38,7 +38,7 @@ class MasterAccountController extends Controller
     public function index(Request $request)
     {
         try {
-            $query = Account::query();
+            $query = Account::query()->with('accountGroup:id,company_id,group_code');
 
             $query->select($this->accountTable);
 
@@ -87,7 +87,7 @@ class MasterAccountController extends Controller
 
             return $this->responseSuccess($data, 'Account list retrieved successfully', 200);
         } catch (Exception $err) {
-            Log::error('Error While retrieved Account data : ' . $err->getMessage());
+            Log::error('Error While retrieved Account data : '.$err->getMessage());
 
             return $this->responseError(null, 'Account list retrieved Failed', 500);
         }
@@ -123,7 +123,7 @@ class MasterAccountController extends Controller
         } catch (\Illuminate\Validation\ValidationException $e) {
             return $this->responseError($e->errors(), 'Validation failed', 422);
         } catch (Exception $err) {
-            Log::error('Error While storing Account data : ' . $err->getMessage());
+            Log::error('Error While storing Account data : '.$err->getMessage());
 
             return $this->responseError(null, 'Account creation failed', 500);
         }
@@ -137,7 +137,7 @@ class MasterAccountController extends Controller
             if ($account) {
                 $validated = $request->validate([
                     'account_group_id' => 'sometimes|integer|exists:account_groups,id',
-                    'code' => 'sometimes|required|string|max:50|unique:accounts,code,' . $id,
+                    'code' => 'sometimes|required|string|max:50|unique:accounts,code,'.$id,
                     'name' => 'sometimes|required|string|max:255',
                     'description' => 'nullable|string',
                     'type' => 'sometimes|required|in:debet,credit',
@@ -154,7 +154,7 @@ class MasterAccountController extends Controller
         } catch (\Illuminate\Validation\ValidationException $e) {
             return $this->responseError($e->errors(), 'Validation failed', 422);
         } catch (Exception $err) {
-            Log::error('Error While updating Account data : ' . $err->getMessage());
+            Log::error('Error While updating Account data : '.$err->getMessage());
 
             return $this->responseError($err->getMessage(), 'Account update failed', 500);
         }

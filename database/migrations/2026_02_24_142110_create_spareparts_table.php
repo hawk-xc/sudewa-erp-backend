@@ -20,7 +20,8 @@ return new class extends Migration
             $table->integer('capacity')->default(0);
             $table->string('image')->nullable(true);
             $table->enum('unit_type', ['pcs', 'set', 'box'])->default('pcs');
-            $table->decimal('price', 15, 2)->nullable(false);
+            $table->decimal('buy_price', 15, 2)->nullable(false);
+            $table->decimal('sell_price', 15, 2)->nullable(false);
             $table->timestamps();
         });
     }

@@ -17,6 +17,7 @@ class TransactionFlow extends Model
         'company_id',
         'unit_transaction_id',
         'transaction_date',
+        'name',
         'description',
         'bank_usd_debit',
         'bank_usd_credit',
@@ -24,11 +25,17 @@ class TransactionFlow extends Model
         'bank_idr_credit',
         'cash_idr_debit',
         'cash_idr_credit',
+        'transaction_proof',
     ];
 
     public function unitTransaction()
     {
         return $this->belongsTo(UnitTransaction::class);
+    }
+
+    public function company()
+    {
+        return $this->belongsTo(Company::class);
     }
 
     protected static function booted()

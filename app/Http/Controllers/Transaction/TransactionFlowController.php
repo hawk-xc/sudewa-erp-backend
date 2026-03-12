@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Transaction;
 use App\Http\Controllers\Controller;
 use App\Models\TransactionFlow;
 use App\Repositories\AuthRepository;
+use App\Traits\FileTrait;
 use App\Traits\ResponseTrait;
 use Exception;
 use Illuminate\Http\Request;
@@ -13,7 +14,7 @@ use Illuminate\Support\Facades\Log;
 
 class TransactionFlowController extends Controller
 {
-    use ResponseTrait;
+    use FileTrait, ResponseTrait;
 
     protected AuthRepository $authRepository;
 
@@ -34,6 +35,7 @@ class TransactionFlowController extends Controller
             'company_id',
             'unit_transaction_id',
             'transaction_date',
+            'name',
             'description',
             'bank_usd_debit',
             'bank_usd_credit',
@@ -41,6 +43,7 @@ class TransactionFlowController extends Controller
             'bank_idr_credit',
             'cash_idr_debit',
             'cash_idr_credit',
+            'transaction_proof',
             'created_at',
         ];
     }
@@ -75,10 +78,10 @@ class TransactionFlowController extends Controller
 
             return $this->responseSuccess($data, 'Transaction Flows retrieved successfully', 200);
 
-        } catch (Exception $e) {
-            Log::error('Error fetching Transaction Flows: '.$e->getMessage());
+        } catch (Exception $err) {
+            Log::error('Error fetching Transaction Flows: '.$err->getMessage());
 
-            return $this->responseError(null, 'Internal Server Error', 500);
+            return $this->responseError($err->getMessage(), 'Internal Server Error', 500);
         }
     }
 
@@ -91,10 +94,10 @@ class TransactionFlowController extends Controller
 
             return $this->responseSuccess($transactionFlow, 'Transaction Flow retrieved successfully', 200);
 
-        } catch (Exception $e) {
-            Log::error('Error fetching Transaction Flow: '.$e->getMessage());
+        } catch (Exception $err) {
+            Log::error('Error fetching Transaction Flow: '.$err->getMessage());
 
-            return $this->responseError(null, 'Transaction Flow not found', 404);
+            return $this->responseError($err->getMessage(), 'Transaction Flow not found', 404);
         }
     }
 
@@ -104,6 +107,7 @@ class TransactionFlowController extends Controller
             'company_id' => 'required|exists:companies,id',
             'unit_transaction_id' => 'nullable|exists:unit_transactions,id',
             'transaction_date' => 'required|date',
+            'name' => 'nullable|string',
             'description' => 'nullable|string',
             'bank_usd_debit' => 'nullable|numeric',
             'bank_usd_credit' => 'nullable|numeric',
@@ -111,19 +115,27 @@ class TransactionFlowController extends Controller
             'bank_idr_credit' => 'nullable|numeric',
             'cash_idr_debit' => 'nullable|numeric',
             'cash_idr_credit' => 'nullable|numeric',
+            'transaction_proof' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:2048',
         ]);
 
         try {
+            if ($request->hasFile('transaction_proof')) {
+                $validated['transaction_proof'] = $this->storeFile(
+                    $request->file('transaction_proof'),
+                    'payment_proof'
+                );
+            }
+
             $transactionFlow = DB::transaction(function () use ($validated) {
                 return TransactionFlow::create($validated);
             });
 
             return $this->responseSuccess($transactionFlow, 'Transaction Flow created successfully', 201);
 
-        } catch (Exception $e) {
-            Log::error('Error creating Transaction Flow: '.$e->getMessage());
+        } catch (Exception $err) {
+            Log::error('Error creating Transaction Flow: '.$err->getMessage());
 
-            return $this->responseError(null, 'Internal Server Error', 500);
+            return $this->responseError($err->getMessage(), 'Internal Server Error', 500);
         }
     }
 
@@ -135,6 +147,7 @@ class TransactionFlowController extends Controller
             'company_id' => 'sometimes|exists:companies,id',
             'unit_transaction_id' => 'sometimes|exists:unit_transactions,id',
             'transaction_date' => 'sometimes|date',
+            'name' => 'nullable|string',
             'description' => 'nullable|string',
             'bank_usd_debit' => 'nullable|numeric',
             'bank_usd_credit' => 'nullable|numeric',
@@ -142,40 +155,51 @@ class TransactionFlowController extends Controller
             'bank_idr_credit' => 'nullable|numeric',
             'cash_idr_debit' => 'nullable|numeric',
             'cash_idr_credit' => 'nullable|numeric',
+            'transaction_proof' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:2048',
         ]);
 
         try {
+            if ($request->hasFile('transaction_proof')) {
+
+                if ($transactionFlow->transaction_proof) {
+                    $this->destroyFile('payment_proof/'.$transactionFlow->transaction_proof);
+                }
+
+                $validated['transaction_proof'] = $this->storeFile(
+                    $request->file('transaction_proof'),
+                    'payment_proof'
+                );
+            }
+
             DB::transaction(function () use ($validated, $transactionFlow) {
                 $transactionFlow->update($validated);
             });
 
             return $this->responseSuccess($transactionFlow->fresh(), 'Transaction Flow updated successfully', 200);
 
-        } catch (Exception $e) {
-            Log::error('Error updating Transaction Flow: '.$e->getMessage());
+        } catch (Exception $errrr) {
+            Log::error('Error updating Transaction Flow: '.$errrr->getMessage());
 
-            return $this->responseError(null, 'Internal Server Error', 500);
+            return $this->responseError($errrr->getMessage(), 'Internal Server Error', 500);
         }
     }
 
-    /**
-     * DELETE /transaction-flows/{id}
-     */
     public function destroy(string $id)
     {
         try {
             $transactionFlow = TransactionFlow::findOrFail($id);
 
             DB::transaction(function () use ($transactionFlow) {
+                $this->destroyFile($transactionFlow->transaction_proof);
                 $transactionFlow->delete();
             });
 
-            return $this->responseSuccess(null, 'Transaction Flow deleted successfully', 200);
+            return $this->responseSuccess($transactionFlow, 'Transaction Flow deleted successfully', 200);
 
-        } catch (Exception $e) {
-            Log::error('Error deleting Transaction Flow: '.$e->getMessage());
+        } catch (Exception $errrr) {
+            Log::error('Error deleting Transaction Flow: '.$errrr->getMessage());
 
-            return $this->responseError(null, 'Internal Server Error', 500);
+            return $this->responseError($errrr->getMessage(), 'Internal Server Error', 500);
         }
     }
 }

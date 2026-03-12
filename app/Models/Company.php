@@ -43,6 +43,11 @@ class Company extends Model
         return $this->hasMany(AccountGroup::class);
     }
 
+    public function warehouse()
+    {
+        return $this->hasOne(Warehouse::class, 'company_id', 'id');
+    }
+
     protected static function booted()
     {
         static::creating(function ($company) {

@@ -22,6 +22,8 @@ class UnitType extends Model
         'unit_model',
         'netto_weight',
         'bruto_weight',
+        'buy_price',
+        'sell_price',
     ];
 
     public function brand()
