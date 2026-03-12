@@ -34,4 +34,26 @@ trait FileTrait
 
         return false;
     }
+
+    public function updateFile(?UploadedFile $newFile, ?string $oldPath, string $folder): ?string
+    {
+        if (! $newFile) {
+            return $oldPath;
+        }
+
+        if ($oldPath) {
+            $this->deleteFile($oldPath);
+        }
+
+        return $this->storeFile($newFile, $folder);
+    }
+
+    public function getFileUrl(?string $path): ?string
+    {
+        if (! $path) {
+            return null;
+        }
+
+        return Storage::url($path);
+    }
 }

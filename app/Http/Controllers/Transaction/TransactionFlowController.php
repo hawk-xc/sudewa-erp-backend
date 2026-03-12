@@ -190,7 +190,7 @@ class TransactionFlowController extends Controller
             $transactionFlow = TransactionFlow::findOrFail($id);
 
             DB::transaction(function () use ($transactionFlow) {
-                $this->destroyFile('payment_proof/'.$transactionFlow->transaction_proof);
+                $this->destroyFile($transactionFlow->transaction_proof);
                 $transactionFlow->delete();
             });
 
