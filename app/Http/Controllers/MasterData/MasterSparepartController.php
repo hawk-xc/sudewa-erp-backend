@@ -34,9 +34,7 @@ class MasterSparepartController extends Controller
     public function index(Request $request)
     {
         try {
-            $query = Sparepart::with(['sparepartCategory' => function ($query) {
-                $query->select(['id', 'code', 'name']);
-            }]);
+            $query = Sparepart::with('sparepartCategory:id,name');
 
             if ($request->filled('search')) {
                 $search = $request->search;
@@ -104,9 +102,6 @@ class MasterSparepartController extends Controller
             'capacity' => 'nullable|decimal:0,2|max:100',
             'unit_type' => 'nullable|string|max:255|in:pcs,set,box',
         ]);
-
-        // null
-        // $image = $request->file('image')->store('unit-types');
 
         try {
             $sparepart = DB::transaction(function () use ($validated) {
