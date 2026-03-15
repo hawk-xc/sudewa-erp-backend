@@ -137,7 +137,16 @@ class UnitTransactionController extends Controller
                 'stock_state' => 'required|string|in:draft,cancel,rejected,prepare,inbound_purcase_order,inbound_incoming_goods,inbound_receipt,inbound_return,outbound_reserved,outbound_in_transit,outbound_delivered,outbound_return',
             ]);
 
-            $warehouseData = Company::findOrFail($request->company_id)->warehouse;
+            $warehouseData = Company::findOrFail($request->company_id)
+                ->warehouse()
+                ->firstOrCreate(
+                    ['company_id' => $request->company_id],
+                    [
+                        'name' => 'Company Default Warehouse',
+                        'capacity' => 100,
+                        'description' => "Company Default Warehouse Data Seeder",
+                    ]
+                );
             $personData = Person::findOrFail($request->person_id);
 
             $personType = $personData->type;
@@ -215,9 +224,10 @@ class UnitTransactionController extends Controller
 
     public function updateState(Request $request, string $id)
     {
+        
         try {
             $unitTransaction = UnitTransaction::findOrFail((int) $id);
-
+            
             if (is_string($request->unit_transaction_details)) {
                 $request->merge([
                     'unit_transaction_details' => json_decode($request->unit_transaction_details, true),
