@@ -61,6 +61,9 @@ class AuthController extends Controller
                 return $this->responseError(null, 'Invalid Username/Email or Password!', Response::HTTP_UNAUTHORIZED);
             }
 
+            $user = $this->guard()->user();
+            $user->setLoginTime();
+
             return $this->responseSuccess(
                 $this->respondWithToken($token),
                 'Logged In Successfully!'

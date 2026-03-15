@@ -27,6 +27,7 @@ class User extends Authenticatable implements JWTSubject
         'is_active',
         'password',
         'secure_password',
+        'last_login'
     ];
 
     /**
@@ -47,6 +48,7 @@ class User extends Authenticatable implements JWTSubject
      */
     protected $casts = [
         'email_verified_at' => 'datetime',
+        'last_login' => 'datetime',
     ];
 
     /**
@@ -70,5 +72,10 @@ class User extends Authenticatable implements JWTSubject
     public function isAdmin(): bool
     {
         return $this->hasRole('admin');
+    }
+
+    public function setLoginTime()
+    {
+        return $this->update(['last_login' => now()]);
     }
 }
