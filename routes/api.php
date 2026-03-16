@@ -15,10 +15,11 @@ use App\Http\Controllers\MasterData\MasterUnitTypeController;
 use App\Http\Controllers\Permission\PermissionController;
 use App\Http\Controllers\Role\RoleController;
 use App\Http\Controllers\Transaction\TransactionFlowController;
-use App\Http\Controllers\Transaction\UnitTransactionBillingController as UnitTransactionBillingPurchaseController;
-use App\Http\Controllers\Transaction\UnitTransactionController as UnitTransactionPurchaseController;
-use App\Http\Controllers\Transaction\UnitTransactionItemController as UnitTransactionItemPurchaseController;
-use App\Http\Controllers\Transaction\UnitTransactionItemDetailController as UnitTransactionItemDetailPurchaseController;
+use App\Http\Controllers\Transaction\UnitTransactionBillingController;
+use App\Http\Controllers\Transaction\UnitTransactionController;
+use App\Http\Controllers\Transaction\UnitTransactionItemController;
+use App\Http\Controllers\Transaction\UnitTransactionItemDetailController;
+use App\Http\Controllers\Transaction\UnitTransactionItemSalesController;
 use App\Http\Controllers\User\UserController;
 use App\Http\Controllers\Warehouse\WarehouseController;
 use Illuminate\Support\Facades\Route;
@@ -111,14 +112,15 @@ Route::group(
             // Unit Transaction API
             Route::group(['prefix' => 'unit-transaction', 'as' => 'unit-transaction.'], function () {
                 // Additional Route
-                Route::put('unit-transaction/{id}/update-state', [UnitTransactionPurchaseController::class, 'updateState'])->name('update-state');
-                Route::get('unit-transaction-item/get-formula', [UnitTransactionItemPurchaseController::class, 'getFormula'])->name('get-formula');
-                Route::delete('unit-transaction-item/transcation-item-detail-bulk-delete/{id}', [UnitTransactionItemPurchaseController::class, 'bulkDelete'])->name('bulk-delete');
+                Route::put('unit-transaction/{id}/update-state', [UnitTransactionController::class, 'updateState'])->name('update-state');
+                Route::get('unit-transaction-item/get-formula', [UnitTransactionItemController::class, 'getFormula'])->name('get-formula');
+                Route::delete('unit-transaction-item/transcation-item-detail-bulk-delete/{id}', [UnitTransactionItemController::class, 'bulkDelete'])->name('bulk-delete');
 
-                Route::apiResource('unit-transaction', UnitTransactionPurchaseController::class);
-                Route::apiResource('unit-transaction-item', UnitTransactionItemPurchaseController::class);
-                Route::apiResource('unit-transaction-item-detail', UnitTransactionItemDetailPurchaseController::class);
-                Route::apiResource('unit-transaction-billing', UnitTransactionBillingPurchaseController::class);
+                Route::apiResource('unit-transaction', UnitTransactionController::class);
+                Route::apiResource('unit-transaction-item', UnitTransactionItemController::class);
+                Route::apiResource('unit-transaction-item-sales', UnitTransactionItemSalesController::class);
+                Route::apiResource('unit-transaction-item-detail', UnitTransactionItemDetailController::class);
+                Route::apiResource('unit-transaction-billing', UnitTransactionBillingController::class);
             });
 
             // Unit Sales API
