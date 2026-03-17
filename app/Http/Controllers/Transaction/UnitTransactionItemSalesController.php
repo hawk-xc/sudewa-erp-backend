@@ -21,17 +21,50 @@ class UnitTransactionItemSalesController extends Controller
 
     public function store(Request $request)
     {
+        if (is_string($request->unit_transaction_details)) {
+            $request->merge([
+                'unit_transaction_details' => json_decode($request->unit_transaction_details, true),
+            ]);
+        }
+
         $validated = $request->validate([
             'unit_transaction_item_id' => 'required|int|exists:unit_transaction_items,id',
-            'unit_transaction_item_detail_id' => 'required|int|exists:unit_transaction_item_details,id',
+            'unit_transaction_details' => 'required|array|min:1',
+            'unit_transaction_details.*' => 'integer|exists:unit_transaction_item_details,id',
         ]);
 
         try {
             $unitTransactionItemSales = DB::transaction(function () use ($validated) {
-                return UnitTransactionItemSales::create($validated);
+
+                $results = [];
+
+                $uniqueDetails = array_unique($validated['unit_transaction_details']);
+
+                foreach ($uniqueDetails as $itemId) {
+
+                    $exists = UnitTransactionItemSales::where('unit_transaction_item_id', $validated['unit_transaction_item_id'])
+                        ->where('unit_transaction_item_detail_id', $itemId)
+                        ->exists();
+
+                    if ($exists) {
+                        continue;
+                    }
+
+                    $results[] = UnitTransactionItemSales::create([
+                        'unit_transaction_item_id' => $validated['unit_transaction_item_id'],
+                        'unit_transaction_item_detail_id' => $itemId,
+                    ]);
+                }
+
+                return $results;
             });
 
-            return $this->responseSuccess($unitTransactionItemSales, 'Unit Transaction Item Sales created successfully', 201);
+            return $this->responseSuccess(
+                $unitTransactionItemSales,
+                'Unit Transaction Item Sales created successfully',
+                201
+            );
+
         } catch (Exception $err) {
             return $this->responseError(
                 $err->getMessage(),

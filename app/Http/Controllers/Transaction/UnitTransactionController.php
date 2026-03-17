@@ -111,7 +111,8 @@ class UnitTransactionController extends Controller
                 'transactionFlow:id,uuid,transaction_date,description',
                 'unitTransactionBilling',
                 'unitTransactionItems:id,unit_transaction_id,uuid,qty_total,price,dpp_total_price,ppn_total_price',
-                'unitTransactionItems.unitTransactionItemDetails:id,unit_transaction_item_id,uuid,color,machine_number,chassis_number',
+                'unitTransactionItems.unitTransactionItemDetails:id,unit_transaction_item_id,uuid,color,machine_number,chassis_number,in_stock',
+                'unitTransactionItems.unitTypeSoldDetails:id,uuid,unit_transaction_item_id,color,machine_number,chassis_number,in_stock',
             ])
                 ->select($this->unitTransactionTable)
                 ->findOrFail($id);
@@ -144,7 +145,7 @@ class UnitTransactionController extends Controller
                     [
                         'name' => 'Company Default Warehouse',
                         'capacity' => 100,
-                        'description' => "Company Default Warehouse Data Seeder",
+                        'description' => 'Company Default Warehouse Data Seeder',
                     ]
                 );
             $personData = Person::findOrFail($request->person_id);
@@ -224,10 +225,10 @@ class UnitTransactionController extends Controller
 
     public function updateState(Request $request, string $id)
     {
-        
+
         try {
             $unitTransaction = UnitTransaction::findOrFail((int) $id);
-            
+
             if (is_string($request->unit_transaction_details)) {
                 $request->merge([
                     'unit_transaction_details' => json_decode($request->unit_transaction_details, true),
