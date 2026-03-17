@@ -19,6 +19,7 @@ class WarehouseController extends Controller
     use ResponseTrait;
 
     protected AuthRepository $authRepository;
+
     protected $warehouseTable;
 
     public function __construct(AuthRepository $ar)
@@ -193,7 +194,7 @@ class WarehouseController extends Controller
             $stockForecast = UnitTransactionItemDetail::where('in_stock', false)
                 ->whereHas('unitTransactionItem.unitTransaction', function ($q) use ($warehouse) {
                     $q->where('warehouse_id', $warehouse->id)
-                    ->where('type', 'purchase');
+                        ->where('type', 'purchase');
                 })
                 ->count();
 
@@ -204,7 +205,7 @@ class WarehouseController extends Controller
 
         } catch (Exception $err) {
 
-            Log::error('Error while fetch warehouse stock data : ' . $err->getMessage());
+            Log::error('Error while fetch warehouse stock data : '.$err->getMessage());
 
             return $this->responseError(null, $err->getMessage(), 500);
         }
@@ -250,10 +251,10 @@ class WarehouseController extends Controller
             $forecast = UnitTransactionItemDetail::where('in_stock', false)
                 ->whereHas('unitTransactionItem.unitTransaction', function ($q) use ($warehouse) {
                     $q->where('warehouse_id', $warehouse->id)
-                    ->where('type', 'purchase');
+                        ->where('type', 'purchase');
                 })
                 ->with([
-                    'unitTransactionItem.unitType:id,uuid,code,name,unit_type,unit_model'
+                    'unitTransactionItem.unitType:id,uuid,code,name,unit_type,unit_model',
                 ])
                 ->get()
                 ->groupBy(function ($item) {
@@ -334,5 +335,15 @@ class WarehouseController extends Controller
                 'message' => 'Internal Server Error',
             ], 500);
         }
+    }
+
+    public function receiptStock(Request $request, string $warehouseId)
+    {
+        $warehouse = Warehouse::findOrFail($warehouseId)
+    }
+
+    public function dispatchStock(Request $request)
+    {
+
     }
 }
