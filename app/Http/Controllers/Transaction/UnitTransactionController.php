@@ -225,10 +225,22 @@ class UnitTransactionController extends Controller
 
     public function updateState(Request $request, string $id)
     {
+        $purchaseStates = [
+            'draft', 'cancel', 'rejected', 'prepare',
+            'inbound_purcase_order', 'inbound_incoming_goods',
+            'inbound_receipt', 'inbound_return',
+        ];
+
+        $salesStates = [
+            'draft', 'cancel', 'prepare',
+            'outbound_reserved', 'outbound_in_transit',
+            'outbound_delivered', 'outbound_return',
+        ];
 
         try {
-            $unitTransaction = UnitTransaction::findOrFail((int) $id);
+            $unitTransaction = UnitTransaction::with('unitTransactionItems')->findOrFail((int) $id);
 
+            // decode jika string
             if (is_string($request->unit_transaction_details)) {
                 $request->merge([
                     'unit_transaction_details' => json_decode($request->unit_transaction_details, true),
@@ -236,36 +248,60 @@ class UnitTransactionController extends Controller
             }
 
             $validated = $request->validate([
-                'stock_state' => 'required|string|in:draft,cancel,rejected,prepare,inbound_purcase_order,inbound_incoming_goods,inbound_receipt,inbound_return,outbound_reserved,outbound_in_transit,outbound_delivered,outbound_return',
+                'stock_state' => 'required|string',
                 'unit_transaction_details' => 'required|array|min:1',
-                'unit_transaction_details.*' => 'integer|exists:unit_transaction_item_details,id',
+                'unit_transaction_details.*' => 'integer|distinct|exists:unit_transaction_item_details,id',
             ]);
 
-            $detailIds = $validated['unit_transaction_details'];
+            $allowedStates = $unitTransaction->type === 'purchase'
+                ? $purchaseStates
+                : $salesStates;
 
-            if ($unitTransaction->unitTransactionItems()->count() === 0) {
-                return $this->responseError(
-                    null,
-                    'Unit transaction items has no unit transaction items detail data!',
-                    422
-                );
+            if (! in_array($validated['stock_state'], $allowedStates)) {
+                return $this->responseError(null, 'Invalid stock state for this transaction type', 422);
             }
 
-            $validDetails = UnitTransactionItemDetail::whereIn('id', $detailIds)
-                ->whereHas('unitTransactionItem', function ($query) use ($unitTransaction) {
-                    $query->where('unit_transaction_id', $unitTransaction->id);
-                })
-                ->get();
-
-            if ($unitTransaction->type == 'purchase' && $validDetails->isEmpty()) {
-                return $this->responseError(
-                    null,
-                    'Selected unit transaction item details not found in this transaction',
-                    422
-                );
+            if ($unitTransaction->unitTransactionItems->isEmpty()) {
+                return $this->responseError(null, 'No transaction items found', 422);
             }
 
-            DB::transaction(function () use ($unitTransaction, $validated, $validDetails) {
+            $detailIds = array_unique($validated['unit_transaction_details']);
+
+            if ($unitTransaction->type == 'purchase') {
+                $validDetails = UnitTransactionItemDetail::whereIn('id', $detailIds)
+                    ->whereHas('unitTransactionItem', function ($q) use ($unitTransaction) {
+                        $q->where('unit_transaction_id', $unitTransaction->id);
+                    })
+                    ->get();
+
+                if ($validDetails->isEmpty()) {
+                    return $this->responseError(
+                        null,
+                        'Selected details not found in this transaction',
+                        422
+                    );
+                }
+            } else {
+                $validDetails = collect();
+
+                foreach ($unitTransaction->unitTransactionItems as $item) {
+                    $details = $item->unitTypeSoldDetails()
+                        ->whereIn('unit_transaction_item_details.id', $detailIds)
+                        ->get();
+
+                    $validDetails = $validDetails->merge($details);
+                }
+
+                if ($validDetails->isEmpty()) {
+                    return $this->responseError(
+                        null,
+                        'Selected details not found in this transaction',
+                        422
+                    );
+                }
+            }
+
+            DB::transaction(function () use ($request, $unitTransaction, $validated, $validDetails) {
                 $unitTransaction->update([
                     'stock_state' => $validated['stock_state'],
                 ]);
@@ -278,19 +314,13 @@ class UnitTransactionController extends Controller
 
                 foreach ($validDetails as $detail) {
                     if ($unitTransaction->type === 'purchase') {
-                        if (! $detail->in_stock) {
-                            $detail->update([
-                                'in_stock' => true,
-                            ]);
-
+                        if (! $detail->in_stock && $request->stock_state == 'inbound_receipt') {
+                            $detail->update(['in_stock' => true]);
                             $detail->receiptStock();
                         }
-                    } elseif ($unitTransaction->type === 'sales') {
-                        if ($detail->in_stock) {
-                            $detail->update([
-                                'in_stock' => false,
-                            ]);
-
+                    } else {
+                        if ($detail->in_stock && $request->stock_state == 'outbound_delivered') {
+                            $detail->update(['in_stock' => false]);
                             $detail->dispatchStock();
                         }
                     }
@@ -301,16 +331,23 @@ class UnitTransactionController extends Controller
                 $unitTransaction->fresh()->load([
                     'unitTransactionItems:id,uuid,unit_transaction_id,unit_type_id,sparepart_id,price',
                     'unitTransactionItems.unitTransactionItemDetails:id,uuid,unit_transaction_item_id,color,machine_number,chassis_number,in_stock',
+                    'unitTransactionItems.unitTypeSoldDetails:id,uuid,unit_transaction_item_id,color,machine_number,chassis_number,in_stock',
                 ]),
                 'Unit Transaction state updated successfully',
                 200
             );
+
         } catch (ValidationException $e) {
             return $this->responseError($e->errors(), 'Validation failed', 422);
-        } catch (Exception $err) {
-            Log::error('Error While updating Unit Transaction state : '.$err->getMessage());
 
-            return $this->responseError($err->getMessage(), 'Unit Transaction state update failed', 500);
+        } catch (Exception $err) {
+            Log::error('Error updating Unit Transaction state: '.$err->getMessage());
+
+            return $this->responseError(
+                $err->getMessage(),
+                'Unit Transaction state update failed',
+                500
+            );
         }
     }
 
