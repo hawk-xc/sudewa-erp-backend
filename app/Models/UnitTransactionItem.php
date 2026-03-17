@@ -57,6 +57,21 @@ class UnitTransactionItem extends Model
         return $this->hasMany(UnitTransactionItemDetail::class);
     }
 
+    public function unitTransactionItemSales()
+    {
+        return $this->hasMany(UnitTransactionItemSales::class);
+    }
+
+    public function unitTypeSoldDetails()
+    {
+        return $this->belongsToMany(
+            UnitTransactionItemDetail::class,
+            'unit_transaction_item_sales',
+            'unit_transaction_item_id',
+            'unit_transaction_item_detail_id'
+        );
+    }
+
     protected static function booted()
     {
         static::creating(function ($model) {
