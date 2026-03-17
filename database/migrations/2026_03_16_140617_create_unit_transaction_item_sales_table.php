@@ -13,6 +13,11 @@ return new class extends Migration
     {
         Schema::create('unit_transaction_item_sales', function (Blueprint $table) {
             $table->id();
+            $table->uuid();
+            $table->foreignId('unit_transaction_item_id')->constrained('unit_transaction_items')->cascadeOnDelete();
+            $table->foreignId('unit_transaction_item_detail_id')
+                ->constrained('unit_transaction_item_details', indexName: 'utis_utid_foreign')
+                ->cascadeOnDelete();
             $table->timestamps();
         });
     }
