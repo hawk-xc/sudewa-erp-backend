@@ -14,6 +14,7 @@ return new class extends Migration
         Schema::create('warehouse_movements', function (Blueprint $table) {
             $table->id();
             $table->uuid();
+            $table->string('serial_number')->unique()->nullable(false);
             $table->foreignId('warehouse_id')->constrained('warehouses')->cascadeOnDelete();
             $table->foreignId('unit_transaction_id')->nullable(true)->constrained('unit_transactions')->nullOnDelete();
             $table->foreignId('unit_transaction_item_detail_id')->constrained('unit_transaction_item_details')->cascadeOnDelete();

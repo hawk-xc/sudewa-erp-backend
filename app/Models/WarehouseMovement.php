@@ -2,8 +2,10 @@
 
 namespace App\Models;
 
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 class WarehouseMovement extends Model
@@ -15,6 +17,7 @@ class WarehouseMovement extends Model
     protected $fillable = [
         'uuid',
         'warehouse_id',
+        'serial_number',
         'unit_transaction_id',
         'unit_transaction_item_detail_id',
         'status',
@@ -40,8 +43,32 @@ class WarehouseMovement extends Model
         parent::boot();
 
         static::creating(function ($model) {
+
             if (empty($model->uuid)) {
                 $model->uuid = (string) Str::uuid();
+            }
+
+            if (empty($model->serial_number)) {
+
+                DB::transaction(function () use ($model) {
+
+                    $today = Carbon::now()->format('Ymd');
+                    $prefix = 'TRX'.$today;
+
+                    $last = self::where('serial_number', 'like', $prefix.'%')
+                        ->lockForUpdate()
+                        ->orderBy('serial_number', 'desc')
+                        ->first();
+
+                    if ($last) {
+                        $lastNumber = (int) substr($last->serial_number, -5);
+                        $nextNumber = $lastNumber + 1;
+                    } else {
+                        $nextNumber = 1;
+                    }
+
+                    $model->serial_number = $prefix.str_pad($nextNumber, 5, '0', STR_PAD_LEFT);
+                });
             }
         });
     }
