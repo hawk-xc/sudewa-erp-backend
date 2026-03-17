@@ -63,4 +63,20 @@ class UnitType extends Model
             $query->where('warehouse_id', $warehouseId);
         })->count();
     }
+
+    public function getUnitTypeItemDetails(?int $warehouseId = null)
+    {
+        return $this->unitTransactionItems()
+            ->when($warehouseId, function ($q) use ($warehouseId) {
+                $q->whereHas('unitTransaction', function ($q2) use ($warehouseId) {
+                    $q2->where('warehouse_id', $warehouseId);
+                });
+            })
+            ->with(['unitTransactionItemDetails' => function ($q) {
+                $q->where('in_stock', 1);
+            }])
+            ->get()
+            ->pluck('unitTransactionItemDetails')
+            ->flatten();
+    }
 }
