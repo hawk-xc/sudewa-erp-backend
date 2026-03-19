@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('accounts', function (Blueprint $table) {
             $table->id();
             $table->uuid();
-            $table->string('code')->unique(true)->nullable(false);
+            $table->string('code')->nullable(false);
             $table->string('group_code')->nullable(true);
             $table->string('name')->nullable(false);
             $table->string('description')->nullable(true);
