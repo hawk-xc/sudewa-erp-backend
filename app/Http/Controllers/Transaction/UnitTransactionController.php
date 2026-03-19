@@ -238,9 +238,9 @@ class UnitTransactionController extends Controller
         ];
 
         try {
-            $unitTransaction = UnitTransaction::with('unitTransactionItems')->findOrFail((int) $id);
+            $unitTransaction = UnitTransaction::with('unitTransactionItems')
+                ->findOrFail((int) $id);
 
-            // decode jika string
             if (is_string($request->unit_transaction_details)) {
                 $request->merge([
                     'unit_transaction_details' => json_decode($request->unit_transaction_details, true),
@@ -249,7 +249,7 @@ class UnitTransactionController extends Controller
 
             $validated = $request->validate([
                 'stock_state' => 'required|string',
-                'unit_transaction_details' => 'required|array|min:1',
+                'unit_transaction_details' => 'nullable|array',
                 'unit_transaction_details.*' => 'integer|distinct|exists:unit_transaction_item_details,id',
             ]);
 
@@ -265,43 +265,58 @@ class UnitTransactionController extends Controller
                 return $this->responseError(null, 'No transaction items found', 422);
             }
 
-            $detailIds = array_unique($validated['unit_transaction_details']);
+            if (! empty($validated['unit_transaction_details'])) {
+                $detailIds = array_unique($validated['unit_transaction_details']);
+            } else {
+                if ($unitTransaction->type === 'purchase') {
+                    $detailIds = UnitTransactionItemDetail::whereHas('unitTransactionItem', function ($q) use ($unitTransaction) {
+                        $q->where('unit_transaction_id', $unitTransaction->id);
+                    })->pluck('id')->toArray();
 
-            if ($unitTransaction->type == 'purchase') {
+                } else {
+                    $detailIds = [];
+
+                    foreach ($unitTransaction->unitTransactionItems as $item) {
+                        $ids = $item->unitTypeSoldDetails()
+                            ->pluck('unit_transaction_item_details.id')
+                            ->toArray();
+
+                        $detailIds = array_merge($detailIds, $ids);
+                    }
+
+                    $detailIds = array_unique($detailIds);
+                }
+            }
+
+            if ($unitTransaction->type === 'purchase') {
                 $validDetails = UnitTransactionItemDetail::whereIn('id', $detailIds)
                     ->whereHas('unitTransactionItem', function ($q) use ($unitTransaction) {
                         $q->where('unit_transaction_id', $unitTransaction->id);
                     })
                     ->get();
 
-                if ($validDetails->isEmpty()) {
-                    return $this->responseError(
-                        null,
-                        'Selected details not found in this transaction',
-                        422
-                    );
-                }
             } else {
                 $validDetails = collect();
 
                 foreach ($unitTransaction->unitTransactionItems as $item) {
+
                     $details = $item->unitTypeSoldDetails()
                         ->whereIn('unit_transaction_item_details.id', $detailIds)
                         ->get();
 
                     $validDetails = $validDetails->merge($details);
                 }
-
-                if ($validDetails->isEmpty()) {
-                    return $this->responseError(
-                        null,
-                        'Selected details not found in this transaction',
-                        422
-                    );
-                }
             }
 
-            DB::transaction(function () use ($request, $unitTransaction, $validated, $validDetails) {
+            if ($validDetails->isEmpty()) {
+                return $this->responseError(
+                    null,
+                    'Selected details not found in this transaction',
+                    422
+                );
+            }
+
+            DB::transaction(function () use ($unitTransaction, $validated) {
                 $unitTransaction->update([
                     'stock_state' => $validated['stock_state'],
                 ]);
@@ -312,19 +327,17 @@ class UnitTransactionController extends Controller
                     ]);
                 }
 
-                foreach ($validDetails as $detail) {
-                    if ($unitTransaction->type === 'purchase') {
-                        if (! $detail->in_stock && $request->stock_state == 'inbound_receipt') {
-                            $detail->update(['in_stock' => true]);
-                            $detail->receiptStock();
-                        }
-                    } else {
-                        if ($detail->in_stock && $request->stock_state == 'outbound_delivered') {
-                            $detail->update(['in_stock' => false]);
-                            $detail->dispatchStock();
-                        }
-                    }
-                }
+                // foreach ($validDetails as $detail) {
+                //     if ($unitTransaction->type === 'purchase') {
+                //         if (! $detail->in_stock && $validated['stock_state'] === 'inbound_incoming_goods') {
+                //             $detail->receiptStock();
+                //         }
+                //     } else {
+                //         if ($detail->in_stock && $validated['stock_state'] === 'outbound_reserved') {
+                //             $detail->dispatchStock();
+                //         }
+                //     }
+                // }
             });
 
             return $this->responseSuccess(
@@ -336,10 +349,8 @@ class UnitTransactionController extends Controller
                 'Unit Transaction state updated successfully',
                 200
             );
-
         } catch (ValidationException $e) {
             return $this->responseError($e->errors(), 'Validation failed', 422);
-
         } catch (Exception $err) {
             Log::error('Error updating Unit Transaction state: '.$err->getMessage());
 

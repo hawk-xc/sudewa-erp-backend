@@ -11,7 +11,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-        if (!Schema::hasTable('warehouse_activities')) {
+        if (! Schema::hasTable('warehouse_activities')) {
             Schema::create('warehouse_activities', function (Blueprint $table) {
                 $table->id();
                 $table->uuid();

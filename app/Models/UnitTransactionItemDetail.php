@@ -42,10 +42,9 @@ class UnitTransactionItemDetail extends Model
         return $this->hasOne(WarehouseMovement::class, 'unit_transaction_item_detail_id', 'id');
     }
 
-    public function receiptStock()
+    public function receiptStock(?int $activityId = null)
     {
         $unitTransaction = $this->unitTransactionItem->unitTransaction;
-        $warehouse = $unitTransaction->warehouse;
 
         return WarehouseMovement::firstOrCreate(
             [
@@ -53,7 +52,7 @@ class UnitTransactionItemDetail extends Model
                 'status' => 'in',
             ],
             [
-                'warehouse_id' => $warehouse->id,
+                'warehouse_activity_id' => $activityId,
                 'unit_transaction_id' => $unitTransaction->id,
                 'status' => 'in',
             ]

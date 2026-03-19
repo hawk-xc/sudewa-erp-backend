@@ -16,21 +16,21 @@ class WarehouseMovement extends Model
 
     protected $fillable = [
         'uuid',
-        'warehouse_id',
+        'warehouse_activity_id',
         'serial_number',
         'unit_transaction_id',
         'unit_transaction_item_detail_id',
         'status',
     ];
 
-    public function warehouse()
-    {
-        return $this->belongsTo(Warehouse::class, 'warehouse_id', 'id');
-    }
-
     public function unitTransaction()
     {
         return $this->belongsTo(UnitTransaction::class, 'unit_transction_id', 'id');
+    }
+
+    public function warehouseActivity()
+    {
+        return $this->belongsTo(WarehouseActivity::class);
     }
 
     public function unitTransactionItemDetail()

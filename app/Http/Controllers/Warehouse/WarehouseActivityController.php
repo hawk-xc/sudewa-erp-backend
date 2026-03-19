@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Warehouse;
 
 use App\Http\Controllers\Controller;
+use App\Models\Person;
+use App\Models\UnitTransactionItemDetail;
 use App\Models\WarehouseActivity;
 use App\Repositories\AuthRepository;
 use App\Traits\ResponseTrait;
@@ -17,206 +19,304 @@ class WarehouseActivityController extends Controller
 
     protected AuthRepository $authRepository;
 
-    protected $activityTable;
+    protected array $activityTable = [
+        'id',
+        'uuid',
+        'person_id',
+        'warehouse_id',
+        'activity_number',
+        'activity_type',
+        'activity_date',
+        'description',
+        'created_at',
+    ];
 
     public function __construct(AuthRepository $ar)
     {
         $this->middleware(['permission:warehouse:list'])->only(['index', 'show']);
         $this->middleware(['permission:warehouse:create'])->only('store');
         $this->middleware(['permission:warehouse:edit'])->only('update');
-        $this->middleware(['permission:warehouse:delete'])->only(['destroy']);
+        $this->middleware(['permission:warehouse:delete'])->only('destroy');
 
         $this->authRepository = $ar;
+    }
 
-        $this->activityTable = [
-            'id',
-            'uuid',
-            'person_id',
-            'warehouse_id',
-            'activity_number',
-            'activity_type',
-            'activity_date',
-            'description',
-            'created_at',
-        ];
+    /**
+     * Base query builder
+     */
+    private function baseQuery()
+    {
+        return WarehouseActivity::with([
+            'warehouse:id,uuid,name',
+            'person:id,uuid,name',
+        ])->select($this->activityTable);
+    }
+
+    /**
+     * Apply filters
+     */
+    private function applyFilters($query, Request $request)
+    {
+        return $query
+            ->when($request->warehouse_id, fn ($q) => $q->where('warehouse_id', $request->warehouse_id))
+            ->when($request->person_id, fn ($q) => $q->where('person_id', $request->person_id))
+            ->when($request->activity_type, fn ($q) => $q->where('activity_type', $request->activity_type))
+            ->when($request->date_from && $request->date_to, fn ($q) => $q->whereBetween('activity_date', [$request->date_from, $request->date_to])
+            )
+            ->when($request->search, fn ($q) => $q->where('activity_number', 'like', "%{$request->search}%")
+            );
     }
 
     public function index(Request $request)
     {
         try {
-
-            $query = WarehouseActivity::with([
-                'warehouse:id,uuid,name',
-                'person:id,uuid,name',
-            ]);
-
-            $query->select($this->activityTable);
-
-            if ($request->warehouse_id) {
-                $query->where('warehouse_id', $request->warehouse_id);
-            }
-
-            if ($request->person_id) {
-                $query->where('person_id', $request->person_id);
-            }
-
-            if ($request->activity_type) {
-                $query->where('activity_type', $request->activity_type);
-            }
-
-            if ($request->date_from && $request->date_to) {
-                $query->whereBetween('activity_date', [
-                    $request->date_from,
-                    $request->date_to,
-                ]);
-            }
-
-            if ($request->search) {
-                $query->where('activity_number', 'like', '%'.$request->search.'%');
-            }
+            $query = $this->applyFilters($this->baseQuery(), $request);
 
             $data = $query
                 ->latest()
                 ->paginate($request->per_page ?? 10);
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Warehouse activities retrieved successfully',
-                'data' => $data,
-            ], 200);
+            return $this->responseSuccess($data, 'Warehouse activities retrieved successfully');
 
         } catch (Exception $e) {
+            Log::error('WarehouseActivity index error', [
+                'message' => $e->getMessage(),
+            ]);
 
-            Log::error('WarehouseActivity index error : '.$e->getMessage());
-
-            return response()->json([
-                'success' => false,
-                'message' => 'Internal Server Error',
-            ], 500);
+            return $this->responseError(null, 'Internal Server Error', 500);
         }
     }
 
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'person_id' => 'required|exists:people,id',
+            'person_id' => 'required|exists:persons,id',
             'warehouse_id' => 'required|exists:warehouses,id',
-            'activity_type' => 'required|in:inbound,outbound',
+            'activity_type' => 'required|in:receipt,issue',
             'activity_date' => 'required|date',
             'description' => 'nullable|string',
         ]);
 
         try {
+            $data = DB::transaction(fn () => WarehouseActivity::create($validated)
+            );
 
-            $data = DB::transaction(function () use ($validated) {
-                return WarehouseActivity::create($validated);
-            });
+            return $this->responseSuccess($data, 'Warehouse activity created successfully', 201);
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Warehouse activity created successfully',
-                'data' => $data,
-            ], 201);
+        } catch (Exception $err) {
+            Log::error('WarehouseActivity store error', [
+                'message' => $err->getMessage(),
+            ]);
 
-        } catch (Exception $e) {
-
-            Log::error('WarehouseActivity store error : '.$e->getMessage());
-
-            return response()->json([
-                'success' => false,
-                'message' => 'Internal Server Error',
-            ], 500);
+            return $this->responseError($err->getMessage(), 'Failed to create warehouse activity', 500);
         }
     }
 
     public function show(string $id)
     {
         try {
+            $data = $this->baseQuery()->findOrFail($id);
 
-            $data = WarehouseActivity::with([
-                'warehouse:id,uuid,name',
-                'person:id,uuid,name',
-            ])->findOrFail($id);
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Warehouse activity retrieved successfully',
-                'data' => $data,
-            ], 200);
+            return $this->responseSuccess($data, 'Warehouse activity retrieved successfully');
 
         } catch (Exception $e) {
+            Log::error('WarehouseActivity show error', [
+                'message' => $e->getMessage(),
+            ]);
 
-            Log::error('WarehouseActivity show error : '.$e->getMessage());
-
-            return response()->json([
-                'success' => false,
-                'message' => 'Warehouse activity not found',
-            ], 404);
+            return $this->responseError(null, 'Warehouse activity not found', 404);
         }
     }
 
     public function update(Request $request, string $id)
     {
-        $activity = WarehouseActivity::findOrFail($id);
-
-        $validated = $request->validate([
-            'person_id' => 'sometimes|exists:people,id',
-            'warehouse_id' => 'sometimes|exists:warehouses,id',
-            'activity_type' => 'sometimes|in:inbound,outbound',
-            'activity_date' => 'sometimes|date',
-            'description' => 'sometimes|string',
-        ]);
-
         try {
+            $warehouseActivity = WarehouseActivity::findOrFail($id);
 
-            DB::transaction(function () use ($validated, $activity) {
+            $validated = $request->validate([
+                'person_id' => 'sometimes|exists:persons,id',
+                'warehouse_id' => 'sometimes|exists:warehouses,id',
+                'activity_type' => 'sometimes|in:receipt,issue',
+                'activity_date' => 'sometimes|date',
+                'description' => 'sometimes|string',
+            ]);
 
-                $activity->update($validated);
+            DB::transaction(fn () => $warehouseActivity->update($validated)
+            );
 
-            });
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Warehouse activity updated successfully',
-                'data' => $activity->fresh(),
-            ], 200);
+            return $this->responseSuccess(
+                $warehouseActivity->fresh(),
+                'Warehouse activity updated successfully'
+            );
 
         } catch (Exception $e) {
+            Log::error('WarehouseActivity update error', [
+                'message' => $e->getMessage(),
+            ]);
 
-            Log::error('WarehouseActivity update error : '.$e->getMessage());
-
-            return response()->json([
-                'success' => false,
-                'message' => 'Internal Server Error',
-            ], 500);
+            return $this->responseError(null, 'Failed to update warehouse activity', 500);
         }
     }
 
     public function destroy(string $id)
     {
         try {
+            $warehouseActivity = WarehouseActivity::findOrFail($id);
 
-            $data = WarehouseActivity::findOrFail($id);
+            DB::transaction(fn () => $warehouseActivity->delete());
 
-            DB::transaction(function () use ($data) {
-
-                $data->delete();
-
-            });
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Warehouse activity deleted successfully',
-            ], 200);
+            return $this->responseSuccess($warehouseActivity, 'Warehouse activity deleted successfully');
 
         } catch (Exception $e) {
+            Log::error('WarehouseActivity destroy error', [
+                'message' => $e->getMessage(),
+            ]);
 
-            Log::error('WarehouseActivity destroy error : '.$e->getMessage());
+            return $this->responseError(null, 'Failed to delete warehouse activity', 500);
+        }
+    }
 
-            return response()->json([
-                'success' => false,
-                'message' => 'Internal Server Error',
-            ], 500);
+    public function receiptStock(Request $request, string $activityId)
+    {
+        if (is_string($request->unit_transaction_details)) {
+            $request->merge([
+                'unit_transaction_details' => json_decode($request->unit_transaction_details, true),
+            ]);
+        }
+
+        $validated = $request->validate([
+            'unit_transaction_details' => 'required|array|min:1',
+            'unit_transaction_details.*' => 'integer|exists:unit_transaction_item_details,id',
+        ]);
+
+        try {
+            $activity = WarehouseActivity::findOrFail($activityId);
+
+            if ($activity->activity_type !== 'receipt') {
+                return $this->responseError(null, 'Invalid activity type for receipt', 422);
+            }
+
+            $person = Person::findOrFail($activity->person_id);
+
+            $allowedDetailIds = $person->unitTransactions()
+                ->with('unitTransactionItems.unitTransactionItemDetails:id,unit_transaction_item_id')
+                ->get()
+                ->flatMap(fn ($trx) => $trx->unitTransactionItems)
+                ->flatMap(fn ($item) => $item->unitTransactionItemDetails)
+                ->pluck('id')
+                ->toArray();
+
+            $invalidIds = array_diff($validated['unit_transaction_details'], $allowedDetailIds);
+
+            if (! empty($invalidIds)) {
+                return $this->responseError(
+                    $invalidIds,
+                    'Some unit transaction details do not belong to this person',
+                    422
+                );
+            }
+
+            $unitTransactionItemDetailList = [];
+
+            DB::transaction(function () use ($validated, $activity, &$unitTransactionItemDetailList) {
+
+                $details = UnitTransactionItemDetail::whereIn('id', $validated['unit_transaction_details'])->get();
+
+                foreach ($details as $detail) {
+                    $detail->update(['in_stock' => true]);
+
+                    $detail->receiptStock((int) $activity->warehouse_id);
+
+                    $unitTransactionItemDetailList[] = $detail;
+                }
+            });
+
+            $responseData = [
+                'activity' => $activity,
+                'unit_transaction_item_details' => $unitTransactionItemDetailList,
+            ];
+
+            return $this->responseSuccess((object) $responseData, 'Receipt stock processed successfully');
+        } catch (Exception $e) {
+            Log::error('WarehouseActivity receiptStock error', [
+                'message' => $e->getMessage(),
+            ]);
+
+            return $this->responseError(null, 'Failed to process receipt stock', 500);
+        }
+    }
+
+    public function dispatchStock(Request $request, string $activityId)
+    {
+        if (is_string($request->unit_transaction_details)) {
+            $request->merge([
+                'unit_transaction_details' => json_decode($request->unit_transaction_details, true),
+            ]);
+        }
+
+        $validated = $request->validate([
+            'unit_transaction_details' => 'required|array|min:1',
+            'unit_transaction_details.*' => 'integer|exists:unit_transaction_item_details,id',
+        ]);
+
+        try {
+            $activity = WarehouseActivity::findOrFail($activityId);
+
+            if ($activity->activity_type !== 'issue') {
+                return $this->responseError(null, 'Invalid activity type for dispatch', 422);
+            }
+
+            $person = Person::findOrFail($activity->person_id);
+
+            // ambil semua detail ID milik person
+            $allowedDetailIds = $person->unitTransactions()
+                ->with('unitTransactionItems.unitTransactionItemDetails:id,unit_transaction_item_id')
+                ->get()
+                ->flatMap(fn ($trx) => $trx->unitTransactionItems)
+                ->flatMap(fn ($item) => $item->unitTransactionItemDetails)
+                ->pluck('id')
+                ->toArray();
+
+            // validasi ownership
+            $invalidIds = array_diff($validated['unit_transaction_details'], $allowedDetailIds);
+
+            if (! empty($invalidIds)) {
+                return $this->responseError(
+                    $invalidIds,
+                    'Some unit transaction details do not belong to this person',
+                    422
+                );
+            }
+
+            $unitTransactionItemDetailList = [];
+
+            DB::transaction(function () use ($validated, &$unitTransactionItemDetailList) {
+
+                $details = UnitTransactionItemDetail::whereIn('id', $validated['unit_transaction_details'])->get();
+
+                foreach ($details as $detail) {
+
+                    $detail->update(['in_stock' => false]);
+
+                    $detail->dispatchStock();
+
+                    $unitTransactionItemDetailList[] = $detail;
+                }
+            });
+
+            $responseData = [
+                'activity' => $activity,
+                'unit_transaction_item_details' => $unitTransactionItemDetailList,
+            ];
+
+            return $this->responseSuccess((object) $responseData, 'Dispatch stock processed successfully');
+
+        } catch (Exception $e) {
+            Log::error('WarehouseActivity dispatchStock error', [
+                'message' => $e->getMessage(),
+            ]);
+
+            return $this->responseError(null, 'Failed to process dispatch stock', 500);
         }
     }
 }

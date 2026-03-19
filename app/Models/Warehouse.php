@@ -45,9 +45,4 @@ class Warehouse extends Model
     {
         return $this->unitTransactions()->sum('max_capacity');
     }
-
-    public function warehouseMovements()
-    {
-        return $this->hasMany(WarehouseMovement::class, 'warehouse_id', 'id');
-    }
 }

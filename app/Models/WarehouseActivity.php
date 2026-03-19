@@ -39,6 +39,11 @@ class WarehouseActivity extends Model
         return $this->belongsTo(Person::class);
     }
 
+    public function warehouseMovements()
+    {
+        return $this->hasMany(WarehouseMovement::class);
+    }
+
     protected static function boot()
     {
         parent::boot();

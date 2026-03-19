@@ -217,11 +217,16 @@ class WarehouseController extends Controller
 
             $warehouse = Warehouse::findOrFail($id);
 
-            $stocks = WarehouseMovement::where('warehouse_id', $warehouse->id)
-                ->where('status', 'in')
-                ->whereHas('unitTransactionItemDetail', function ($q) {
+            $stocks = WarehouseMovement::query();
+
+            if ($request->status != 'unprocessed') {
+                $stocks->whereHas('unitTransactionItemDetail', function ($q) {
                     $q->where('in_stock', true);
-                })
+                });
+            }
+
+            $stocks = $stocks->where('warehouse_id', $warehouse->id)
+                ->where('status', 'in')
                 ->with([
                     'unitTransactionItemDetail.unitTransactionItem.unitType:id,uuid,code,name,unit_type,unit_model',
                 ])
@@ -283,6 +288,68 @@ class WarehouseController extends Controller
         }
     }
 
+    public function getWarehouseUnitTransactionsDetails(Request $request, string $id)
+    {
+        try {
+            $warehouse = Warehouse::findOrFail($id);
+
+            $query = UnitTransactionItemDetail::query()
+                ->whereHas('unitTransactionItem.unitTransaction', function ($q) use ($warehouse) {
+                    $q->where('warehouse_id', $warehouse->id)
+                        ->where('stock_state', 'inbound_incoming_goods');
+                })
+                ->with([
+                    'unitTransactionItem:id,uuid,unit_transaction_id,unit_type_id',
+                    'unitTransactionItem.unitType:id,uuid,code,name,unit_type,unit_model',
+                    'unitTransactionItem.unitTransaction:id,uuid,code,warehouse_id,stock_state',
+                ]);
+
+            if ($request->has('in_stock')) {
+                $query->where('in_stock', filter_var($request->in_stock, FILTER_VALIDATE_BOOLEAN));
+            }
+
+            if ($request->unit_transaction_item_id) {
+                $query->where('unit_transaction_item_id', $request->unit_transaction_item_id);
+            }
+
+            if ($request->machine_number) {
+                $query->where('machine_number', 'like', '%'.$request->machine_number.'%');
+            }
+
+            if ($request->chassis_number) {
+                $query->where('chassis_number', 'like', '%'.$request->chassis_number.'%');
+            }
+
+            if ($request->color) {
+                $query->where('color', 'like', '%'.strtoupper($request->color).'%');
+            }
+
+            if ($request->unit_transaction_id) {
+                $query->whereHas('unitTransactionItem.unitTransaction', function ($q) use ($request) {
+                    $q->where('id', $request->unit_transaction_id);
+                });
+            }
+
+            $data = $query
+                ->latest()
+                ->paginate($request->per_page ?? 10);
+
+            return $this->responseSuccess(
+                $data,
+                'Warehouse unit transaction details retrieved successfully',
+                200
+            );
+        } catch (Exception $err) {
+            Log::error('Fetch Warehouse Unit Transaction Details : '.$err->getMessage());
+
+            return $this->responseError(
+                null,
+                'Error while fetching warehouse unit transaction details',
+                500
+            );
+        }
+    }
+
     public function update(Request $request, string $id)
     {
         $warehouse = Warehouse::findOrFail($id);
@@ -339,11 +406,85 @@ class WarehouseController extends Controller
 
     public function receiptStock(Request $request, string $warehouseId)
     {
-        $warehouse = Warehouse::findOrFail($warehouseId)
+        if (is_string($request->unit_transaction_details)) {
+            $request->merge([
+                'unit_transaction_details' => json_decode($request->unit_transaction_details, true),
+            ]);
+        }
+
+        $validated = $request->validate([
+            'unit_transaction_details' => 'required|array|min:1',
+            'unit_transaction_details.*' => 'integer|exists:unit_transaction_item_details,id',
+        ]);
+
+        try {
+            $warehouse = Warehouse::findOrFail($warehouseId);
+            $unitTransactionItemDetailList = [];
+
+            foreach ($validated['unit_transaction_details'] as $unitTransactionDetail) {
+                $unitTransactionDetailData = UnitTransactionItemDetail::findOrFail($unitTransactionDetail);
+                $unitTransactionItemDetailList[] = $unitTransactionDetailData;
+
+                $unitTransactionDetailData->update(['in_stock' => true]);
+                $unitTransactionDetailData->receiptStock((int) $warehouseId);
+            }
+
+            $responseData = [
+                'warehouse' => $warehouse,
+                'unit_transaction_item_details' => $unitTransactionItemDetailList,
+            ];
+
+            return $this->responseSuccess(
+                (object) $responseData,
+                'Unit Transaction Item Sales created successfully',
+                201
+            );
+        } catch (Exception $err) {
+            Log::error('Error while add receipt stock data on warehouse with error : '.$err->getMessage());
+
+            return $this->responseError(null, $err->getMessage(), 500);
+        }
     }
 
-    public function dispatchStock(Request $request)
+    public function dispatchStock(Request $request, $warehouseId)
     {
+        if (is_string($request->unit_transaction_details)) {
+            $request->merge([
+                'unit_transaction_details' => json_decode($request->unit_transaction_details, true),
+            ]);
+        }
 
+        $validated = $request->validate([
+            'unit_transaction_details' => 'required|array|min:1',
+            'unit_transaction_details.*' => 'integer|exists:unit_transaction_item_details,id',
+        ]);
+
+        try {
+            $warehouse = Warehouse::findOrFail($warehouseId);
+            $unitTransactionItemDetailList = [];
+
+            foreach ($validated['unit_transaction_details'] as $unitTransactionDetail) {
+                $unitTransactionDetailData = UnitTransactionItemDetail::findOrFail($unitTransactionDetail);
+                $unitTransactionItemDetailList[] = $unitTransactionDetailData;
+
+                $unitTransactionDetailData->update(['in_stock' => false]);
+                $unitTransactionDetailData->dispatchStock();
+            }
+
+            $responseData = [
+                'warehouse' => $warehouse,
+                'unit_transaction_item_details' => $unitTransactionItemDetailList,
+            ];
+
+            return $this->responseSuccess(
+                (object) $responseData,
+                'Unit Transaction Item Sales created successfully',
+                201
+            );
+        } catch (Exception $err) {
+            Log::error('Error while add receipt stock data on warehouse with error : '.$err->getMessage());
+
+            return $this->responseError(null, $err->getMessage(), 500);
+        }
     }
 }

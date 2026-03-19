@@ -21,6 +21,7 @@ use App\Http\Controllers\Transaction\UnitTransactionItemController;
 use App\Http\Controllers\Transaction\UnitTransactionItemDetailController;
 use App\Http\Controllers\Transaction\UnitTransactionItemSalesController;
 use App\Http\Controllers\User\UserController;
+use App\Http\Controllers\Warehouse\WarehouseActivityController;
 use App\Http\Controllers\Warehouse\WarehouseController;
 use Illuminate\Support\Facades\Route;
 
@@ -99,9 +100,15 @@ Route::group(
         Route::group(['prefix' => 'warehouse', 'as' => 'warehouse.'], function () {
             Route::get('warehouse-stock/{id}', [WarehouseController::class, 'getStock']);
             Route::get('warehouse-get-stock/{id}', [WarehouseController::class, 'getWarehouseStock']);
+            Route::get('warehouse-get-unit-transaction-item-details/{id}', [WarehouseController::class, 'getWarehouseUnitTransactionsDetails']);
             Route::get('warehouse-unit-transaction-data/{id}', [WarehouseController::class, 'getUnitTransaction']);
             Route::get('warehouse-unit-transaction-item-data/{id}', [WarehouseController::class, 'getUnitTransactionItem']);
 
+            // Receipt Stock
+            Route::put('warehouse-activity/{id}/receipt-stock', [WarehouseActivityController::class, 'receiptStock']);
+            Route::put('warehouse-activity/{id}/dispatch-stock', [WarehouseActivityController::class, 'dispatchStock']);
+
+            Route::apiResource('warehouse-activity', WarehouseActivityController::class);
             Route::apiResource('warehouse-data', WarehouseController::class);
         });
 
