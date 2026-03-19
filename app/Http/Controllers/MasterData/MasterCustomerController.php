@@ -184,33 +184,14 @@ class MasterCustomerController extends Controller
         }
     }
 
-    public function supplierImport(Request $request)
+    public function import(Request $request, string $id)
     {
         $request->validate([
             'file' => 'required|file|mimes:xlsx,xls',
         ]);
 
         try {
-            Excel::import(new PersonImport((string) 'supplier'), $request->file('file'));
-
-            return $this->responseSuccess(null, 'Account imported successfully', 201);
-        } catch (Exception $err) {
-            Log::error('Account import error', [
-                'message' => $err->getMessage(),
-            ]);
-
-            return $this->responseError(null, $err->getMessage(), 500);
-        }
-    }
-
-    public function customerImport(Request $request)
-    {
-        $request->validate([
-            'file' => 'required|file|mimes:xlsx,xls',
-        ]);
-
-        try {
-            Excel::import(new PersonImport((string) 'customer'), $request->file('file'));
+            Excel::import(new PersonImport((string) 'customer', (int) $id), $request->file('file'));
 
             return $this->responseSuccess(null, 'Account imported successfully', 201);
         } catch (Exception $err) {

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\MasterData;
 
 use App\Http\Controllers\Controller;
+use App\Imports\PersonImport;
 use App\Models\Person;
 use App\Repositories\AuthRepository;
 use App\Traits\PersonTrait;
@@ -11,6 +12,7 @@ use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Maatwebsite\Excel\Facades\Excel;
 
 class MasterSupplierController extends Controller
 {
@@ -182,6 +184,25 @@ class MasterSupplierController extends Controller
             Log::error('Error while trying delete Supplier data : '.$err->getMessage());
 
             return $this->responseError(null, 'Supplier Deleted Failed');
+        }
+    }
+
+    public function import(Request $request, string $id)
+    {
+        $request->validate([
+            'file' => 'required|file|mimes:xlsx,xls',
+        ]);
+
+        try {
+            Excel::import(new PersonImport((string) 'supplier', (int) $id), $request->file('file'));
+
+            return $this->responseSuccess(null, 'Account imported successfully', 201);
+        } catch (Exception $err) {
+            Log::error('Account import error', [
+                'message' => $err->getMessage(),
+            ]);
+
+            return $this->responseError(null, $err->getMessage(), 500);
         }
     }
 }
