@@ -85,6 +85,9 @@ Route::group(
 
         // Master Data API
         Route::group(['prefix' => 'master-data', 'as' => 'master-data.'], function () {
+            // Import
+            Route::post('account/{id}/import', [MasterAccountController::class, 'import']);
+
             Route::apiResource('account-group', MasterAccountGroupController::class);
             Route::apiResource('account', MasterAccountController::class);
             Route::apiResource('cash', MasterCashController::class);

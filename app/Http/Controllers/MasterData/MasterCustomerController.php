@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\MasterData;
 
 use App\Http\Controllers\Controller;
+use App\Imports\PersonImport;
 use App\Models\Person;
 use App\Repositories\AuthRepository;
 use App\Traits\PersonTrait;
@@ -11,6 +12,7 @@ use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Maatwebsite\Excel\Facades\Excel;
 
 class MasterCustomerController extends Controller
 {
@@ -21,9 +23,6 @@ class MasterCustomerController extends Controller
     // projection
     protected $personTable;
 
-    /**
-     * AuthController constructor.
-     */
     public function __construct(AuthRepository $ar)
     {
         $this->middleware(['permission:master-data:list'])->only(['index', 'show']);
@@ -182,6 +181,44 @@ class MasterCustomerController extends Controller
             Log::error('Error while trying delete Customer data : '.$err->getMessage());
 
             return $this->responseError($err->getMessage(), 'Customer Deleted Failed');
+        }
+    }
+
+    public function supplierImport(Request $request)
+    {
+        $request->validate([
+            'file' => 'required|file|mimes:xlsx,xls',
+        ]);
+
+        try {
+            Excel::import(new PersonImport((string) 'supplier'), $request->file('file'));
+
+            return $this->responseSuccess(null, 'Account imported successfully', 201);
+        } catch (Exception $err) {
+            Log::error('Account import error', [
+                'message' => $err->getMessage(),
+            ]);
+
+            return $this->responseError(null, $err->getMessage(), 500);
+        }
+    }
+
+    public function customerImport(Request $request)
+    {
+        $request->validate([
+            'file' => 'required|file|mimes:xlsx,xls',
+        ]);
+
+        try {
+            Excel::import(new PersonImport((string) 'customer'), $request->file('file'));
+
+            return $this->responseSuccess(null, 'Account imported successfully', 201);
+        } catch (Exception $err) {
+            Log::error('Account import error', [
+                'message' => $err->getMessage(),
+            ]);
+
+            return $this->responseError(null, $err->getMessage(), 500);
         }
     }
 }

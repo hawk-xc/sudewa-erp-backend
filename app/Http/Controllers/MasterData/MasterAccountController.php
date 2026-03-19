@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\MasterData;
 
 use App\Http\Controllers\Controller;
+use App\Imports\AccountImport;
 use App\Models\Account;
 use App\Repositories\AuthRepository;
 use App\Traits\ResponseTrait;
@@ -10,6 +11,7 @@ use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Maatwebsite\Excel\Facades\Excel;
 
 class MasterAccountController extends Controller
 {
@@ -172,6 +174,25 @@ class MasterAccountController extends Controller
             return $this->responseSuccess([], 'Account sucessfully Deleted', 200);
         } catch (Exception $err) {
             return $this->responseError([], 'Account Not Found or Failed Deleted', 500);
+        }
+    }
+
+    public function import(Request $request, string $id)
+    {
+        $request->validate([
+            'file' => 'required|file|mimes:xlsx,xls',
+        ]);
+
+        try {
+            Excel::import(new AccountImport($id), $request->file('file'));
+
+            return $this->responseSuccess(null, 'Account imported successfully', 201);
+        } catch (Exception $e) {
+            Log::error('Account import error', [
+                'message' => $e->getMessage(),
+            ]);
+
+            return $this->responseError(null, $e->getMessage(), 500);
         }
     }
 }
