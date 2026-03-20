@@ -193,9 +193,9 @@ class MasterCustomerController extends Controller
         try {
             Excel::import(new PersonImport((string) 'customer', (int) $id), $request->file('file'));
 
-            return $this->responseSuccess(null, 'Account imported successfully', 201);
+            return $this->responseSuccess(null, 'Person Customer imported successfully', 201);
         } catch (Exception $err) {
-            Log::error('Account import error', [
+            Log::error('Person Customer import error', [
                 'message' => $err->getMessage(),
             ]);
 

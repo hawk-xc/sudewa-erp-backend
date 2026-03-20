@@ -3,6 +3,7 @@
 namespace App\Imports;
 
 use App\Models\Person;
+use App\Traits\PersonTrait;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
@@ -11,6 +12,8 @@ use Maatwebsite\Excel\Concerns\WithHeadingRow;
 
 class PersonImport implements ToCollection, WithHeadingRow
 {
+    use PersonTrait;
+
     protected string $type;
 
     protected int $companyId;
@@ -28,11 +31,11 @@ class PersonImport implements ToCollection, WithHeadingRow
 
             foreach ($rows as $index => $row) {
                 $rowData = [
-                    'name' => isset($row['nama']) ? trim($row['nama']) : null,
-                    'address' => $row['alamat'] ?? null,
-                    'phone' => $row['telp'] ?? null,
+                    'nama' => isset($row['nama']) ? trim($row['nama']) : null,
+                    'alamat' => $row['alamat'] ?? null,
+                    'telp' => $row['telp'] ?? null,
                     'npwp' => $row['npwp'] ?? null,
-                    'pic_name' => $row['nama_pic'] ?? null,
+                    'nama_pic' => $row['nama_pic'] ?? null,
                 ];
 
                 $validator = Validator::make($rowData, [
@@ -51,12 +54,13 @@ class PersonImport implements ToCollection, WithHeadingRow
 
                 Person::create([
                     'company_id' => $this->companyId,
+                    'code' => $this->generateCode($this->type),
                     'type' => $this->type,
-                    'name' => $rowData['name'],
-                    'address' => $rowData['address'],
-                    'phone' => $rowData['phone'],
+                    'name' => $rowData['nama'],
+                    'address' => $rowData['alamat'],
+                    'phone' => $rowData['telp'],
                     'npwp' => $rowData['npwp'],
-                    'pic_name' => $rowData['pic_name'],
+                    'pic_name' => $rowData['nama_pic'],
                 ]);
             }
         });

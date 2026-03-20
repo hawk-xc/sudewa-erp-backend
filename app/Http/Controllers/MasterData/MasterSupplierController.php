@@ -196,9 +196,9 @@ class MasterSupplierController extends Controller
         try {
             Excel::import(new PersonImport((string) 'supplier', (int) $id), $request->file('file'));
 
-            return $this->responseSuccess(null, 'Account imported successfully', 201);
+            return $this->responseSuccess(null, 'Person Supplier imported successfully', 201);
         } catch (Exception $err) {
-            Log::error('Account import error', [
+            Log::error('Person Supplier import error', [
                 'message' => $err->getMessage(),
             ]);
 
