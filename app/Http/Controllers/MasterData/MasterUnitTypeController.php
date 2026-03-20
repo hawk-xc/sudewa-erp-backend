@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\MasterData;
 
 use App\Http\Controllers\Controller;
+use App\Imports\UnitTypeImport;
 use App\Models\UnitType;
 use App\Repositories\AuthRepository;
 use App\Traits\ResponseTrait;
@@ -10,6 +11,7 @@ use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Maatwebsite\Excel\Facades\Excel;
 
 class MasterUnitTypeController extends Controller
 {
@@ -174,6 +176,25 @@ class MasterUnitTypeController extends Controller
             Log::error('Error while trying delete Unit Type : '.$err->getMessage());
 
             return $this->responseError(null, 'Internal Server Error', 500);
+        }
+    }
+
+    public function import(Request $request)
+    {
+        $request->validate([
+            'file' => 'required|file|mimes:xlsx,xls',
+        ]);
+
+        try {
+            Excel::import(new UnitTypeImport, $request->file('file'));
+
+            return $this->responseSuccess(null, 'Unit Type imported successfully', 201);
+        } catch (Exception $err) {
+            Log::error('Unit Type import error', [
+                'message' => $err->getMessage(),
+            ]);
+
+            return $this->responseError(null, $err->getMessage(), 500);
         }
     }
 }

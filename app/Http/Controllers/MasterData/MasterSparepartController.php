@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\MasterData;
 
 use App\Http\Controllers\Controller;
+use App\Imports\SparepartImport;
 use App\Models\Sparepart;
 use App\Repositories\AuthRepository;
 use App\Traits\ResponseTrait;
@@ -10,6 +11,7 @@ use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Maatwebsite\Excel\Facades\Excel;
 
 class MasterSparepartController extends Controller
 {
@@ -158,6 +160,25 @@ class MasterSparepartController extends Controller
             Log::error('Error while trying delete Unit Type : '.$err->getMessage());
 
             return $this->responseError($err->getMessage(), 'Internal Server Error', 500);
+        }
+    }
+
+    public function import(Request $request)
+    {
+        $request->validate([
+            'file' => 'required|file|mimes:xlsx,xls',
+        ]);
+
+        try {
+            Excel::import(new SparepartImport, $request->file('file'));
+
+            return $this->responseSuccess(null, 'Sparepart imported successfully', 201);
+        } catch (Exception $err) {
+            Log::error('Sparepart import error', [
+                'message' => $err->getMessage(),
+            ]);
+
+            return $this->responseError(null, $err->getMessage(), 500);
         }
     }
 }
