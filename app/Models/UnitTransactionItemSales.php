@@ -18,6 +18,11 @@ class UnitTransactionItemSales extends Model
         'unit_transaction_item_detail_id',
     ];
 
+    protected $casts = [
+        'unit_transaction_item_id' => 'integer',
+        'unit_transaction_item_detail_id' => 'integer',
+    ];
+
     public function unitTransactionItem()
     {
         return $this->belongsTo(UnitTransactionItem::class);

@@ -111,8 +111,8 @@ class UnitTransactionController extends Controller
                 'transactionFlow:id,uuid,transaction_date,description',
                 'unitTransactionBilling',
                 'unitTransactionItems:id,unit_transaction_id,uuid,qty_total,price,dpp_total_price,ppn_total_price',
-                'unitTransactionItems.unitTransactionItemDetails:id,unit_transaction_item_id,uuid,color,machine_number,chassis_number,in_stock',
-                'unitTransactionItems.unitTypeSoldDetails:id,uuid,unit_transaction_item_id,color,machine_number,chassis_number,in_stock',
+                'unitTransactionItems.unitTransactionItemDetails:id,unit_transaction_item_id,uuid,color,machine_number,chassis_number,in_stock,is_forecast',
+                'unitTransactionItems.unitTypeSoldDetails:id,uuid,unit_transaction_item_id,color,machine_number,chassis_number,in_stock,is_forecast',
             ])
                 ->select($this->unitTransactionTable)
                 ->findOrFail($id);
@@ -326,25 +326,13 @@ class UnitTransactionController extends Controller
                         'stock_state' => $validated['stock_state'],
                     ]);
                 }
-
-                // foreach ($validDetails as $detail) {
-                //     if ($unitTransaction->type === 'purchase') {
-                //         if (! $detail->in_stock && $validated['stock_state'] === 'inbound_incoming_goods') {
-                //             $detail->receiptStock();
-                //         }
-                //     } else {
-                //         if ($detail->in_stock && $validated['stock_state'] === 'outbound_reserved') {
-                //             $detail->dispatchStock();
-                //         }
-                //     }
-                // }
             });
 
             return $this->responseSuccess(
                 $unitTransaction->fresh()->load([
                     'unitTransactionItems:id,uuid,unit_transaction_id,unit_type_id,sparepart_id,price',
-                    'unitTransactionItems.unitTransactionItemDetails:id,uuid,unit_transaction_item_id,color,machine_number,chassis_number,in_stock',
-                    'unitTransactionItems.unitTypeSoldDetails:id,uuid,unit_transaction_item_id,color,machine_number,chassis_number,in_stock',
+                    'unitTransactionItems.unitTransactionItemDetails:id,uuid,unit_transaction_item_id,color,machine_number,chassis_number,in_stock,is_forecast',
+                    'unitTransactionItems.unitTypeSoldDetails:id,uuid,unit_transaction_item_id,color,machine_number,chassis_number,in_stock,is_forecast',
                 ]),
                 'Unit Transaction state updated successfully',
                 200

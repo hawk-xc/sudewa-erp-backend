@@ -104,6 +104,7 @@ class UnitTransactionItemController extends Controller
             $item = UnitTransactionItem::with([
                 'unitTransaction',
                 'unitTransactionItemDetails',
+                'unitTransactionItemSales',
             ])->select($this->unitTransactionItemTable)->findOrFail($id);
 
             return $this->responseSuccess($item, 'Unit Transaction Item retrieved successfully', 200);

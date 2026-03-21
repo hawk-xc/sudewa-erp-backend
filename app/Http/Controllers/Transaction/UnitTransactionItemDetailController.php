@@ -32,6 +32,7 @@ class UnitTransactionItemDetailController extends Controller
             'machine_number',
             'chassis_number',
             'in_stock',
+            'is_forecast',
             'created_at',
         ];
     }

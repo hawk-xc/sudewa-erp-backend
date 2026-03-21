@@ -23,6 +23,7 @@ class UnitTransactionItemDetail extends Model
     ];
 
     protected $casts = [
+        'unit_transaction_item_id' => 'integer',
         'in_stock' => 'bool',
     ];
 
