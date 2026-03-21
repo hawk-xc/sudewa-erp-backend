@@ -19,6 +19,7 @@ class UnitTransactionItemDetail extends Model
         'machine_number',
         'chassis_number',
         'in_stock',
+        'is_forecast',
     ];
 
     protected $casts = [
