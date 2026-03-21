@@ -3,12 +3,14 @@
 namespace App\Http\Controllers\Transaction;
 
 use App\Http\Controllers\Controller;
+use App\Models\UnitTransactionItem;
 use App\Models\UnitTransactionItemSales;
 use App\Traits\ResponseTrait;
 use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
 
 class UnitTransactionItemSalesController extends Controller
 {
@@ -32,6 +34,16 @@ class UnitTransactionItemSalesController extends Controller
             'unit_transaction_details' => 'required|array|min:1',
             'unit_transaction_details.*' => 'integer|exists:unit_transaction_item_details,id',
         ]);
+
+        $unitTransactionItem = UnitTransactionItem::select(['id', 'qty_total'])->findOrFail(intval($validated['unit_transaction_item_id']));
+
+        $totalSelected = count($validated['unit_transaction_details']);
+
+        if ($totalSelected > $unitTransactionItem->qty_total) {
+            throw ValidationException::withMessages([
+                'unit_transaction_details' => "Selected {$totalSelected} items exceeds limit {$unitTransactionItem->qty_total} on Unit Transaction Item.",
+            ]);
+        }
 
         try {
             $unitTransactionItemSales = DB::transaction(function () use ($validated) {
