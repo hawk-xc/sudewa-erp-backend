@@ -117,10 +117,6 @@ class WarehouseController extends Controller
 
                 'unitTransactions.unitTransactionItems.unitType:id,uuid,code,name,unit_type,unit_model',
                 'unitTransactions.unitTransactionItems.sparepart:id,uuid,code,name',
-
-                'unitTransactions.unitTransactionItems.unitTransactionItemDetails:id,uuid,unit_transaction_item_id,color,machine_number,chassis_number,in_stock',
-
-                'unitTransactions.unitTransactionItems.unitTransactionItemDetails.warehouseMovement:id,uuid,unit_transaction_item_detail_id,status',
             ])->findOrFail($id);
 
             return response()->json([
@@ -401,90 +397,6 @@ class WarehouseController extends Controller
                 'success' => false,
                 'message' => 'Internal Server Error',
             ], 500);
-        }
-    }
-
-    public function receiptStock(Request $request, string $warehouseId)
-    {
-        if (is_string($request->unit_transaction_details)) {
-            $request->merge([
-                'unit_transaction_details' => json_decode($request->unit_transaction_details, true),
-            ]);
-        }
-
-        $validated = $request->validate([
-            'unit_transaction_details' => 'required|array|min:1',
-            'unit_transaction_details.*' => 'integer|exists:unit_transaction_item_details,id',
-        ]);
-
-        try {
-            $warehouse = Warehouse::findOrFail($warehouseId);
-            $unitTransactionItemDetailList = [];
-
-            foreach ($validated['unit_transaction_details'] as $unitTransactionDetail) {
-                $unitTransactionDetailData = UnitTransactionItemDetail::findOrFail($unitTransactionDetail);
-                $unitTransactionItemDetailList[] = $unitTransactionDetailData;
-
-                $unitTransactionDetailData->update(['in_stock' => true]);
-                $unitTransactionDetailData->receiptStock((int) $warehouseId);
-            }
-
-            $responseData = [
-                'warehouse' => $warehouse,
-                'unit_transaction_item_details' => $unitTransactionItemDetailList,
-            ];
-
-            return $this->responseSuccess(
-                (object) $responseData,
-                'Unit Transaction Item Sales created successfully',
-                201
-            );
-        } catch (Exception $err) {
-            Log::error('Error while add receipt stock data on warehouse with error : '.$err->getMessage());
-
-            return $this->responseError(null, $err->getMessage(), 500);
-        }
-    }
-
-    public function dispatchStock(Request $request, $warehouseId)
-    {
-        if (is_string($request->unit_transaction_details)) {
-            $request->merge([
-                'unit_transaction_details' => json_decode($request->unit_transaction_details, true),
-            ]);
-        }
-
-        $validated = $request->validate([
-            'unit_transaction_details' => 'required|array|min:1',
-            'unit_transaction_details.*' => 'integer|exists:unit_transaction_item_details,id',
-        ]);
-
-        try {
-            $warehouse = Warehouse::findOrFail($warehouseId);
-            $unitTransactionItemDetailList = [];
-
-            foreach ($validated['unit_transaction_details'] as $unitTransactionDetail) {
-                $unitTransactionDetailData = UnitTransactionItemDetail::findOrFail($unitTransactionDetail);
-                $unitTransactionItemDetailList[] = $unitTransactionDetailData;
-
-                $unitTransactionDetailData->update(['in_stock' => false]);
-                $unitTransactionDetailData->dispatchStock();
-            }
-
-            $responseData = [
-                'warehouse' => $warehouse,
-                'unit_transaction_item_details' => $unitTransactionItemDetailList,
-            ];
-
-            return $this->responseSuccess(
-                (object) $responseData,
-                'Unit Transaction Item Sales created successfully',
-                201
-            );
-        } catch (Exception $err) {
-            Log::error('Error while add receipt stock data on warehouse with error : '.$err->getMessage());
-
-            return $this->responseError(null, $err->getMessage(), 500);
         }
     }
 }

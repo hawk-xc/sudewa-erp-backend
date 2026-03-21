@@ -219,12 +219,36 @@ class WarehouseActivityController extends Controller
             $unitTransactionItemDetailList = [];
 
             DB::transaction(function () use ($validated, $activity, &$unitTransactionItemDetailList) {
-
-                $details = UnitTransactionItemDetail::whereIn('id', $validated['unit_transaction_details'])->get();
+                $details = UnitTransactionItemDetail::with([
+                    'unitTransactionItem.unitTransaction.unitTransactionBilling',
+                ])->whereIn('id', $validated['unit_transaction_details'])->get();
 
                 foreach ($details as $detail) {
-                    $detail->update(['in_stock' => true]);
 
+                    $transaction = $detail->unitTransactionItem->unitTransaction;
+
+                    $stockState = $transaction->stock_state;
+                    $billing = $transaction->unitTransactionBilling;
+
+                    if (! in_array($stockState, ['inbound_incoming_goods', 'inbound_receipt'])) {
+                        throw new Exception(
+                            "Invalid stock state '{$stockState}' for detail ID {$detail->id}"
+                        );
+                    }
+
+                    if (! $billing) {
+                        throw new Exception(
+                            "Transaction for detail ID {$detail->id} has no billing yet"
+                        );
+                    }
+
+                    if ($detail->in_stock) {
+                        throw new Exception(
+                            "Detail ID {$detail->id} already in stock"
+                        );
+                    }
+
+                    $detail->update(['in_stock' => true]);
                     $detail->receiptStock((int) $activity->warehouse_id);
 
                     $unitTransactionItemDetailList[] = $detail;
@@ -236,13 +260,17 @@ class WarehouseActivityController extends Controller
                 'unit_transaction_item_details' => $unitTransactionItemDetailList,
             ];
 
-            return $this->responseSuccess((object) $responseData, 'Receipt stock processed successfully');
+            return $this->responseSuccess(
+                (object) $responseData,
+                'Receipt stock processed successfully'
+            );
+
         } catch (Exception $e) {
             Log::error('WarehouseActivity receiptStock error', [
                 'message' => $e->getMessage(),
             ]);
 
-            return $this->responseError(null, 'Failed to process receipt stock', 500);
+            return $this->responseError(null, $e->getMessage(), 500);
         }
     }
 
