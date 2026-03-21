@@ -180,16 +180,19 @@ class WarehouseController extends Controller
 
             $warehouse = Warehouse::findOrFail($id);
 
-            $stockInHand = WarehouseMovement::where('warehouse_id', $warehouse->id)
+            $stockInHand = WarehouseMovement::whereHas('warehouseActivity', function ($q) use ($warehouse) {
+                $q->where('warehouse_id', $warehouse->id);
+            })
                 ->where('status', 'in')
                 ->whereHas('unitTransactionItemDetail', function ($q) {
-                    $q->where('in_stock', true);
+                    $q->where('in_stock', true)->where('is_forecast', false);
                 })
                 ->count();
 
             $stockForecast = UnitTransactionItemDetail::where('in_stock', false)
                 ->whereHas('unitTransactionItem.unitTransaction', function ($q) use ($warehouse) {
                     $q->where('warehouse_id', $warehouse->id)
+                        ->where('is_forecast', true)
                         ->where('type', 'purchase');
                 })
                 ->count();
@@ -221,7 +224,10 @@ class WarehouseController extends Controller
                 });
             }
 
-            $stocks = $stocks->where('warehouse_id', $warehouse->id)
+            $stocks = $stocks
+                ->whereHas('warehouseActivity', function ($q) use ($warehouse) {
+                    $q->where('warehouse_id', $warehouse->id);
+                })
                 ->where('status', 'in')
                 ->with([
                     'unitTransactionItemDetail.unitTransactionItem.unitType:id,uuid,code,name,unit_type,unit_model',

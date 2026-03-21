@@ -248,7 +248,7 @@ class WarehouseActivityController extends Controller
                         );
                     }
 
-                    $detail->update(['in_stock' => true]);
+                    $detail->update(['in_stock' => true, 'is_forecast' => false]);
                     $detail->receiptStock((int) $activity->warehouse_id);
 
                     $unitTransactionItemDetailList[] = $detail;
@@ -296,7 +296,6 @@ class WarehouseActivityController extends Controller
 
             $person = Person::findOrFail($activity->person_id);
 
-            // ambil semua detail ID milik person
             $allowedDetailIds = $person->unitTransactions()
                 ->with('unitTransactionItems.unitTransactionItemDetails:id,unit_transaction_item_id')
                 ->get()
@@ -305,7 +304,6 @@ class WarehouseActivityController extends Controller
                 ->pluck('id')
                 ->toArray();
 
-            // validasi ownership
             $invalidIds = array_diff($validated['unit_transaction_details'], $allowedDetailIds);
 
             if (! empty($invalidIds)) {
@@ -320,9 +318,34 @@ class WarehouseActivityController extends Controller
 
             DB::transaction(function () use ($validated, &$unitTransactionItemDetailList) {
 
-                $details = UnitTransactionItemDetail::whereIn('id', $validated['unit_transaction_details'])->get();
+                $details = UnitTransactionItemDetail::with([
+                    'unitTransactionItem.unitTransaction.unitTransactionBilling',
+                ])->whereIn('id', $validated['unit_transaction_details'])->get();
+
+                $availableStockCount = $details->where('in_stock', true)->count();
+
+                if (count($validated['unit_transaction_details']) > $availableStockCount) {
+                    throw new Exception(
+                        "Dispatch quantity exceeds available stock ({$availableStockCount})"
+                    );
+                }
 
                 foreach ($details as $detail) {
+                    $transaction = $detail->unitTransactionItem->unitTransaction;
+
+                    $billing = $transaction->unitTransactionBilling;
+
+                    if (! $billing) {
+                        throw new Exception(
+                            "Transaction for detail ID {$detail->id} has no billing yet"
+                        );
+                    }
+
+                    if (! $detail->in_stock) {
+                        throw new Exception(
+                            "Detail ID {$detail->id} is not available in stock"
+                        );
+                    }
 
                     $detail->update(['in_stock' => false]);
 
@@ -337,14 +360,17 @@ class WarehouseActivityController extends Controller
                 'unit_transaction_item_details' => $unitTransactionItemDetailList,
             ];
 
-            return $this->responseSuccess((object) $responseData, 'Dispatch stock processed successfully');
+            return $this->responseSuccess(
+                (object) $responseData,
+                'Dispatch stock processed successfully'
+            );
 
         } catch (Exception $e) {
             Log::error('WarehouseActivity dispatchStock error', [
                 'message' => $e->getMessage(),
             ]);
 
-            return $this->responseError(null, 'Failed to process dispatch stock', 500);
+            return $this->responseError(null, $e->getMessage(), 500);
         }
     }
 }
