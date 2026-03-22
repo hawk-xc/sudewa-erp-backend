@@ -32,6 +32,7 @@ class TransactionFlowController extends Controller
         $this->transactionFlowTable = [
             'id',
             'uuid',
+            'code',
             'company_id',
             'unit_transaction_id',
             'transaction_date',

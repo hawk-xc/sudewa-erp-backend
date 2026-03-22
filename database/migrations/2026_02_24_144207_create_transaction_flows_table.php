@@ -16,6 +16,7 @@ return new class extends Migration
             $table->uuid();
             $table->foreignId('company_id')->constrained('companies')->cascadeOnDelete();
             $table->foreignId('unit_transaction_id')->nullable()->constrained('unit_transactions')->nullOnDelete();
+            $table->string('code')->unique()->nullable(false);
             $table->date('transaction_date')->nullable(false)->default(date('Y-m-d'));
             $table->text('name')->nullable(true);
             $table->text('description')->nullable(true);
