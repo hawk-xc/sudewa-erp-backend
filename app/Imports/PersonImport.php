@@ -20,7 +20,8 @@ class PersonImport implements ToCollection, WithHeadingRow
 
     public function __construct(string $type, int $companyId)
     {
-        $this->type = $type == 'supplier' ? 'supplier' : 'customer';
+        $this->type = (string) $type;
+
         $this->companyId = $companyId;
     }
 

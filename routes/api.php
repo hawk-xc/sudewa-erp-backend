@@ -8,6 +8,7 @@ use App\Http\Controllers\MasterData\MasterAccountGroupController;
 use App\Http\Controllers\MasterData\MasterBrandController;
 use App\Http\Controllers\MasterData\MasterCashController;
 use App\Http\Controllers\MasterData\MasterCustomerController;
+use App\Http\Controllers\MasterData\MasterDealerController;
 use App\Http\Controllers\MasterData\MasterSparepartCategoryController;
 use App\Http\Controllers\MasterData\MasterSparepartController;
 use App\Http\Controllers\MasterData\MasterSupplierController;
@@ -97,6 +98,7 @@ Route::group(
             Route::apiResource('cash', MasterCashController::class);
             Route::apiResource('customer', MasterCustomerController::class);
             Route::apiResource('supplier', MasterSupplierController::class);
+            Route::apiResource('dealer', MasterDealerController::class);
             Route::apiResource('brand', MasterBrandController::class);
             Route::apiResource('unit-type', MasterUnitTypeController::class);
             Route::apiResource('sparepart-category', MasterSparepartCategoryController::class);

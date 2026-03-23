@@ -2,15 +2,15 @@
 
 namespace App\Traits;
 
-use Exception;
 use App\Models\Person;
+use Exception;
 use Illuminate\Support\Facades\Log;
 
 trait PersonTrait
 {
     public function generateCode(string $type): ?string
     {
-        if (!in_array($type, ['customer', 'supplier'], true)) {
+        if (! in_array($type, ['customer', 'supplier', 'dealer'], true)) {
             return null;
         }
 
@@ -18,12 +18,13 @@ trait PersonTrait
             $prefix = match ($type) {
                 'customer' => 'CST',
                 'supplier' => 'SPL',
+                'dealer' => 'DLR'
             };
 
             $lastPerson = Person::where('type', $type)->whereNotNull('code')->orderByDesc('id')->first();
 
-            if (!$lastPerson) {
-                return $prefix . '-001';
+            if (! $lastPerson) {
+                return $prefix.'-001';
             }
 
             $lastNumber = (int) substr($lastPerson->code, -3);
@@ -32,9 +33,10 @@ trait PersonTrait
 
             $formattedNumber = str_pad($newNumber, 3, '0', STR_PAD_LEFT);
 
-            return $prefix . '-' . $formattedNumber;
+            return $prefix.'-'.$formattedNumber;
         } catch (Exception $err) {
-            Log::error('Error while creating person code: ' . $err->getMessage());
+            Log::error('Error while creating person code: '.$err->getMessage());
+
             return null;
         }
     }
