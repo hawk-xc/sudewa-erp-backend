@@ -34,6 +34,11 @@ class Person extends Model
         return $this->hasMany(UnitTransaction::class);
     }
 
+    public function ownershipTransferFees()
+    {
+        return $this->hasMany(OwnershipTransferFee::class);
+    }
+
     protected static function booted()
     {
         static::creating(function ($model) {
