@@ -18,6 +18,11 @@ class Region extends Model
         'name',
     ];
 
+    public function ownershipTransferFees()
+    {
+        return $this->hasMany(OwnershipTransferFee::class);
+    }
+
     protected static function booted()
     {
         static::creating(function ($model) {
