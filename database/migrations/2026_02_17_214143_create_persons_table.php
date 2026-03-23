@@ -19,7 +19,7 @@ return new class extends Migration
                 ->constrained('companies')
                 ->cascadeOnDelete();
             $table->string('code')->unique()->nullable(false);
-            $table->enum('type', ['supplier', 'customer']);
+            $table->enum('type', ['supplier', 'customer', 'dealer']);
             $table->string('name')->nullable(false);
             $table->string('address')->nullable(true);
             $table->string('phone')->nullable(true);
