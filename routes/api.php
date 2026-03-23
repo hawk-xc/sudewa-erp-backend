@@ -9,6 +9,7 @@ use App\Http\Controllers\MasterData\MasterBrandController;
 use App\Http\Controllers\MasterData\MasterCashController;
 use App\Http\Controllers\MasterData\MasterCustomerController;
 use App\Http\Controllers\MasterData\MasterDealerController;
+use App\Http\Controllers\MasterData\MasterRegionController;
 use App\Http\Controllers\MasterData\MasterSparepartCategoryController;
 use App\Http\Controllers\MasterData\MasterSparepartController;
 use App\Http\Controllers\MasterData\MasterSupplierController;
@@ -103,6 +104,7 @@ Route::group(
             Route::apiResource('unit-type', MasterUnitTypeController::class);
             Route::apiResource('sparepart-category', MasterSparepartCategoryController::class);
             Route::apiResource('sparepart', MasterSparepartController::class);
+            Route::apiResource('region', MasterRegionController::class);
         });
 
         // Warehouse API
