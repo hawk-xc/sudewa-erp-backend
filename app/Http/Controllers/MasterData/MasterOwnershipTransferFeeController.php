@@ -30,13 +30,15 @@ class MasterOwnershipTransferFeeController extends Controller
 
         $this->authRepository = $ar;
 
-        $this->OwnershipTransferFeeTable = ['id', 'uuid', 'dealer_id', 'OwnershipTransferFee_id', 'tnbk_code', 'vehicle_type', 'un_notice_fee', 'garwil_fee', 'countershop_fee', 'other_fee', 'created_at'];
+        $this->OwnershipTransferFeeTable = ['id', 'uuid', 'dealer_id', 'region_id', 'tnbk_code', 'vehicle_type', 'un_notice_fee', 'garwil_fee', 'countershop_fee', 'other_fee', 'created_at'];
     }
 
     public function index(Request $request)
     {
         try {
             $query = OwnershipTransferFee::query();
+
+            $query->with(['region:id,uuid,code,name', 'dealer:id,uuid,code,name']);
 
             $query->select($this->OwnershipTransferFeeTable);
 
@@ -61,7 +63,7 @@ class MasterOwnershipTransferFeeController extends Controller
     public function show($id)
     {
         try {
-            $OwnershipTransferFee = OwnershipTransferFee::findOrFail($id);
+            $OwnershipTransferFee = OwnershipTransferFee::with(['region', 'dealer'])->findOrFail($id);
 
             return $this->responseSuccess($OwnershipTransferFee, 'OwnershipTransferFee retrieved successfully', 200);
         } catch (Exception $err) {

@@ -13,6 +13,7 @@ return new class extends Migration
     {
         Schema::create('ownership_transfer_fees', function (Blueprint $table) {
             $table->id();
+            $table->uuid();
             $table->foreignId('dealer_id')->constrained('persons')->cascadeOnDelete();
             $table->foreignId('region_id')->constrained('regions')->cascadeOnDelete();
             $table->string('tnbk_code')->nullable(false);
