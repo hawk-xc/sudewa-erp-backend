@@ -92,6 +92,7 @@ Route::group(
             Route::post('account/{id}/import', [MasterAccountController::class, 'import']);
             Route::post('customer/{id}/import', [MasterCustomerController::class, 'import']);
             Route::post('supplier/{id}/import', [MasterSupplierController::class, 'import']);
+            Route::post('region/import', [MasterRegionController::class, 'import']);
             Route::post('unit-type/import', [MasterUnitTypeController::class, 'import']);
             Route::post('sparepart/import', [MasterSparepartController::class, 'import']);
 
