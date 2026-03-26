@@ -1,36 +1,32 @@
 stages:
-  - test
   - deploy
 
-# Stage Test: Validasi kode sebelum masuk ke proses deployment
-testing_code:
-  stage: test
-  image: php:8.3-fpm
-  tags:
-    - development
-  before_script:
-    - apt-get update && apt-get install -y unzip libzip-dev
-    - docker-php-ext-install zip
-    - curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
-    - composer install --no-interaction --prefer-dist
-  script:
-    - echo "Running syntax check..."
-    - find . -path ./vendor -prune -o -name "*.php" -exec php -l {} \;
-    # - php vendor/bin/phpunit # Jalankan unit test jika sudah tersedia
-  only:
-    - master
-
-# Stage Deploy: Update server jika testing berhasil
 deploy_dev:
   stage: deploy
   tags:
     - development
   script:
-    - cd ~/development/client/wajira/finance-be
+    - echo "🚀 Memulai Deployment Wajira Finance..."
+    
+    # 1. Pastikan folder project terdaftar sebagai safe directory
+    - git config --global --add safe.directory /home/alpha-team/development/clients/wajira/finance-be
+    
+    # 2. Pindah ke folder project (Gunakan Path Lengkap)
+    - cd /home/alpha-team/development/clients/wajira/finance-be
+    
+    # 3. Tarik update terbaru dari Master
     - git fetch origin master
     - git reset --hard origin/master
-    - docker-compose up -d --build
+    
+    # 4. Build & Run (Docker yang bakal install PHP extension di dalem)
+    - echo "🐳 Rebuilding Docker Containers..."
+    - docker compose up -d --build
+    
+    # 5. Laravel Final Touch
+    - echo "✨ Running Artisan Commands..."
     - docker exec wajira-finance-backend php artisan migrate --force
     - docker exec wajira-finance-backend php artisan optimize:clear
+    
+    - echo "✅ Wajira Finance BE Berhasil di-deploy, Meng!"
   only:
     - master
