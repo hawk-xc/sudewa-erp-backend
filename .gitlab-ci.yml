@@ -3,25 +3,14 @@ stages:
 
 deploy_dev:
   stage: deploy
-  image: alpine:latest
-  before_script:
-    - apk add --no-cache openssh-client
-    - eval $(ssh-agent -s)
-    # Pastikan SSH_PRIVATE_KEY sudah ada di GitLab Variables ya Meng!
-    - echo "$SSH_PRIVATE_KEY" | tr -d '\r' | ssh-add -
-    - mkdir -p ~/.ssh
-    - chmod 700 ~/.ssh
-    # Ganti dev-srv-hq dengan IP Public server kalau GitLab Runner-nya di luar network
-    - ssh-keyscan -H dev-srv-hq >> ~/.ssh/known_hosts 
+  tags:
+    - development  # Ini mastiin script lari di Runner yang ada di server dev kamu
   script:
-    - |
-      ssh alpha-team@dev-srv-hq "
-        cd ~/development/client/wajira/finance-be && 
-        git fetch origin master &&
-        git reset --hard origin/master && 
-        docker-compose up -d --build &&
-        docker exec wajira-finance-backend php artisan migrate --force &&
-        docker exec wajira-finance-backend php artisan optimize:clear
-      "
+    - cd ~/development/client/wajira/finance-be
+    - git fetch origin master
+    - git reset --hard origin/master
+    - docker-compose up -d --build
+    - docker exec wajira-finance-backend php artisan migrate --force
+    - docker exec wajira-finance-backend php artisan optimize:clear
   only:
     - master
