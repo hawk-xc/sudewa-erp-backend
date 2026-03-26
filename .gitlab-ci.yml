@@ -6,11 +6,26 @@ deploy_dev:
   tags:
     - development
   script:
-    - cd ~/development/client/wajira/finance-be
+    - echo "🚀 Deploying Wajira Finance Backend..."
+    
+    # 1. Daftarkan folder ke Git Safe Directory (Wajib!)
+    - git config --global --add safe.directory /home/alpha-team/development/client/wajira/finance-be
+    
+    # 2. Pindah ke folder project (Pakai Full Path!)
+    - cd /home/alpha-team/development/client/wajira/finance-be
+    
+    # 3. Sinkronkan Code (Force Update)
     - git fetch origin master
     - git reset --hard origin/master
-    - docker-compose up -d --build
+    
+    # 4. Rebuild Container (Pakai 'docker compose' tanpa strip kalau Docker v2)
+    - docker compose up -d --build
+    
+    # 5. Laravel Magic (Migrate & Clear Cache)
+    - echo "✨ Running Laravel Optimization..."
     - docker exec wajira-finance-backend php artisan migrate --force
     - docker exec wajira-finance-backend php artisan optimize:clear
+    
+    - echo "✅ Wajira Finance BE is Live, Meng! Humble & Proud."
   only:
     - master
