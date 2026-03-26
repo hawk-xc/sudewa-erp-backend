@@ -4,7 +4,7 @@ stages:
 deploy_dev:
   stage: deploy
   tags:
-    - development  # Ini mastiin script lari di Runner yang ada di server dev kamu
+    - development
   script:
     - cd ~/development/client/wajira/finance-be
     - git fetch origin master
