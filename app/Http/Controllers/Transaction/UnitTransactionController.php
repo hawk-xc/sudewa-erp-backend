@@ -9,6 +9,7 @@ use App\Models\UnitTransaction;
 use App\Models\UnitTransactionItem;
 use App\Models\UnitTransactionItemDetail;
 use App\Models\UnitType;
+use App\Traits\FileTrait;
 use App\Traits\ResponseTrait;
 use App\Traits\TransactionTrait;
 use Exception;
@@ -19,7 +20,7 @@ use Illuminate\Validation\ValidationException;
 
 class UnitTransactionController extends Controller
 {
-    use ResponseTrait, TransactionTrait;
+    use FileTrait, ResponseTrait, TransactionTrait;
 
     protected $unitTransactionTable;
 
@@ -39,6 +40,7 @@ class UnitTransactionController extends Controller
             'type',
             'max_capacity',
             'stock_state',
+            'invoice_file',
             'created_at',
         ];
     }
@@ -438,6 +440,34 @@ class UnitTransactionController extends Controller
             Log::error('Error While deleting Unit Transaction data : '.$err->getMessage());
 
             return $this->responseError($err->getMessage(), 'Unit Transaction Not Found or Failed Deleted', 500);
+        }
+    }
+
+    public function uploadInvoiceFile(Request $request, string $id)
+    {
+
+        $validated = $request->validate([
+            'invoice_file' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:2048',
+        ]);
+
+        try {
+            $data = UnitTransaction::findOrFail((int) $id);
+
+            if ($request->hasFile('invoice_file')) {
+                $validated['invoice_file'] = $this->storeFile(
+                    $request->file('invoice_file'),
+                    'invoices'
+                );
+            }
+
+            $unitTransaction = DB::transaction(function () use ($validated, $data) {
+                return $data->update($validated);
+            });
+
+            return $this->responseSuccess($unitTransaction, 'Successfully upload unit transaction invoice file', 200);
+
+        } catch (Exception $err) {
+            return $this->responseError($err->getMessage(), 'Failed upload unit transaction invoice file!', 0);
         }
     }
 }

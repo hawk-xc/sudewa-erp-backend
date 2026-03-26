@@ -145,6 +145,8 @@ Route::group(
                 Route::get('unit-transaction-item/get-formula', [UnitTransactionItemController::class, 'getFormula'])->name('get-formula');
                 Route::delete('unit-transaction-item/transcation-item-detail-bulk-delete/{id}', [UnitTransactionItemController::class, 'bulkDelete'])->name('bulk-delete');
 
+                Route::post('unit-transaction/{id}/upload-invoice', [UnitTransactionController::class, 'uploadInvoiceFile'])->name('upload-invoice-file');
+
                 Route::apiResource('unit-transaction', UnitTransactionController::class);
                 Route::apiResource('unit-transaction-item', UnitTransactionItemController::class);
                 Route::apiResource('unit-transaction-item-sales', UnitTransactionItemSalesController::class);

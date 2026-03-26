@@ -20,6 +20,7 @@ class UnitTransaction extends Model
         'type',
         'max_capacity',
         'stock_state',
+        'invoice_file',
     ];
 
     protected $casts = [
