@@ -1,19 +1,28 @@
-deploy_dev:
+stages:
+  - deploy
+
+deploy_finance_be_dev:
   stage: deploy
   tags:
     - development
   script:
-    - echo "🚀 Memulai Deployment Wajira Finance..."
+    - echo "🚀 Memulai sinkronisasi ke folder deployment..."
     
-    # Hapus huruf 's' di 'clients' jadi 'client'
+    # 1. Daftarkan folder asli (tanpa 's') ke safe directory
     - git config --global --add safe.directory /home/alpha-team/development/client/wajira/finance-be
+    
+    # 2. PINDAH KE FOLDER ASLI (Tanpa 's')
     - cd /home/alpha-team/development/client/wajira/finance-be
     
+    # 3. Tarik update terbaru (sekarang dia udah di folder yang bener)
     - git fetch origin master
     - git reset --hard origin/master
+    
+    # 4. Docker Magic
     - docker compose up -d --build
     - docker exec wajira-finance-backend php artisan migrate --force
     - docker exec wajira-finance-backend php artisan optimize:clear
-    - echo "✅ Wajira Finance BE is Live!"
+    
+    - echo "✅ Wajira Finance BE Live on Development Server!"
   only:
     - master
