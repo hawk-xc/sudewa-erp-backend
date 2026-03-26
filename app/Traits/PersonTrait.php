@@ -10,7 +10,7 @@ trait PersonTrait
 {
     public function generateCode(string $type): ?string
     {
-        if (! in_array($type, ['customer', 'supplier', 'dealer'], true)) {
+        if (! in_array($type, ['customer', 'supplier', 'dealer', 'vendor'], true)) {
             return null;
         }
 
@@ -18,7 +18,8 @@ trait PersonTrait
             $prefix = match ($type) {
                 'customer' => 'CST',
                 'supplier' => 'SPL',
-                'dealer' => 'DLR'
+                'dealer' => 'DLR',
+                'vendor' => 'VDR'
             };
 
             $lastPerson = Person::where('type', $type)->whereNotNull('code')->orderByDesc('id')->first();
