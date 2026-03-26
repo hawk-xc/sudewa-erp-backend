@@ -8,21 +8,30 @@ deploy_finance_be_dev:
   script:
     - echo "🚀 Memulai sinkronisasi ke folder deployment..."
     
-    # 1. Daftarkan folder asli (tanpa 's') ke safe directory
+    # 1. Daftarkan folder asli ke safe directory (Humble Fix)
     - git config --global --add safe.directory /home/alpha-team/development/client/wajira/finance-be
     
-    # 2. PINDAH KE FOLDER ASLI (Tanpa 's')
+    # 2. Pindah ke folder asli
     - cd /home/alpha-team/development/client/wajira/finance-be
     
-    # 3. Tarik update terbaru (sekarang dia udah di folder yang bener)
+    # 3. Sinkronisasi Kode dari Master
+    - echo "🔄 Fetching latest code from master..."
     - git fetch origin master
     - git reset --hard origin/master
     
-    # 4. Docker Magic
+    # 4. Docker Build & Up
+    - echo "🐳 Rebuilding Docker containers..."
     - docker compose up -d --build
+    
+    # 5. Database Readiness Check (Agar tidak Connection Refused)
+    - echo "⏳ Menunggu database siap (15 detik)..."
+    - sleep 15
+    
+    # 6. Laravel Magic (Migrate & Optimize)
+    - echo "✨ Running Laravel artisan commands..."
     - docker exec wajira-finance-backend php artisan migrate --force
     - docker exec wajira-finance-backend php artisan optimize:clear
     
-    - echo "✅ Wajira Finance BE Live on Development Server!"
+    - echo "✅ Wajira Finance BE is officially Live & Stable!"
   only:
     - master
