@@ -1,6 +1,3 @@
-stages:
-  - deploy
-
 deploy_dev:
   stage: deploy
   tags:
@@ -8,25 +5,15 @@ deploy_dev:
   script:
     - echo "🚀 Memulai Deployment Wajira Finance..."
     
-    # 1. Pastikan folder project terdaftar sebagai safe directory
-    - git config --global --add safe.directory /home/alpha-team/development/clients/wajira/finance-be
+    # Hapus huruf 's' di 'clients' jadi 'client'
+    - git config --global --add safe.directory /home/alpha-team/development/client/wajira/finance-be
+    - cd /home/alpha-team/development/client/wajira/finance-be
     
-    # 2. Pindah ke folder project (Gunakan Path Lengkap)
-    - cd /home/alpha-team/development/clients/wajira/finance-be
-    
-    # 3. Tarik update terbaru dari Master
     - git fetch origin master
     - git reset --hard origin/master
-    
-    # 4. Build & Run (Docker yang bakal install PHP extension di dalem)
-    - echo "🐳 Rebuilding Docker Containers..."
     - docker compose up -d --build
-    
-    # 5. Laravel Final Touch
-    - echo "✨ Running Artisan Commands..."
     - docker exec wajira-finance-backend php artisan migrate --force
     - docker exec wajira-finance-backend php artisan optimize:clear
-    
-    - echo "✅ Wajira Finance BE Berhasil di-deploy, Meng!"
+    - echo "✅ Wajira Finance BE is Live!"
   only:
     - master
