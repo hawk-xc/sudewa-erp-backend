@@ -126,6 +126,7 @@ class UnitTransactionItemController extends Controller
                 'hpp_per_unit_price' => 'nullable|numeric',
                 'dpp_per_unit_price' => 'nullable|numeric',
                 'ppn_per_unit_price' => 'nullable|numeric',
+                'expedition_fee' => 'nullable|numeric',
                 'other_fee' => 'nullable|numeric',
             ]);
 
@@ -280,6 +281,7 @@ class UnitTransactionItemController extends Controller
                 'hpp_per_unit_price' => 'nullable|numeric',
                 'dpp_per_unit_price' => 'nullable|numeric',
                 'ppn_per_unit_price' => 'nullable|numeric',
+                'expedition_fee' => 'nullable|numeric',
                 'other_fee' => 'nullable|numeric',
             ]);
 
