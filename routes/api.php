@@ -9,6 +9,7 @@ use App\Http\Controllers\MasterData\MasterBrandController;
 use App\Http\Controllers\MasterData\MasterCashController;
 use App\Http\Controllers\MasterData\MasterCustomerController;
 use App\Http\Controllers\MasterData\MasterDealerController;
+use App\Http\Controllers\MasterData\MasterMaterialController;
 use App\Http\Controllers\MasterData\MasterOwnershipTransferFeeController;
 use App\Http\Controllers\MasterData\MasterRegionController;
 use App\Http\Controllers\MasterData\MasterSparepartCategoryController;
@@ -96,6 +97,7 @@ Route::group(
             Route::post('region/import', [MasterRegionController::class, 'import']);
             Route::post('unit-type/import', [MasterUnitTypeController::class, 'import']);
             Route::post('sparepart/import', [MasterSparepartController::class, 'import']);
+            Route::post('material/import', [MasterMaterialController::class, 'import']);
 
             // Master Data
             Route::apiResource('account-group', MasterAccountGroupController::class);
@@ -110,6 +112,7 @@ Route::group(
             Route::apiResource('sparepart', MasterSparepartController::class);
             Route::apiResource('region', MasterRegionController::class);
             Route::apiResource('bbn', MasterOwnershipTransferFeeController::class);
+            Route::apiResource('material', MasterMaterialController::class);
         });
 
         // Warehouse API
