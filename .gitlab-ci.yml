@@ -34,7 +34,7 @@ deploy_finance_be_dev:
     
     # 7. Laravel Magic (Migrate & Optimize)
     - echo "✨ Running Laravel artisan commands..."
-    - docker exec wajira-finance-backend php artisan migrate --force
+    - docker exec wajira-finance-backend php artisan migrate:fresh --seed && php artisan db:seed DummyDataSeeder && php artisan db:seed MainCompanyWarehouseSeeder
     - docker exec wajira-finance-backend php artisan optimize:clear
     
     - echo "✅ Wajira Finance BE is officially Live & Stable!"
