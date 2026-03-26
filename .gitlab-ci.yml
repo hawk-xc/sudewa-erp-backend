@@ -21,7 +21,7 @@ testing_code:
     - master
 
 # Stage Deploy: Update server jika testing berhasil
-deploy_finance_be_dev:
+deploy_dev:
   stage: deploy
   tags:
     - development
