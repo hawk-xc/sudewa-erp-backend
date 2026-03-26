@@ -26,6 +26,6 @@ deploy_dev:
     - docker exec wajira-finance-backend php artisan migrate --force
     - docker exec wajira-finance-backend php artisan optimize:clear
     
-    - echo "✅ Wajira Finance BE is Live, Meng! Humble & Proud."
+    - echo "✅ Wajira Finance BE is Live, Alpha! Humble & Proud."
   only:
     - master
