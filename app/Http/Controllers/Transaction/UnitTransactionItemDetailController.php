@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Transaction;
 
 use App\Http\Controllers\Controller;
+use App\Imports\UnitTransactionItemDetailImport;
 use App\Models\UnitTransactionItem;
 use App\Models\UnitTransactionItemDetail;
 use App\Traits\ResponseTrait;
@@ -10,6 +11,7 @@ use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Maatwebsite\Excel\Facades\Excel;
 
 class UnitTransactionItemDetailController extends Controller
 {
@@ -204,6 +206,25 @@ class UnitTransactionItemDetailController extends Controller
             Log::error('Error While deleting Unit Transaction Item Detail data : '.$err->getMessage());
 
             return $this->responseError([], 'Unit Transaction Item Detail Not Found or Failed Deleted', 500);
+        }
+    }
+
+    public function import(Request $request, int $unitTransactionItemId)
+    {
+        $request->validate([
+            'file' => 'required|file|mimes:xlsx,xls',
+        ]);
+
+        try {
+            Excel::import(new UnitTransactionItemDetailImport((int) $unitTransactionItemId), $request->file('file'));
+
+            return $this->responseSuccess(null, 'Unit Transaction Item Details imported successfully', 201);
+        } catch (Exception $err) {
+            Log::error('Unit Transaction Item Details import error', [
+                'message' => $err->getMessage(),
+            ]);
+
+            return $this->responseError(null, $err->getMessage(), 500);
         }
     }
 }

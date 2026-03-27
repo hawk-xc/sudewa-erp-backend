@@ -140,6 +140,8 @@ Route::group(
 
             // Unit Transaction API
             Route::group(['prefix' => 'unit-transaction', 'as' => 'unit-transaction.'], function () {
+                Route::post('unit-transaction-item-detail/{unit_transaction_item_id}/import', [UnitTransactionItemDetailController::class, 'import']);
+
                 // Additional Route
                 Route::put('unit-transaction/{id}/update-state', [UnitTransactionController::class, 'updateState'])->name('update-state');
                 Route::get('unit-transaction-item/get-formula', [UnitTransactionItemController::class, 'getFormula'])->name('get-formula');
@@ -153,13 +155,6 @@ Route::group(
                 Route::apiResource('unit-transaction-item-detail', UnitTransactionItemDetailController::class);
                 Route::apiResource('unit-transaction-billing', UnitTransactionBillingController::class);
             });
-
-            // Unit Sales API
-            // Route::group(['prefix' => 'unit-sales', 'as' => 'unit-sales.'], function() {
-            //     Route::apiResource('unit-transaction', UnitSalesController::class);
-            //     Route::apiResource('unit-transaction-item', UnitSalesController::class);
-            //     Route::apiResource('unit-transaction-billing', UnitSalesController::class);
-            // });
         });
     },
 );
