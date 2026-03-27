@@ -120,9 +120,10 @@ class UnitTransactionController extends Controller
             ])
                 ->select($this->unitTransactionTable)
                 ->findOrFail($id);
-            $data->unit_transaction_item_total_dpp = $data->unitTransactionItems->sum('dpp_total_price');
-            $data->unit_transaction_item_total_ppn = $data->unitTransactionItems->sum('ppn_total_price');
-            $data->unit_transaction_item_bruto_total = $data->getBrutoAmount();
+            $data->unit_transaction_bruto_total = $data->getBrutoAmount();
+            $data->unit_transaction_item_total_dpp = $data->getSumAmount('ppn_total_price');
+            $data->unit_transaction_item_total_ppn = $data->getSumAmount('bbn_price');
+            $data->transaction_other_fee = $data->getSumAmount('other_fee');
 
             return $this->responseSuccess($data, 'Unit Transaction retrieved successfully', 200);
         } catch (Exception $err) {
