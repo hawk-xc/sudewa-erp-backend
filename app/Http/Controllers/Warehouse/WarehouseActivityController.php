@@ -242,6 +242,12 @@ class WarehouseActivityController extends Controller
                         );
                     }
 
+                    if (! $billing->is_paid) {
+                        throw new Exception(
+                            "Transaction for detail ID {$detail->id} has no paid billing yet"
+                        );
+                    }
+
                     if ($detail->in_stock) {
                         throw new Exception(
                             "Detail ID {$detail->id} already in stock"
