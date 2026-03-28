@@ -84,10 +84,15 @@ class MasterUnitTypeController extends Controller
         }
     }
 
-    public function show($id)
+    public function show(Request $request, int $id)
     {
         try {
             $unitType = UnitType::with('brand')->findOrFail($id);
+
+            if ($request->filled('company_id')) {
+                $unitType['available_stock'] = $unitType->getRealStock($request->company_id);
+                $unitType['forecasted_stock'] = $unitType->getForecastStock($request->company_id);
+            }
 
             return $this->responseSuccess($unitType, 'Unit Type retrieved successfully', 200);
         } catch (Exception $err) {
