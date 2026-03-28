@@ -20,7 +20,7 @@ jobs:
           port: ${{ secrets.PORT }}
           script: |
             echo "========= Pull Latest Code ========="
-            cd /www/wwwroot/wajirabackend.hawk-dev.com/apps
+            cd /root/docker/finance-be
             git checkout development
             git reset --hard
             git pull origin development
@@ -40,3 +40,6 @@ jobs:
 
             echo "========= Restart Queue ========="
             php artisan queue:restart
+
+            echo "========= Update Docker Container ========="
+            docker-compose restart
