@@ -294,26 +294,6 @@ class WarehouseActivityController extends Controller
                 return $this->responseError(null, 'Invalid activity type for dispatch', 422);
             }
 
-            $person = Person::findOrFail($activity->person_id);
-
-            $allowedDetailIds = $person->unitTransactions()
-                ->with('unitTransactionItems.unitTransactionItemDetails:id,unit_transaction_item_id')
-                ->get()
-                ->flatMap(fn ($trx) => $trx->unitTransactionItems)
-                ->flatMap(fn ($item) => $item->unitTransactionItemDetails)
-                ->pluck('id')
-                ->toArray();
-
-            $invalidIds = array_diff($validated['unit_transaction_details'], $allowedDetailIds);
-
-            if (! empty($invalidIds)) {
-                return $this->responseError(
-                    $invalidIds,
-                    'Some unit transaction details do not belong to this person',
-                    422
-                );
-            }
-
             $unitTransactionItemDetailList = [];
 
             DB::transaction(function () use ($validated, &$unitTransactionItemDetailList) {
