@@ -4,6 +4,7 @@ namespace App\Http\Controllers\MasterData;
 
 use App\Http\Controllers\Controller;
 use App\Imports\UnitTypeImport;
+use App\Models\Company;
 use App\Models\UnitType;
 use App\Repositories\AuthRepository;
 use App\Traits\ResponseTrait;
@@ -90,8 +91,11 @@ class MasterUnitTypeController extends Controller
             $unitType = UnitType::with('brand')->findOrFail($id);
 
             if ($request->filled('company_id')) {
-                $unitType['available_stock'] = $unitType->getRealStock($request->company_id);
-                $unitType['forecasted_stock'] = $unitType->getForecastStock($request->company_id);
+                $company = Company::findOrFail($request->company_id);
+
+                $unitType['available_stock'] = $unitType->getRealStock($company->warehouse->id);
+                $unitType['forecasted_stock'] = $unitType->getForecastStock($company->warehouse->id);
+                $unitType['unit_item_details'] = $unitType->getUnitTypeItemDetails($company->warehouse->id);
             }
 
             return $this->responseSuccess($unitType, 'Unit Type retrieved successfully', 200);
