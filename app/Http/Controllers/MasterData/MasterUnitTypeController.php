@@ -5,6 +5,7 @@ namespace App\Http\Controllers\MasterData;
 use App\Http\Controllers\Controller;
 use App\Imports\UnitTypeImport;
 use App\Models\Company;
+use App\Models\UnitTransactionItemDetail;
 use App\Models\UnitType;
 use App\Repositories\AuthRepository;
 use App\Traits\ResponseTrait;
@@ -79,7 +80,7 @@ class MasterUnitTypeController extends Controller
 
             return $this->responseSuccess($unitTypes, 'Unit Types retrieved successfully', 200);
         } catch (Exception $err) {
-            Log::error('Error while trying get Unit Types : '.$err->getMessage());
+            Log::error('Error while trying get Unit Types : ' . $err->getMessage());
 
             return $this->responseError($err->getMessage(), 'Internal Server Error', 500);
         }
@@ -92,15 +93,51 @@ class MasterUnitTypeController extends Controller
 
             if ($request->filled('company_id')) {
                 $company = Company::findOrFail($request->company_id);
+                $warehouseId = $company->warehouse->id;
 
-                $unitType['available_stock'] = $unitType->getRealStock($company->warehouse->id);
-                $unitType['forecasted_stock'] = $unitType->getForecastStock($company->warehouse->id);
-                $unitType['unit_item_details'] = $unitType->getUnitTypeItemDetails($company->warehouse->id);
+                $unitType['available_stock'] = $unitType->getRealStock($warehouseId);
+                $unitType['forecasted_stock'] = $unitType->getForecastStock($warehouseId);
+
+                $detailsQuery = UnitTransactionItemDetail::query()
+                    ->where('in_stock', true)
+                    ->whereHas('unitTransactionItem', function ($q) use ($unitType) {
+                        $q->where('unit_type_id', $unitType->id);
+                    })
+                    ->whereHas('unitTransactionItem.unitTransaction', function ($q) use ($warehouseId) {
+                        $q->where('warehouse_id', $warehouseId);
+                    });
+
+                if ($request->filled('color')) {
+                    $detailsQuery->where('color', 'like', '%' . $request->color . '%');
+                }
+
+                if ($request->filled('machine_number')) {
+                    $detailsQuery->where('machine_number', 'like', '%' . $request->machine_number . '%');
+                }
+
+                if ($request->filled('chassis_number')) {
+                    $detailsQuery->where('chassis_number', 'like', '%' . $request->chassis_number . '%');
+                }
+
+                $sortBy = $request->get('sort_by', 'id');
+                $sortDir = $request->get('sort_dir', 'desc');
+
+                $allowedSort = ['id', 'color', 'machine_number', 'chassis_number', 'created_at'];
+
+                if (!in_array($sortBy, $allowedSort)) {
+                    $sortBy = 'id';
+                }
+
+                $detailsQuery->orderBy($sortBy, $sortDir);
+
+                $perPage = $request->get('per_page', 10);
+
+                $unitType['unit_item_details'] = $detailsQuery->paginate($perPage);
             }
 
             return $this->responseSuccess($unitType, 'Unit Type retrieved successfully', 200);
         } catch (Exception $err) {
-            Log::error('Error while trying get Unit Type : '.$err->getMessage());
+            Log::error('Error while trying get Unit Type : ' . $err->getMessage());
 
             return $this->responseError($err->getMessage(), 'Internal Server Error', 500);
         }
@@ -134,7 +171,7 @@ class MasterUnitTypeController extends Controller
 
             return $this->responseSuccess($unitType->load('brand'), 'Unit Type created successfully', 201);
         } catch (Exception $err) {
-            Log::error('Error while trying create Unit Type : '.$err->getMessage());
+            Log::error('Error while trying create Unit Type : ' . $err->getMessage());
 
             return $this->responseError($err->getMessage(), 'Failed to create Unit Type', 500);
         }
@@ -168,7 +205,7 @@ class MasterUnitTypeController extends Controller
 
             return $this->responseSuccess($unitType->fresh(), 'Unit Type updated successfully', 200);
         } catch (Exception $err) {
-            Log::error('Error while trying update Unit Type : '.$err->getMessage());
+            Log::error('Error while trying update Unit Type : ' . $err->getMessage());
 
             return $this->responseError(null, 'Internal Server Error', 500);
         }
@@ -182,7 +219,7 @@ class MasterUnitTypeController extends Controller
 
             return $this->responseSuccess(null, 'Unit Type deleted successfully', 200);
         } catch (Exception $err) {
-            Log::error('Error while trying delete Unit Type : '.$err->getMessage());
+            Log::error('Error while trying delete Unit Type : ' . $err->getMessage());
 
             return $this->responseError(null, 'Internal Server Error', 500);
         }
@@ -195,7 +232,7 @@ class MasterUnitTypeController extends Controller
         ]);
 
         try {
-            Excel::import(new UnitTypeImport, $request->file('file'));
+            Excel::import(new UnitTypeImport(), $request->file('file'));
 
             return $this->responseSuccess(null, 'Unit Type imported successfully', 201);
         } catch (Exception $err) {
