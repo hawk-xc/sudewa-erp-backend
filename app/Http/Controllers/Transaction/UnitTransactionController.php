@@ -6,9 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Company;
 use App\Models\Person;
 use App\Models\UnitTransaction;
-use App\Models\UnitTransactionItem;
 use App\Models\UnitTransactionItemDetail;
-use App\Models\UnitType;
 use App\Traits\FileTrait;
 use App\Traits\ResponseTrait;
 use App\Traits\TransactionTrait;
@@ -59,7 +57,12 @@ class UnitTransactionController extends Controller
             }
 
             $query->select($this->unitTransactionTable)
-                ->with(['warehouse:id,uuid,name,capacity', 'person:id,uuid,code,name,type', 'transactionFlow:id,uuid,transaction_date,description', 'unitTransactionBilling:id,uuid,unit_transaction_id,bca_payment_amount,bca_payment_usd_amount,cash_payment_amount,bca_payment_liability,bca_payment_usd_liability,cash_payment_liability,payment_at,is_paid']);
+                ->with([
+                    'warehouse:id,uuid,name,capacity',
+                    'person:id,uuid,code,name,type',
+                    'transactionFlow:id,uuid,transaction_date,description',
+                    'unitTransactionBilling.unitTransactionBillingHistories',
+                ]);
 
             if ($request->filled('search')) {
                 $search = $request->search;
@@ -71,34 +74,47 @@ class UnitTransactionController extends Controller
                 });
             }
 
-            foreach ($this->unitTransactionTable as $field) {
-                if ($request->filled($field)) {
-                    $query->where($field, $request->$field);
-                }
-            }
+            $query->orderBy(
+                in_array($request->sort_by, $this->unitTransactionTable) ? $request->sort_by : 'id',
+                $request->sort_order === 'asc' ? 'asc' : 'desc'
+            );
 
-            $allowedSort = $this->unitTransactionTable;
-
-            $sortBy = in_array($request->sort_by, $allowedSort) ? $request->sort_by : 'id';
-            $sortOrder = $request->sort_order === 'asc' ? 'asc' : 'desc';
-
-            $query->orderBy($sortBy, $sortOrder);
-
-            $perPage = $request->per_page ?? 10;
-
-            $data = $query->paginate($perPage);
+            $data = $query->paginate($request->per_page ?? 10);
 
             $data->getCollection()->transform(function ($item) {
+
                 $item->transaction_bruto_total = $item->getBrutoAmount();
                 $item->transaction_dpp_total = $item->getSumAmount('dpp_total_price');
                 $item->transaction_ppn_total = $item->getSumAmount('ppn_total_price');
                 $item->transaction_bbn_total = $item->getSumAmount('bbn_price');
                 $item->transaction_other_fee = $item->getSumAmount('other_fee');
 
+                if ($item->unitTransactionBilling) {
+                    $billing = $item->unitTransactionBilling;
+
+                    $totalCash = (int) $billing->unitTransactionBillingHistories->sum('cash_payment_amount');
+                    $totalBca = (int) $billing->unitTransactionBillingHistories->sum('bca_payment_amount');
+
+                    $totalPaid = $totalCash + $totalBca;
+                    $remaining = (int) $billing->grand_total - $totalPaid;
+
+                    $item->billing_summary = [
+                        'grand_total' => (int) $billing->grand_total,
+                        'total_cash_payment' => $totalCash,
+                        'total_bca_payment' => $totalBca,
+                        'total_paid' => $totalPaid,
+                        'remaining_payment' => $remaining,
+                        'is_paid' => $billing->is_paid,
+                    ];
+                } else {
+                    $item->billing_summary = null;
+                }
+
                 return $item;
             });
 
             return $this->responseSuccess($data, 'Unit Transaction list retrieved successfully', 200);
+
         } catch (Exception $err) {
             Log::error('Error While retrieved Unit Transaction data : '.$err->getMessage());
 
@@ -113,23 +129,42 @@ class UnitTransactionController extends Controller
                 'warehouse:id,uuid,name,capacity',
                 'person:id,uuid,code,type,name',
                 'transactionFlow:id,uuid,transaction_date,description',
-                'unitTransactionBilling',
-                'unitTransactionItems:id,uuid,unit_transaction_id,unit_type_id,qty_total,price,dpp_total_price,ppn_total_price',
-                'unitTransactionItems.unitTransactionItemDetails:id,unit_transaction_item_id,uuid,color,machine_number,chassis_number,in_stock,is_forecast',
-                'unitTransactionItems.unitTypeSoldDetails:id,uuid,unit_transaction_item_id,color,machine_number,chassis_number,in_stock,is_forecast',
+                'unitTransactionBilling.unitTransactionBillingHistories',
+                'unitTransactionItems',
+                'unitTransactionItems.unitTransactionItemDetails',
+                'unitTransactionItems.unitTypeSoldDetails',
             ])
                 ->select($this->unitTransactionTable)
                 ->findOrFail($id);
+
+            // ===== EXISTING =====
             $data->unit_transaction_bruto_total = $data->getBrutoAmount();
             $data->unit_transaction_bruto_total_actual = $data->getBrutoAmountActual();
-            $data->unit_transaction_item_total_dpp = $data->getSumAmount('ppn_total_price');
-            $data->unit_transaction_item_total_dpp_actual = $data->getSumAmountActual('ppn_total_price');
-            $data->unit_transaction_item_total_ppn = $data->getSumAmount('bbn_price');
-            $data->unit_transaction_item_total_ppn_actual = $data->getSumAmountActual('bbn_price');
-            $data->transaction_other_fee = $data->getSumAmount('other_fee');
-            $data->transaction_other_fee_actual = $data->getSumAmountActual('other_fee');
+
+            // ===== BILLING =====
+            if ($data->unitTransactionBilling) {
+                $billing = $data->unitTransactionBilling;
+
+                $totalCash = (int) $billing->unitTransactionBillingHistories->sum('cash_payment_amount');
+                $totalBca = (int) $billing->unitTransactionBillingHistories->sum('bca_payment_amount');
+
+                $totalPaid = $totalCash + $totalBca;
+                $remaining = (int) $billing->grand_total - $totalPaid;
+
+                $data->billing_summary = [
+                    'grand_total' => (int) $billing->grand_total,
+                    'total_cash_payment' => $totalCash,
+                    'total_bca_payment' => $totalBca,
+                    'total_paid' => $totalPaid,
+                    'remaining_payment' => $remaining,
+                    'is_paid' => $billing->is_paid,
+                ];
+            } else {
+                $data->billing_summary = null;
+            }
 
             return $this->responseSuccess($data, 'Unit Transaction retrieved successfully', 200);
+
         } catch (Exception $err) {
             return $this->responseError($err->getMessage(), 'Unit Transaction not found', 404);
         }
@@ -145,24 +180,7 @@ class UnitTransactionController extends Controller
                 'type' => 'required|string|in:purchase,sales',
                 'max_capacity' => 'required|numeric|min:0|max:100',
                 'stock_state' => 'required|string',
-
-                // optional item
-                'unit_type_id' => 'nullable|integer|exists:unit_types,id',
-                'sparepart_id' => 'nullable|integer|exists:spareparts,id',
-                'qty_total' => 'required_with:unit_type_id,sparepart_id|integer|min:1',
-                'price' => 'required_with:unit_type_id,sparepart_id|numeric',
-                'bbn_price' => 'nullable|numeric',
-                'other_fee' => 'nullable|numeric',
             ]);
-
-            // ❗ guard: tidak boleh dua-duanya
-            if ($request->filled('unit_type_id') && $request->filled('sparepart_id')) {
-                return $this->responseError(
-                    'Please select either unit_type_id or sparepart_id',
-                    'Validation failed',
-                    422
-                );
-            }
 
             $warehouseData = Company::findOrFail($request->company_id)
                 ->warehouse()
@@ -189,84 +207,17 @@ class UnitTransactionController extends Controller
                 ]);
             }
 
-            $warehouseForecastCapacity = $warehouseData->capacity - $warehouseData->getWarehouseCapacityUsage();
-
-            if ($request->type === 'purchase' && $request->max_capacity > $warehouseForecastCapacity) {
-                throw ValidationException::withMessages([
-                    'max_capacity' => 'Warehouse capacity is not sufficient.',
-                ]);
-            }
-
             $validated['warehouse_id'] = $warehouseData->id;
 
             if (! $request->filled('code')) {
                 $validated['code'] = $this->generateCode($request->type);
             }
 
-            $data = DB::transaction(function () use ($validated, $request) {
-                $unitTransaction = UnitTransaction::create($validated);
-
-                if ($request->filled('unit_type_id') || $request->filled('sparepart_id')) {
-
-                    if ($unitTransaction->type === 'sales' && $request->filled('unit_type_id')) {
-
-                        $stock = UnitType::findOrFail($request->unit_type_id)
-                            ->getRealStock($unitTransaction->warehouse_id);
-
-                        if ($stock <= 0) {
-                            throw ValidationException::withMessages([
-                                'unit_type_id' => 'No stock available',
-                            ]);
-                        }
-
-                        if ($request->qty_total > $stock) {
-                            throw ValidationException::withMessages([
-                                'qty_total' => 'Qty exceeds stock',
-                            ]);
-                        }
-                    }
-
-                    if ($request->qty_total > $unitTransaction->max_capacity) {
-                        throw ValidationException::withMessages([
-                            'qty_total' => 'Exceeds transaction capacity',
-                        ]);
-                    }
-
-                    $additional_fee =
-                        ($request->bbn_price ?? 0) +
-                        ($request->other_fee ?? 0);
-
-                    $hpp = $request->price - $additional_fee;
-                    $dpp = ceil($hpp / 1.11);
-                    $ppn = floor($dpp * 0.11);
-
-                    UnitTransactionItem::create([
-                        'unit_transaction_id' => $unitTransaction->id,
-                        'unit_type_id' => $request->unit_type_id,
-                        'sparepart_id' => $request->sparepart_id,
-                        'qty_total' => $request->qty_total,
-                        'price' => $request->price,
-                        'bbn_price' => $request->bbn_price ?? 0,
-                        'other_fee' => $request->other_fee ?? 0,
-
-                        'hpp_per_unit_price' => $hpp,
-                        'dpp_per_unit_price' => $dpp,
-                        'ppn_per_unit_price' => $ppn,
-
-                        'hpp_total_price' => $hpp * $request->qty_total,
-                        'dpp_total_price' => $dpp * $request->qty_total,
-                        'ppn_total_price' => $ppn * $request->qty_total,
-                    ]);
-                }
-
-                return $unitTransaction;
+            $data = DB::transaction(function () use ($validated) {
+                return UnitTransaction::create($validated);
             });
 
-            return $this->responseSuccess(
-                $data->load('unitTransactionItems'),
-                'Unit Transaction created successfully',
-                201
-            );
+            return $this->responseSuccess($data, 'Unit Transaction created successfully', 201);
 
         } catch (ValidationException $e) {
             return $this->responseError($e->errors(), 'Validation failed', 422);
@@ -277,202 +228,76 @@ class UnitTransactionController extends Controller
         }
     }
 
-    public function update(Request $request, string $id)
+    public function destroy(string $id)
     {
         try {
-            $unitTransaction = UnitTransaction::findOrFail((int) $id);
+            $data = UnitTransaction::findOrFail($id);
 
-            $validated = $request->validate([
-                'warehouse_id' => 'sometimes|integer|exists:warehouses,id',
-                'person_id' => 'sometimes|integer|exists:persons,id',
-                'code' => 'sometimes|required|string|max:255|unique:unit_transactions,code,'.$id,
-                'type' => 'sometimes|required|string|in:purchase,sales',
-                'max_capacity' => 'sometimes|numeric|min:0|max:100',
-            ]);
+            DB::transaction(fn () => $data->delete());
 
-            DB::transaction(function () use ($unitTransaction, $validated) {
-                $unitTransaction->update($validated);
-            });
+            return $this->responseSuccess($data, 'Unit Transaction successfully Deleted', 200);
 
-            return $this->responseSuccess($unitTransaction->fresh(), 'Unit Transaction updated successfully', 200);
-        } catch (ValidationException $e) {
-            return $this->responseError($e->errors(), 'Validation failed', 422);
         } catch (Exception $err) {
-            Log::error('Error While updating Unit Transaction data : '.$err->getMessage());
+            Log::error($err->getMessage());
 
-            return $this->responseError($err->getMessage(), 'Unit Transaction update failed', 500);
+            return $this->responseError($err->getMessage(), 'Delete failed', 500);
         }
     }
 
     public function updateState(Request $request, string $id)
     {
-        $purchaseStates = [
-            'draft', 'cancel', 'rejected', 'prepare',
-            'inbound_purcase_order', 'inbound_incoming_goods',
-            'inbound_receipt', 'inbound_return',
-        ];
-
-        $salesStates = [
-            'draft', 'cancel', 'prepare',
-            'outbound_reserved', 'outbound_in_transit',
-            'outbound_delivered', 'outbound_return',
-        ];
-
+        $purchaseStates = ['draft', 'cancel', 'rejected', 'prepare', 'inbound_purcase_order', 'inbound_incoming_goods', 'inbound_receipt', 'inbound_return'];
+        $salesStates = ['draft', 'cancel', 'prepare', 'outbound_reserved', 'outbound_in_transit', 'outbound_delivered', 'outbound_return'];
         try {
-            $unitTransaction = UnitTransaction::with('unitTransactionItems')
-                ->findOrFail((int) $id);
-
+            $unitTransaction = UnitTransaction::with('unitTransactionItems')->findOrFail((int) $id);
             if (is_string($request->unit_transaction_details)) {
-                $request->merge([
-                    'unit_transaction_details' => json_decode($request->unit_transaction_details, true),
-                ]);
-            }
-
-            $validated = $request->validate([
-                'stock_state' => 'required|string',
-                'unit_transaction_details' => 'nullable|array',
-                'unit_transaction_details.*' => 'integer|distinct|exists:unit_transaction_item_details,id',
-            ]);
-
-            $allowedStates = $unitTransaction->type === 'purchase'
-                ? $purchaseStates
-                : $salesStates;
-
+                $request->merge(['unit_transaction_details' => json_decode($request->unit_transaction_details, true)]);
+            } $validated = $request->validate(['stock_state' => 'required|string', 'unit_transaction_details' => 'nullable|array', 'unit_transaction_details.*' => 'integer|distinct|exists:unit_transaction_item_details,id']);
+            $allowedStates = $unitTransaction->type === 'purchase' ? $purchaseStates : $salesStates;
             if (! in_array($validated['stock_state'], $allowedStates)) {
                 return $this->responseError(null, 'Invalid stock state for this transaction type', 422);
-            }
-
-            if ($unitTransaction->unitTransactionItems->isEmpty()) {
+            } if ($unitTransaction->unitTransactionItems->isEmpty()) {
                 return $this->responseError(null, 'No transaction items found', 422);
-            }
-
-            if (! empty($validated['unit_transaction_details'])) {
+            } if (! empty($validated['unit_transaction_details'])) {
                 $detailIds = array_unique($validated['unit_transaction_details']);
             } else {
                 if ($unitTransaction->type === 'purchase') {
                     $detailIds = UnitTransactionItemDetail::whereHas('unitTransactionItem', function ($q) use ($unitTransaction) {
                         $q->where('unit_transaction_id', $unitTransaction->id);
                     })->pluck('id')->toArray();
-
                 } else {
                     $detailIds = [];
-
                     foreach ($unitTransaction->unitTransactionItems as $item) {
-                        $ids = $item->unitTypeSoldDetails()
-                            ->pluck('unit_transaction_item_details.id')
-                            ->toArray();
-
+                        $ids = $item->unitTypeSoldDetails()->pluck('unit_transaction_item_details.id')->toArray();
                         $detailIds = array_merge($detailIds, $ids);
-                    }
-
-                    $detailIds = array_unique($detailIds);
+                    } $detailIds = array_unique($detailIds);
                 }
-            }
-
-            if ($unitTransaction->type === 'purchase') {
-                $validDetails = UnitTransactionItemDetail::whereIn('id', $detailIds)
-                    ->whereHas('unitTransactionItem', function ($q) use ($unitTransaction) {
-                        $q->where('unit_transaction_id', $unitTransaction->id);
-                    })
-                    ->get();
-
+            } if ($unitTransaction->type === 'purchase') {
+                $validDetails = UnitTransactionItemDetail::whereIn('id', $detailIds)->whereHas('unitTransactionItem', function ($q) use ($unitTransaction) {
+                    $q->where('unit_transaction_id', $unitTransaction->id);
+                })->get();
             } else {
                 $validDetails = collect();
-
                 foreach ($unitTransaction->unitTransactionItems as $item) {
-
-                    $details = $item->unitTypeSoldDetails()
-                        ->whereIn('unit_transaction_item_details.id', $detailIds)
-                        ->get();
-
+                    $details = $item->unitTypeSoldDetails()->whereIn('unit_transaction_item_details.id', $detailIds)->get();
                     $validDetails = $validDetails->merge($details);
                 }
-            }
-
-            if ($validDetails->isEmpty()) {
-                return $this->responseError(
-                    null,
-                    'Selected details not found in this transaction',
-                    422
-                );
-            }
-
-            DB::transaction(function () use ($unitTransaction, $validated) {
-                $unitTransaction->update([
-                    'stock_state' => $validated['stock_state'],
-                ]);
-
+            } if ($validDetails->isEmpty()) {
+                return $this->responseError(null, 'Selected details not found in this transaction', 422);
+            } DB::transaction(function () use ($unitTransaction, $validated) {
+                $unitTransaction->update(['stock_state' => $validated['stock_state']]);
                 foreach ($unitTransaction->unitTransactionItems as $item) {
-                    $item->update([
-                        'stock_state' => $validated['stock_state'],
-                    ]);
+                    $item->update(['stock_state' => $validated['stock_state']]);
                 }
             });
 
-            return $this->responseSuccess(
-                $unitTransaction->fresh()->load([
-                    'unitTransactionItems:id,uuid,unit_transaction_id,unit_type_id,sparepart_id,price',
-                    'unitTransactionItems.unitTransactionItemDetails:id,uuid,unit_transaction_item_id,color,machine_number,chassis_number,in_stock,is_forecast',
-                    'unitTransactionItems.unitTypeSoldDetails:id,uuid,unit_transaction_item_id,color,machine_number,chassis_number,in_stock,is_forecast',
-                ]),
-                'Unit Transaction state updated successfully',
-                200
-            );
+            return $this->responseSuccess($unitTransaction->fresh()->load(['unitTransactionItems:id,uuid,unit_transaction_id,unit_type_id,sparepart_id,price', 'unitTransactionItems.unitTransactionItemDetails:id,uuid,unit_transaction_item_id,color,machine_number,chassis_number,in_stock,is_forecast', 'unitTransactionItems.unitTypeSoldDetails:id,uuid,unit_transaction_item_id,color,machine_number,chassis_number,in_stock,is_forecast']), 'Unit Transaction state updated successfully', 200);
         } catch (ValidationException $e) {
             return $this->responseError($e->errors(), 'Validation failed', 422);
         } catch (Exception $err) {
             Log::error('Error updating Unit Transaction state: '.$err->getMessage());
 
-            return $this->responseError(
-                $err->getMessage(),
-                'Unit Transaction state update failed',
-                500
-            );
-        }
-    }
-
-    public function destroy(string $id)
-    {
-        try {
-            $data = UnitTransaction::findOrFail($id);
-
-            DB::transaction(function () use ($data) {
-                $data->delete();
-            });
-
-            return $this->responseSuccess($data, 'Unit Transaction successfully Deleted', 200);
-        } catch (Exception $err) {
-            Log::error('Error While deleting Unit Transaction data : '.$err->getMessage());
-
-            return $this->responseError($err->getMessage(), 'Unit Transaction Not Found or Failed Deleted', 500);
-        }
-    }
-
-    public function uploadInvoiceFile(Request $request, string $id)
-    {
-
-        $validated = $request->validate([
-            'invoice_file' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:2048',
-        ]);
-
-        try {
-            $data = UnitTransaction::findOrFail((int) $id);
-
-            if ($request->hasFile('invoice_file')) {
-                $validated['invoice_file'] = $this->storeFile(
-                    $request->file('invoice_file'),
-                    'invoices'
-                );
-            }
-
-            $unitTransaction = DB::transaction(function () use ($validated, $data) {
-                return $data->update($validated);
-            });
-
-            return $this->responseSuccess($unitTransaction, 'Successfully upload unit transaction invoice file', 200);
-
-        } catch (Exception $err) {
-            return $this->responseError($err->getMessage(), 'Failed upload unit transaction invoice file!', 0);
+            return $this->responseError($err->getMessage(), 'Unit Transaction state update failed', 500);
         }
     }
 }
