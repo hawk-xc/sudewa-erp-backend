@@ -133,7 +133,8 @@ class UnitTransactionBillingController extends Controller
                 'unit_transaction_id' => 'required|integer|exists:unit_transactions,id|unique:unit_transaction_billings,unit_transaction_id',
             ]);
 
-            $unitTransaction = UnitTransaction::findOrFail($validated['unit_transaction_id']);
+            $unitTransaction = UnitTransaction::with('unitTransactionItems')
+                ->findOrFail($validated['unit_transaction_id']);
 
             if ((int) $unitTransaction->warehouse->company_id !== (int) $validated['company_id']) {
                 throw ValidationException::withMessages([
@@ -141,7 +142,12 @@ class UnitTransactionBillingController extends Controller
                 ]);
             }
 
-            $grandTotal = $unitTransaction->getBrutoAmountActual();
+            if ($unitTransaction->type === 'purchase') {
+                $grandTotal = $unitTransaction->getBrutoAmountActual();
+            } else {
+                // SALES → pakai total biasa (tidak pakai item details)
+                $grandTotal = $unitTransaction->getBrutoAmount();
+            }
 
             if ($grandTotal <= 0) {
                 throw ValidationException::withMessages([
