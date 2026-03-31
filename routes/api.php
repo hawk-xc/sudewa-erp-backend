@@ -21,6 +21,7 @@ use App\Http\Controllers\Permission\PermissionController;
 use App\Http\Controllers\Role\RoleController;
 use App\Http\Controllers\Transaction\TransactionFlowController;
 use App\Http\Controllers\Transaction\UnitTransactionBillingController;
+use App\Http\Controllers\Transaction\UnitTransactionBillingHistoryController;
 use App\Http\Controllers\Transaction\UnitTransactionController;
 use App\Http\Controllers\Transaction\UnitTransactionItemController;
 use App\Http\Controllers\Transaction\UnitTransactionItemDetailController;
@@ -158,6 +159,7 @@ Route::group(
                 Route::apiResource('unit-transaction-item-sales', UnitTransactionItemSalesController::class);
                 Route::apiResource('unit-transaction-item-detail', UnitTransactionItemDetailController::class);
                 Route::apiResource('unit-transaction-billing', UnitTransactionBillingController::class);
+                Route::apiResource('unit-transaction-billing-history', UnitTransactionBillingHistoryController::class);
             });
         });
     },

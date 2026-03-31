@@ -29,13 +29,8 @@ class UnitTransactionBillingController extends Controller
             'id',
             'uuid',
             'unit_transaction_id',
-            'bca_payment_amount',
-            'bca_payment_usd_amount',
-            'cash_payment_amount',
-            'bca_payment_liability',
-            'bca_payment_usd_liability',
-            'cash_payment_liability',
-            'payment_at',
+            'grand_total',
+            'last_payment_at',
             'is_paid',
             'created_at',
         ];
@@ -47,53 +42,86 @@ class UnitTransactionBillingController extends Controller
             $query = UnitTransactionBilling::query();
 
             $query->select($this->unitTransactionBillingTable)
-                ->with(['unitTransaction:id,code']);
+                ->with([
+                    'unitTransaction:id,code',
+                ]);
 
             if ($request->filled('search')) {
                 $search = $request->search;
 
                 $query->where(function ($q) use ($search) {
                     $q->where('uuid', 'like', "%$search%")
-                        ->orWhere('bca_payment_amount', 'like', "%$search%")
-                        ->orWhere('cash_payment_amount', 'like', "%$search%");
+                        ->orWhere('grand_total', 'like', "%$search%");
                 });
             }
 
-            foreach ($this->unitTransactionBillingTable as $field) {
-                if ($request->filled($field)) {
-                    $query->where($field, $request->$field);
-                }
-            }
+            $query->orderBy(
+                in_array($request->sort_by, $this->unitTransactionBillingTable) ? $request->sort_by : 'id',
+                $request->sort_order === 'asc' ? 'asc' : 'desc'
+            );
 
-            $allowedSort = $this->unitTransactionBillingTable;
+            $data = $query->paginate($request->per_page ?? 10);
 
-            $sortBy = in_array($request->sort_by, $allowedSort) ? $request->sort_by : 'id';
-            $sortOrder = $request->sort_order === 'asc' ? 'asc' : 'desc';
+            $data->getCollection()->transform(function ($item) {
 
-            $query->orderBy($sortBy, $sortOrder);
+                $item->total_cash_payment = $item->getTotalCashPayment();
+                $item->total_bca_cash_payment = $item->getTotalBcaCashPayment();
+                $item->total_paid = $item->getTotalPaid();
+                $item->remaining_payment = $item->getRemainingPayment();
 
-            $perPage = $request->per_page ?? 10;
+                return $item;
+            });
 
-            $data = $query->paginate($perPage);
+            return $this->responseSuccess(
+                $data,
+                'Unit Transaction Billing list retrieved successfully',
+                200
+            );
 
-            return $this->responseSuccess($data, 'Unit Transaction Billing list retrieved successfully', 200);
         } catch (Exception $err) {
-            Log::error('Error While retrieved Unit Transaction Billing data : '.$err->getMessage());
+            Log::error($err->getMessage());
 
-            return $this->responseError(null, 'Unit Transaction Billing list retrieved Failed', 500);
+            return $this->responseError(null, 'Failed to retrieve data', 500);
         }
     }
 
     public function show(string $id)
     {
         try {
-            $data = UnitTransactionBilling::with(['unitTransaction:id,code'])
+            $data = UnitTransactionBilling::with([
+                'unitTransaction:id,code',
+                'unitTransactionBillingHistories',
+            ])
                 ->select($this->unitTransactionBillingTable)
                 ->findOrFail($id);
 
-            return $this->responseSuccess($data, 'Unit Transaction Billing retrieved successfully', 200);
+            $histories = $data->unitTransactionBillingHistories;
+
+            $totalCash = $histories->sum('cash_payment_amount');
+            $totalBca = $histories->sum('bca_payment_amount');
+
+            $totalUsd = $histories->sum('bca_payment_usd_amount');
+
+            $totalPaid = $totalCash + $totalBca;
+
+            $remaining = $data->grand_total - $totalPaid;
+
+            $totalPaymentCount = $histories->count();
+
+            $data->total_cash_payment = $totalCash;
+            $data->total_bca_payment = $totalBca;
+
+            $data->total_paid = $totalPaid;
+            $data->remaining_payment = $remaining;
+
+            $data->total_usd_payment = $totalUsd;
+
+            $data->total_payment_count = $totalPaymentCount;
+
+            return $this->responseSuccess($data, 'Billing retrieved successfully', 200);
+
         } catch (Exception $err) {
-            return $this->responseError($err->getMessage(), 'Unit Transaction Billing not found', 404);
+            return $this->responseError($err->getMessage(), 'Billing not found', 404);
         }
     }
 
@@ -103,153 +131,101 @@ class UnitTransactionBillingController extends Controller
             $validated = $request->validate([
                 'company_id' => 'required|integer|exists:companies,id',
                 'unit_transaction_id' => 'required|integer|exists:unit_transactions,id|unique:unit_transaction_billings,unit_transaction_id',
-                'bca_payment_amount' => 'nullable|numeric|min:0',
-                'bca_payment_usd_amount' => 'nullable|numeric|min:0',
-                'cash_payment_amount' => 'nullable|numeric|min:0',
-                'payment_at' => 'nullable|date',
-                'is_paid' => 'sometimes|boolean',
             ]);
 
-            $unitTransaction = UnitTransaction::findOrFail($request->unit_transaction_id);
-            $unitTransactionBrutoTotal = $unitTransaction->getBrutoAmount();
+            $unitTransaction = UnitTransaction::findOrFail($validated['unit_transaction_id']);
 
-            if ((int) $unitTransaction->warehouse->company_id !== (int) $request->company_id) {
+            if ((int) $unitTransaction->warehouse->company_id !== (int) $validated['company_id']) {
                 throw ValidationException::withMessages([
-                    'company_id' => 'Company don\'t have this unit transaction!.',
+                    'company_id' => 'Company does not own this unit transaction.',
                 ]);
             }
 
-            $bcaPayment = $request->bca_payment_amount ?? 0;
-            $cashPayment = $request->cash_payment_amount ?? 0;
+            $grandTotal = $unitTransaction->getBrutoAmountActual();
 
-            $totalIdrPayment = $bcaPayment + $cashPayment;
-
-            if ($request->bca_payment_amount > $cashPayment) {
+            if ($grandTotal <= 0) {
                 throw ValidationException::withMessages([
-                    'bca_payment_amount' => 'Total IDR Bca payment (BCA) cannot exceed the transaction bruto amount.',
-                ]);
-            }
-            if ($request->cash_payment_amount > $unitTransactionBrutoTotal) {
-                throw ValidationException::withMessages([
-                    'cash_payment_amount' => 'Total IDR Cash payment (Cash) cannot exceed the transaction bruto amount.',
+                    'unit_transaction_id' => 'Grand total must be greater than 0.',
                 ]);
             }
 
-            $bca_payment_liability = 0;
-            $cash_payment_liability = 0;
-
-            if ($totalIdrPayment < $unitTransactionBrutoTotal) {
-                $remaining = $unitTransactionBrutoTotal - $totalIdrPayment;
-
-                if ($cashPayment < $remaining) {
-                    $cash_payment_liability = $remaining;
-                } else {
-                    $bca_payment_liability = $remaining;
-                }
-            }
-
-            $validated['bca_payment_liability'] = $bca_payment_liability;
-            $validated['cash_payment_liability'] = $cash_payment_liability;
-            $validated['bca_payment_usd_liability'] = 0;
-
-            if ($bca_payment_liability == 0 && $cash_payment_liability == 0 && ! $request->filled('is_paid')) {
-                $validated['is_paid'] = true;
-
-                // change inbound_purcase_order state
-                $unitTransaction->update(['stock_state' => 'inbound_purcase_order']);
-            } else {
-                $validated['is_paid'] = $request->filled('is_paid') ?? false;
-            }
-
-            $data = DB::transaction(function () use ($validated) {
-                return UnitTransactionBilling::create($validated);
+            $billing = DB::transaction(function () use ($validated, $grandTotal) {
+                return UnitTransactionBilling::create([
+                    'unit_transaction_id' => $validated['unit_transaction_id'],
+                    'grand_total' => $grandTotal,
+                    'is_paid' => false,
+                ]);
             });
 
-            return $this->responseSuccess($data->fresh(), 'Unit Transaction Billing created successfully', 201);
+            return $this->responseSuccess($billing, 'Billing created successfully', 201);
+
         } catch (ValidationException $err) {
             return $this->responseError($err->errors(), 'Validation failed', 422);
         } catch (Exception $err) {
-            Log::error('Error While storing Unit Transaction Billing data : '.$err->getMessage());
+            Log::error($err->getMessage());
 
-            return $this->responseError($err->getMessage(), 'Unit Transaction Billing creation failed', 500);
+            return $this->responseError($err->getMessage(), 'Create failed', 500);
         }
     }
 
     public function update(Request $request, string $id)
     {
         try {
-            $billing = UnitTransactionBilling::findOrFail((int) $id);
+            $billing = UnitTransactionBilling::with('unitTransaction')->findOrFail($id);
 
             $validated = $request->validate([
-                'bca_payment_amount' => 'nullable|numeric|min:0',
-                'bca_payment_usd_amount' => 'nullable|numeric|min:0',
-                'cash_payment_amount' => 'nullable|numeric|min:0',
+                'amount' => 'required|numeric|min:1',
+                'payment_method' => 'required|in:cash,bca',
                 'payment_at' => 'nullable|date',
-                'is_paid' => 'sometimes|boolean',
             ]);
 
-            $unitTransaction = UnitTransaction::findOrFail($billing->unit_transaction_id);
+            $amount = $validated['amount'];
 
-            $remainingBcaLiability = $billing->bca_payment_liability;
-            $remainingCashLiability = $billing->cash_payment_liability;
+            $totalPaid = $billing->unitTransactionBillingHistories()->sum('amount');
 
-            $bcaPayment = $request->bca_payment_amount ?? 0;
-            $cashPayment = $request->cash_payment_amount ?? 0;
+            $newTotalPaid = $totalPaid + $amount;
 
-            if ($bcaPayment > $remainingBcaLiability) {
+            if ($newTotalPaid > $billing->grand_total) {
                 throw ValidationException::withMessages([
-                    'bca_payment_amount' => 'BCA payment cannot exceed remaining BCA liability.',
+                    'amount' => 'Payment exceeds remaining amount.',
                 ]);
             }
 
-            if ($cashPayment > $remainingCashLiability) {
-                throw ValidationException::withMessages([
-                    'cash_payment_amount' => 'Cash payment cannot exceed remaining Cash liability.',
+            DB::transaction(function () use ($billing, $validated, $newTotalPaid) {
+                $billing->unitTransactionBillingHistories()->create([
+                    'amount' => $validated['amount'],
+                    'payment_method' => $validated['payment_method'],
+                    'payment_at' => $validated['payment_at'] ?? now(),
                 ]);
-            }
 
-            $validated['bca_payment_liability'] =
-                $remainingBcaLiability - $bcaPayment;
+                $remaining = $billing->grand_total - $newTotalPaid;
 
-            $validated['cash_payment_liability'] =
-                $remainingCashLiability - $cashPayment;
-
-            $validated['bca_payment_usd_liability'] = 0;
-
-            $validated['bca_payment_amount'] =
-                $billing->bca_payment_amount + $bcaPayment;
-
-            $validated['cash_payment_amount'] =
-                $billing->cash_payment_amount + $cashPayment;
-
-            if (
-                (int) $validated['bca_payment_liability'] == 0 &&
-                (int) $validated['cash_payment_liability'] == 0
-            ) {
-
-                $validated['is_paid'] = true;
-
-                $unitTransaction->update([
-                    'stock_state' => 'inbound_purcase_order',
+                $billing->update([
+                    'total_paid' => $newTotalPaid,
+                    'remaining_payment' => $remaining,
+                    'is_paid' => $remaining <= 0,
+                    'last_payment_at' => now(),
                 ]);
-            }
 
-            DB::transaction(function () use ($billing, $validated) {
-                $billing->update($validated);
+                if ($remaining <= 0) {
+                    $billing->unitTransaction->update([
+                        'stock_state' => 'inbound_purcase_order',
+                    ]);
+                }
             });
 
             return $this->responseSuccess(
-                $billing->fresh(),
-                'Unit Transaction Billing updated successfully',
+                $billing->fresh('unitTransactionBillingHistories'),
+                'Payment added successfully',
                 200
             );
 
-        } catch (ValidationException $e) {
-            return $this->responseError($e->errors(), 'Validation failed', 422);
+        } catch (ValidationException $err) {
+            return $this->responseError($err->errors(), 'Validation failed', 422);
         } catch (Exception $err) {
-            Log::error('Error While updating Unit Transaction Billing data : '.$err->getMessage());
+            Log::error($err->getMessage());
 
-            return $this->responseError($err->getMessage(), 'Unit Transaction Billing update failed', 500);
+            return $this->responseError($err->getMessage(), 'Update failed', 500);
         }
     }
 
@@ -258,15 +234,14 @@ class UnitTransactionBillingController extends Controller
         try {
             $billing = UnitTransactionBilling::findOrFail($id);
 
-            DB::transaction(function () use ($billing) {
-                $billing->delete();
-            });
+            DB::transaction(fn () => $billing->delete());
 
-            return $this->responseSuccess([], 'Unit Transaction Billing successfully Deleted', 200);
+            return $this->responseSuccess($billing, 'Billing deleted successfully', 200);
+
         } catch (Exception $err) {
-            Log::error('Error While deleting Unit Transaction Billing data : '.$err->getMessage());
+            Log::error($err->getMessage());
 
-            return $this->responseError([], 'Unit Transaction Billing Not Found or Failed Deleted', 500);
+            return $this->responseError(null, 'Delete failed', 500);
         }
     }
 
@@ -294,51 +269,36 @@ class UnitTransactionBillingController extends Controller
                 $actualQty = $item->unitTransactionItemDetails->count();
 
                 $summary[] = [
-                    'unit_transaction_item_id' => $item->id,
+                    'item_id' => $item->id,
                     'qty_input' => (int) $item->qty_total,
                     'qty_actual' => (int) $actualQty,
                     'is_valid' => (int) $item->qty_total === (int) $actualQty,
                 ];
 
-                if ((int) $item->qty_total !== (int) $actualQty) {
+                if ($item->qty_total != $actualQty) {
                     $invalidItems[] = [
-                        'unit_transaction_item_id' => $item->id,
-                        'qty_input' => (int) $item->qty_total,
-                        'qty_actual' => (int) $actualQty,
-                        'difference_total' => (int) $item->qty_total - (int) $actualQty,
+                        'item_id' => $item->id,
+                        'difference' => $item->qty_total - $actualQty,
                     ];
                 }
             }
 
             if (! empty($invalidItems)) {
-                return $this->responseError(
-                    (object) [
-                        'is_valid' => false,
-                        'message' => 'Mismatch between qty_total and actual unit details.',
-                        'invalid_items' => $invalidItems,
-                        'summary' => $summary,
-                        'hint' => 'Complete unitTransactionItemDetails before proceeding.',
-                    ],
-                    'Validation failed: quantity mismatch detected',
-                    422
-                );
+                return $this->responseError((object) [
+                    'is_valid' => false,
+                    'invalid_items' => $invalidItems,
+                    'summary' => $summary,
+                ], 'Mismatch detected', 422);
             }
 
-            return $this->responseSuccess(
-                (object) [
-                    'is_valid' => true,
-                    'message' => 'All unit transaction items are consistent.',
-                    'summary' => $summary,
-                ],
-                'Unit transaction items quantity valid',
-                200
-            );
+            return $this->responseSuccess((object) [
+                'is_valid' => true,
+                'summary' => $summary,
+            ], 'Valid', 200);
 
         } catch (ValidationException $err) {
             return $this->responseError($err->errors(), 'Validation failed', 422);
         } catch (Exception $err) {
-            Log::error('Error while checking Unit Transaction: '.$err->getMessage());
-
             return $this->responseError($err->getMessage(), 'Check failed', 500);
         }
     }

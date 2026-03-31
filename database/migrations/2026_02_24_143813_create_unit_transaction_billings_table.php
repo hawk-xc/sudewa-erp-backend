@@ -14,14 +14,13 @@ return new class extends Migration
         Schema::create('unit_transaction_billings', function (Blueprint $table) {
             $table->id();
             $table->uuid();
+
             $table->foreignId('unit_transaction_id')->nullable(true)->constrained('unit_transactions')->cascadeOnDelete();
-            $table->decimal('bca_payment_amount', 15, 2)->nullable(false)->default(0);
-            $table->decimal('bca_payment_usd_amount', 10, 2)->nullable(false)->default(0);
-            $table->decimal('cash_payment_amount', 15, 2)->nullable(false)->default(0);
-            $table->decimal('bca_payment_liability', 15, 2)->nullable(false)->default(0);
-            $table->decimal('bca_payment_usd_liability', 10, 2)->nullable(false)->default(0);
-            $table->decimal('cash_payment_liability', 15, 2)->nullable(false)->default(0);
-            $table->dateTime('payment_at')->default(now());
+
+            $table->decimal('grand_total', 15, 2);
+
+            $table->dateTime('last_payment_at')->nullable();
+
             $table->tinyInteger('is_paid')->default(0);
             $table->timestamps();
         });
