@@ -114,16 +114,20 @@ class UnitTransactionController extends Controller
                 'person:id,uuid,code,type,name',
                 'transactionFlow:id,uuid,transaction_date,description',
                 'unitTransactionBilling',
-                'unitTransactionItems:id,unit_transaction_id,uuid,qty_total,price,dpp_total_price,ppn_total_price',
+                'unitTransactionItems:id,uuid,unit_transaction_id,unit_type_id,qty_total,price,dpp_total_price,ppn_total_price',
                 'unitTransactionItems.unitTransactionItemDetails:id,unit_transaction_item_id,uuid,color,machine_number,chassis_number,in_stock,is_forecast',
                 'unitTransactionItems.unitTypeSoldDetails:id,uuid,unit_transaction_item_id,color,machine_number,chassis_number,in_stock,is_forecast',
             ])
                 ->select($this->unitTransactionTable)
                 ->findOrFail($id);
             $data->unit_transaction_bruto_total = $data->getBrutoAmount();
+            $data->unit_transaction_bruto_total_actual = $data->getBrutoAmountActual();
             $data->unit_transaction_item_total_dpp = $data->getSumAmount('ppn_total_price');
+            $data->unit_transaction_item_total_dpp_actual = $data->getSumAmountActual('ppn_total_price');
             $data->unit_transaction_item_total_ppn = $data->getSumAmount('bbn_price');
+            $data->unit_transaction_item_total_ppn_actual = $data->getSumAmountActual('bbn_price');
             $data->transaction_other_fee = $data->getSumAmount('other_fee');
+            $data->transaction_other_fee_actual = $data->getSumAmountActual('other_fee');
 
             return $this->responseSuccess($data, 'Unit Transaction retrieved successfully', 200);
         } catch (Exception $err) {

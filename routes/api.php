@@ -142,11 +142,15 @@ Route::group(
             Route::group(['prefix' => 'unit-transaction', 'as' => 'unit-transaction.'], function () {
                 Route::post('unit-transaction-item-detail/{unit_transaction_item_id}/import', [UnitTransactionItemDetailController::class, 'import']);
 
+                // unit transaction item details counter validator
+                Route::get('unit-transaction-billing/check-right-amount', [UnitTransactionBillingController::class, 'checkRightAmount']);
+
                 // Additional Route
                 Route::put('unit-transaction/{id}/update-state', [UnitTransactionController::class, 'updateState'])->name('update-state');
                 Route::get('unit-transaction-item/get-formula', [UnitTransactionItemController::class, 'getFormula'])->name('get-formula');
                 Route::delete('unit-transaction-item/transcation-item-detail-bulk-delete/{id}', [UnitTransactionItemController::class, 'bulkDelete'])->name('bulk-delete');
 
+                // upload unit transaction invoice
                 Route::post('unit-transaction/{id}/upload-invoice', [UnitTransactionController::class, 'uploadInvoiceFile'])->name('upload-invoice-file');
 
                 Route::apiResource('unit-transaction', UnitTransactionController::class);
