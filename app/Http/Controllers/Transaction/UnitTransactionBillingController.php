@@ -269,4 +269,77 @@ class UnitTransactionBillingController extends Controller
             return $this->responseError([], 'Unit Transaction Billing Not Found or Failed Deleted', 500);
         }
     }
+
+    public function checkRightAmount(Request $request)
+    {
+        try {
+            $validated = $request->validate([
+                'company_id' => 'required|integer|exists:companies,id',
+                'unit_transaction_id' => 'required|integer|exists:unit_transactions,id',
+            ]);
+
+            $unitTransaction = UnitTransaction::with('unitTransactionItems.unitTransactionItemDetails')
+                ->findOrFail($validated['unit_transaction_id']);
+
+            if ((int) $unitTransaction->warehouse->company_id !== (int) $validated['company_id']) {
+                throw ValidationException::withMessages([
+                    'company_id' => 'Company does not own this unit transaction.',
+                ]);
+            }
+
+            $invalidItems = [];
+            $summary = [];
+
+            foreach ($unitTransaction->unitTransactionItems as $item) {
+                $actualQty = $item->unitTransactionItemDetails->count();
+
+                $summary[] = [
+                    'unit_transaction_item_id' => $item->id,
+                    'qty_input' => (int) $item->qty_total,
+                    'qty_actual' => (int) $actualQty,
+                    'is_valid' => (int) $item->qty_total === (int) $actualQty,
+                ];
+
+                if ((int) $item->qty_total !== (int) $actualQty) {
+                    $invalidItems[] = [
+                        'unit_transaction_item_id' => $item->id,
+                        'qty_input' => (int) $item->qty_total,
+                        'qty_actual' => (int) $actualQty,
+                        'difference_total' => (int) $item->qty_total - (int) $actualQty,
+                    ];
+                }
+            }
+
+            if (! empty($invalidItems)) {
+                return $this->responseError(
+                    (object) [
+                        'is_valid' => false,
+                        'message' => 'Mismatch between qty_total and actual unit details.',
+                        'invalid_items' => $invalidItems,
+                        'summary' => $summary,
+                        'hint' => 'Complete unitTransactionItemDetails before proceeding.',
+                    ],
+                    'Validation failed: quantity mismatch detected',
+                    422
+                );
+            }
+
+            return $this->responseSuccess(
+                (object) [
+                    'is_valid' => true,
+                    'message' => 'All unit transaction items are consistent.',
+                    'summary' => $summary,
+                ],
+                'Unit transaction items quantity valid',
+                200
+            );
+
+        } catch (ValidationException $err) {
+            return $this->responseError($err->errors(), 'Validation failed', 422);
+        } catch (Exception $err) {
+            Log::error('Error while checking Unit Transaction: '.$err->getMessage());
+
+            return $this->responseError($err->getMessage(), 'Check failed', 500);
+        }
+    }
 }
