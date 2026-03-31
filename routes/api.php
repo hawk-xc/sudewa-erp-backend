@@ -18,6 +18,7 @@ use App\Http\Controllers\MasterData\MasterSupplierController;
 use App\Http\Controllers\MasterData\MasterUnitTypeController;
 use App\Http\Controllers\MasterData\MasterVendorController;
 use App\Http\Controllers\Permission\PermissionController;
+use App\Http\Controllers\Report\PpnPurchaseController;
 use App\Http\Controllers\Role\RoleController;
 use App\Http\Controllers\Transaction\TransactionFlowController;
 use App\Http\Controllers\Transaction\UnitTransactionBillingController;
@@ -161,6 +162,10 @@ Route::group(
                 Route::apiResource('unit-transaction-billing', UnitTransactionBillingController::class);
                 Route::apiResource('unit-transaction-billing-history', UnitTransactionBillingHistoryController::class);
             });
+        });
+
+        Route::group(['prefix' => 'report', 'as' => 'report.'], function () {
+            Route::apiResource('ppn-purchase', PpnPurchaseController::class);
         });
     },
 );
