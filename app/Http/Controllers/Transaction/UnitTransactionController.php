@@ -6,7 +6,9 @@ use App\Http\Controllers\Controller;
 use App\Models\Company;
 use App\Models\Person;
 use App\Models\UnitTransaction;
+use App\Models\UnitTransactionItem;
 use App\Models\UnitTransactionItemDetail;
+use App\Models\UnitType;
 use App\Traits\FileTrait;
 use App\Traits\ResponseTrait;
 use App\Traits\TransactionTrait;
@@ -137,11 +139,9 @@ class UnitTransactionController extends Controller
                 ->select($this->unitTransactionTable)
                 ->findOrFail($id);
 
-            // ===== EXISTING =====
             $data->unit_transaction_bruto_total = $data->getBrutoAmount();
             $data->unit_transaction_bruto_total_actual = $data->getBrutoAmountActual();
 
-            // ===== BILLING =====
             if ($data->unitTransactionBilling) {
                 $billing = $data->unitTransactionBilling;
 
@@ -180,7 +180,23 @@ class UnitTransactionController extends Controller
                 'type' => 'required|string|in:purchase,sales',
                 'max_capacity' => 'required|numeric|min:0|max:100',
                 'stock_state' => 'required|string',
+
+                // optional item
+                'unit_type_id' => 'nullable|integer|exists:unit_types,id',
+                'sparepart_id' => 'nullable|integer|exists:spareparts,id',
+                'qty_total' => 'required_with:unit_type_id,sparepart_id|integer|min:1',
+                'price' => 'required_with:unit_type_id,sparepart_id|numeric',
+                'bbn_price' => 'nullable|numeric',
+                'other_fee' => 'nullable|numeric',
             ]);
+
+            if ($request->filled('unit_type_id') && $request->filled('sparepart_id')) {
+                return $this->responseError(
+                    'Please select either unit_type_id or sparepart_id',
+                    'Validation failed',
+                    422
+                );
+            }
 
             $warehouseData = Company::findOrFail($request->company_id)
                 ->warehouse()
@@ -207,17 +223,85 @@ class UnitTransactionController extends Controller
                 ]);
             }
 
+            $warehouseForecastCapacity = $warehouseData->capacity - $warehouseData->getWarehouseCapacityUsage();
+
+            if ($request->type === 'purchase' && $request->max_capacity > $warehouseForecastCapacity) {
+                throw ValidationException::withMessages([
+                    'max_capacity' => 'Warehouse capacity is not sufficient.',
+                ]);
+            }
+
             $validated['warehouse_id'] = $warehouseData->id;
 
             if (! $request->filled('code')) {
                 $validated['code'] = $this->generateCode($request->type);
             }
 
-            $data = DB::transaction(function () use ($validated) {
-                return UnitTransaction::create($validated);
+            $data = DB::transaction(function () use ($validated, $request) {
+
+                $unitTransaction = UnitTransaction::create($validated);
+
+                if ($request->filled('unit_type_id') || $request->filled('sparepart_id')) {
+
+                    if ($unitTransaction->type === 'sales' && $request->filled('unit_type_id')) {
+
+                        $stock = UnitType::findOrFail($request->unit_type_id)
+                            ->getRealStock($unitTransaction->warehouse_id);
+
+                        if ($stock <= 0) {
+                            throw ValidationException::withMessages([
+                                'unit_type_id' => 'No stock available',
+                            ]);
+                        }
+
+                        if ($request->qty_total > $stock) {
+                            throw ValidationException::withMessages([
+                                'qty_total' => 'Qty exceeds stock',
+                            ]);
+                        }
+                    }
+
+                    if ($request->qty_total > $unitTransaction->max_capacity) {
+                        throw ValidationException::withMessages([
+                            'qty_total' => 'Exceeds transaction capacity',
+                        ]);
+                    }
+
+                    $additional_fee =
+                        ($request->bbn_price ?? 0) +
+                        ($request->other_fee ?? 0);
+
+                    $hpp = $request->price - $additional_fee;
+                    $dpp = ceil($hpp / 1.11);
+                    $ppn = floor($dpp * 0.11);
+
+                    UnitTransactionItem::create([
+                        'unit_transaction_id' => $unitTransaction->id,
+                        'unit_type_id' => $request->unit_type_id,
+                        'sparepart_id' => $request->sparepart_id,
+                        'qty_total' => $request->qty_total,
+                        'price' => $request->price,
+                        'bbn_price' => $request->bbn_price ?? 0,
+                        'other_fee' => $request->other_fee ?? 0,
+
+                        'hpp_per_unit_price' => $hpp,
+                        'dpp_per_unit_price' => $dpp,
+                        'ppn_per_unit_price' => $ppn,
+
+                        'hpp_total_price' => $hpp * $request->qty_total,
+                        'dpp_total_price' => $dpp * $request->qty_total,
+                        'ppn_total_price' => $ppn * $request->qty_total,
+                    ]);
+                }
+
+                return $unitTransaction;
             });
 
-            return $this->responseSuccess($data, 'Unit Transaction created successfully', 201);
+            return $this->responseSuccess(
+                $data->load('unitTransactionItems'),
+                'Unit Transaction created successfully',
+                201
+            );
 
         } catch (ValidationException $e) {
             return $this->responseError($e->errors(), 'Validation failed', 422);
