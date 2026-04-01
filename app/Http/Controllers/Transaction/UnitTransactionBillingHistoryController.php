@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Transaction;
 use App\Http\Controllers\Controller;
 use App\Models\UnitTransactionBilling;
 use App\Models\UnitTransactionBillingHistory;
+use App\Models\UnitTypeDetailPpn;
 use App\Traits\FileTrait;
 use App\Traits\ResponseTrait;
 use Exception;
@@ -89,7 +90,9 @@ class UnitTransactionBillingHistoryController extends Controller
                 );
             }
 
-            $billing = UnitTransactionBilling::with('unitTransaction')->findOrFail($validated['unit_transaction_billing_id']);
+            $billing = UnitTransactionBilling::with([
+                'unitTransaction.unitTransactionItems.unitTransactionItemDetails',
+            ])->findOrFail($validated['unit_transaction_billing_id']);
 
             $bca = $validated['bca_payment_amount'] ?? 0;
             $cash = $validated['cash_payment_amount'] ?? 0;
@@ -135,9 +138,28 @@ class UnitTransactionBillingHistoryController extends Controller
                 ]);
 
                 if ($remaining <= 0) {
+
                     $billing->unitTransaction->update([
-                        'stock_state' => 'inbound_purcase_order',
+                        'stock_state' => 'inbound_receipt',
                     ]);
+
+                    foreach ($billing->unitTransaction->unitTransactionItems as $item) {
+                        foreach ($item->unitTransactionItemDetails as $detail) {
+                            $unitTransactionType = $billing->unitTransaction->type;
+
+                            $exists = UnitTypeDetailPpn::where('unit_transaction_item_detail_id', $detail->id)
+                                ->where('type', 'ppn_' + $unitTransactionType)
+                                ->exists();
+
+                            if (! $exists) {
+                                UnitTypeDetailPpn::create([
+                                    'unit_transaction_item_detail_id' => $detail->id,
+                                    'unit_transaction_id' => $billing->unitTransaction->id,
+                                    'type' => 'ppn_' + $unitTransactionType,
+                                ]);
+                            }
+                        }
+                    }
                 }
             });
 
