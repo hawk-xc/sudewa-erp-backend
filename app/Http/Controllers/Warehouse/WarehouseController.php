@@ -47,7 +47,7 @@ class WarehouseController extends Controller
             }
 
             if ($request->search) {
-                $query->where('name', 'like', '%' . $request->search . '%');
+                $query->where('name', 'like', '%'.$request->search.'%');
             }
 
             $data = $query->latest()->paginate($request->per_page ?? 10);
@@ -144,7 +144,7 @@ class WarehouseController extends Controller
 
             $allowedSort = ['id', 'code', 'type', 'stock_state', 'created_at'];
 
-            if (!in_array($sortBy, $allowedSort)) {
+            if (! in_array($sortBy, $allowedSort)) {
                 $sortBy = 'id';
             }
 
@@ -163,7 +163,7 @@ class WarehouseController extends Controller
                 200,
             );
         } catch (Exception $err) {
-            Log::error('Error while processing warehouse data : ' . $err->getMessage());
+            Log::error('Error while processing warehouse data : '.$err->getMessage());
 
             return response()->json(
                 [
@@ -204,7 +204,7 @@ class WarehouseController extends Controller
                 200,
             );
         } catch (Exception $err) {
-            Log::error('Error while fetch warehouse stock data : ' . $err->getMessage());
+            Log::error('Error while fetch warehouse stock data : '.$err->getMessage());
 
             return $this->responseError(null, $err->getMessage(), 500);
         }
@@ -222,12 +222,12 @@ class WarehouseController extends Controller
             }
 
             if ($request->filled('code')) {
-                $query->where('code', 'like', '%' . $request->code . '%');
+                $query->where('code', 'like', '%'.$request->code.'%');
             }
 
             if ($request->filled('person_name')) {
                 $query->whereHas('person', function ($q) use ($request) {
-                    $q->where('name', 'like', '%' . $request->person_name . '%');
+                    $q->where('name', 'like', '%'.$request->person_name.'%');
                 });
             }
 
@@ -235,7 +235,7 @@ class WarehouseController extends Controller
 
             return $this->responseSuccess($data, 'Unit transaction data successfully fetched', 200);
         } catch (Exception $err) {
-            Log::error('Fetch Warehouse Unit Transaction : ' . $err->getMessage());
+            Log::error('Fetch Warehouse Unit Transaction : '.$err->getMessage());
 
             return $this->responseError(null, $err->getMessage(), 500);
         }
@@ -250,19 +250,19 @@ class WarehouseController extends Controller
 
             if ($request->filled('color')) {
                 $query->whereHas('unitTransactionItemDetails', function ($q) use ($request) {
-                    $q->where('color', 'like', '%' . strtoupper($request->color) . '%');
+                    $q->where('color', 'like', '%'.strtoupper($request->color).'%');
                 });
             }
 
             if ($request->filled('machine_number')) {
                 $query->whereHas('unitTransactionItemDetails', function ($q) use ($request) {
-                    $q->where('machine_number', 'like', '%' . $request->machine_number . '%');
+                    $q->where('machine_number', 'like', '%'.$request->machine_number.'%');
                 });
             }
 
             if ($request->filled('chassis_number')) {
                 $query->whereHas('unitTransactionItemDetails', function ($q) use ($request) {
-                    $q->where('chassis_number', 'like', '%' . $request->chassis_number . '%');
+                    $q->where('chassis_number', 'like', '%'.$request->chassis_number.'%');
                 });
             }
 
@@ -279,56 +279,65 @@ class WarehouseController extends Controller
         try {
             $warehouse = Warehouse::findOrFail($id);
 
-            $stocks = WarehouseMovement::query()
-                ->whereHas('warehouseActivity', function ($q) use ($warehouse) {
-                    $q->where('warehouse_id', $warehouse->id);
-                })
-                ->where('status', 'in')
-                ->with(['unitTransactionItemDetail.unitTransactionItem.unitType:id,uuid,code,name,unit_type,unit_model']);
+            $perPage = (int) ($request->per_page ?? 10);
+
+            $availableQuery = WarehouseMovement::query()
+                ->selectRaw('unit_transaction_items.unit_type_id, COUNT(*) as stock_available')
+                ->join('unit_transaction_item_details', 'warehouse_movements.unit_transaction_item_detail_id', '=', 'unit_transaction_item_details.id')
+                ->join('unit_transaction_items', 'unit_transaction_item_details.unit_transaction_item_id', '=', 'unit_transaction_items.id')
+                ->join('warehouse_activities', 'warehouse_movements.warehouse_activity_id', '=', 'warehouse_activities.id')
+                ->where('warehouse_activities.warehouse_id', $warehouse->id)
+                ->where('warehouse_movements.status', 'in');
 
             if ($request->status != 'unprocessed') {
-                $stocks->whereHas('unitTransactionItemDetail', function ($q) {
-                    $q->where('in_stock', true);
-                });
+                $availableQuery->where('unit_transaction_item_details.in_stock', true);
             }
 
-            $stocks = $stocks->get();
+            $availableQuery = $availableQuery
+                ->groupBy('unit_transaction_items.unit_type_id');
 
-            $available = $stocks
-                ->groupBy(function ($item) {
-                    return $item->unitTransactionItemDetail->unitTransactionItem->unitType->id;
-                })
-                ->map(function ($items) {
-                    $unitType = $items->first()->unitTransactionItemDetail->unitTransactionItem->unitType;
+            $forecastQuery = UnitTransactionItemDetail::query()
+                ->selectRaw('unit_transaction_items.unit_type_id, COUNT(*) as stock_forecast')
+                ->join('unit_transaction_items', 'unit_transaction_item_details.unit_transaction_item_id', '=', 'unit_transaction_items.id')
+                ->join('unit_transactions', 'unit_transaction_items.unit_transaction_id', '=', 'unit_transactions.id')
+                ->where('unit_transaction_item_details.in_stock', false)
+                ->where('unit_transactions.warehouse_id', $warehouse->id)
+                ->where('unit_transactions.type', 'purchase')
+                ->groupBy('unit_transaction_items.unit_type_id');
 
-                    return [
-                        'unit_type' => $unitType,
-                        'stock_available' => $items->count(),
-                        'stock_forecast' => 0,
-                    ];
-                });
+            $available = $availableQuery->get()->keyBy('unit_type_id');
+            $forecast = $forecastQuery->get()->keyBy('unit_type_id');
 
-            $forecast = UnitTransactionItemDetail::where('in_stock', false)
-                ->whereHas('unitTransactionItem.unitTransaction', function ($q) use ($warehouse) {
-                    $q->where('warehouse_id', $warehouse->id)->where('type', 'purchase');
-                })
-                ->with(['unitTransactionItem.unitType:id,uuid,code,name,unit_type,unit_model'])
-                ->get()
-                ->groupBy(function ($item) {
-                    return $item->unitTransactionItem->unitType->id;
-                });
-
-            $result = $available
-                ->map(function ($row, $unitTypeId) use ($forecast) {
-                    if (isset($forecast[$unitTypeId])) {
-                        $row['stock_forecast'] = $forecast[$unitTypeId]->count();
-                    }
-
-                    return $row;
-                })
+            $unitTypeIds = collect($available->keys())
+                ->merge($forecast->keys())
+                ->unique()
                 ->values();
 
-            return $this->responseSuccess($result, 'Successfully fetch warehouse stock data', 200);
+            $unitTypes = \App\Models\UnitType::whereIn('id', $unitTypeIds)
+                ->get()
+                ->keyBy('id');
+
+            $result = $unitTypeIds->map(function ($id) use ($available, $forecast, $unitTypes) {
+                return [
+                    'unit_type' => $unitTypes[$id] ?? null,
+                    'stock_available' => $available[$id]->stock_available ?? 0,
+                    'stock_forecast' => $forecast[$id]->stock_forecast ?? 0,
+                ];
+            });
+
+            $paginated = new \Illuminate\Pagination\LengthAwarePaginator(
+                $result->forPage(request()->page ?? 1, $perPage)->values(),
+                $result->count(),
+                $perPage,
+                request()->page ?? 1,
+                [
+                    'path' => request()->url(),
+                    'query' => request()->query(),
+                ]
+            );
+
+            return $this->responseSuccess($paginated, 'Successfully fetch warehouse stock data', 200);
+
         } catch (Exception $err) {
             return $this->responseError(null, $err->getMessage(), 500);
         }
@@ -354,19 +363,19 @@ class WarehouseController extends Controller
             }
 
             if ($request->filled('machine_number')) {
-                $query->where('machine_number', 'like', '%' . $request->machine_number . '%');
+                $query->where('machine_number', 'like', '%'.$request->machine_number.'%');
             }
 
             if ($request->filled('chassis_number')) {
-                $query->where('chassis_number', 'like', '%' . $request->chassis_number . '%');
+                $query->where('chassis_number', 'like', '%'.$request->chassis_number.'%');
             }
 
             if ($request->filled('color')) {
-                $query->where('color', 'like', '%' . strtoupper($request->color) . '%');
+                $query->where('color', 'like', '%'.strtoupper($request->color).'%');
             }
 
             if ($request->filled('unit_transaction_id')) {
-                $query->whereHas('unitTransactionItem.unitTransaction' , function ($q) use ($request) {
+                $query->whereHas('unitTransactionItem.unitTransaction', function ($q) use ($request) {
                     $q->where('id', $request->unit_transaction_id);
                 });
             }
@@ -381,7 +390,7 @@ class WarehouseController extends Controller
 
             return $this->responseSuccess($data, 'Warehouse unit transaction details retrieved successfully', 200);
         } catch (Exception $err) {
-            Log::error('Fetch Warehouse Unit Transaction Details : ' . $err->getMessage());
+            Log::error('Fetch Warehouse Unit Transaction Details : '.$err->getMessage());
 
             return $this->responseError(null, 'Error while fetching warehouse unit transaction details', 500);
         }
