@@ -144,18 +144,26 @@ class UnitTransactionBillingHistoryController extends Controller
                     ]);
 
                     foreach ($billing->unitTransaction->unitTransactionItems as $item) {
-                        foreach ($item->unitTransactionItemDetails as $detail) {
+
+                        $details = $billing->unitTransaction->type === 'purchase'
+                            ? $item->unitTransactionItemDetails
+                            : $item->unitTypeSoldDetails;
+
+                        foreach ($details as $detail) {
+
                             $unitTransactionType = $billing->unitTransaction->type;
 
+                            $type = 'ppn_'.$unitTransactionType;
+
                             $exists = UnitTypeDetailPpn::where('unit_transaction_item_detail_id', $detail->id)
-                                ->where('type', 'ppn_' + $unitTransactionType)
+                                ->where('type', $type)
                                 ->exists();
 
                             if (! $exists) {
                                 UnitTypeDetailPpn::create([
                                     'unit_transaction_item_detail_id' => $detail->id,
                                     'unit_transaction_id' => $billing->unitTransaction->id,
-                                    'type' => 'ppn_' + $unitTransactionType,
+                                    'type' => $type,
                                 ]);
                             }
                         }

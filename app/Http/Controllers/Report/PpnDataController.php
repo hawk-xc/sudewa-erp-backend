@@ -10,7 +10,7 @@ use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
-class PpnPurchaseController extends Controller
+class PpnDataController extends Controller
 {
     use ResponseTrait;
 
@@ -51,7 +51,15 @@ class PpnPurchaseController extends Controller
                 'unitTransaction:id,code,created_at,person_id',
                 'unitTransaction.person:id,name',
                 'unitTransactionItemDetails.unitTransactionItem.unitType',
-            ])->where('type', 'ppn_purchase');
+            ]);
+
+            if ($request->type) {
+                $query->where('type', match ($request->type) {
+                    'ppn_purchase' => 'ppn_purchase',
+                    'ppn_sales' => 'ppn_sales',
+                    default => null,
+                });
+            }
 
             if ($request->filled('code')) {
                 $query->whereHas('unitTransaction', function ($q) use ($request) {
