@@ -215,7 +215,13 @@ class WarehouseController extends Controller
         try {
             $warehouse = Warehouse::findOrFail((int) $id);
 
-            $query = $warehouse->unitTransactions()->with(['person:id,uuid,code,type,name', 'unitTransactionItems:id,unit_transaction_id,unit_type_id,qty_total,price', 'unitTransactionItems.unitType:id,uuid,code,name,unit_type,unit_model', 'unitTransactionBilling:id,unit_transaction_id,is_paid,payment_at']);
+            $query = $warehouse->unitTransactions()->with([
+                'person:id,uuid,code,type,name',
+                'unitTransactionItems:id,unit_transaction_id,unit_type_id,qty_total,price',
+                'unitTransactionItems.unitType:id,uuid,code,name,unit_type,unit_model',
+                'unitTransactionBilling:id,unit_transaction_id,is_paid,last_payment_at',
+                'unitTransactionBilling.unitTransactionBillingHistories:id,unit_transaction_billing_id,payment_at'
+            ]);
 
             if ($request->filled('type')) {
                 $query->where('type', $request->type);
@@ -234,6 +240,7 @@ class WarehouseController extends Controller
             $data = $query->latest()->paginate($request->per_page ?? 10);
 
             return $this->responseSuccess($data, 'Unit transaction data successfully fetched', 200);
+
         } catch (Exception $err) {
             Log::error('Fetch Warehouse Unit Transaction : '.$err->getMessage());
 
