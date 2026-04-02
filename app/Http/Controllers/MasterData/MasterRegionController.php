@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\MasterData;
 
 use App\Http\Controllers\Controller;
+use App\Exports\RegionExport;
 use App\Imports\RegionImport;
 use App\Models\Region;
 use App\Repositories\AuthRepository;
@@ -143,6 +144,24 @@ class MasterRegionController extends Controller
             ]);
 
             return $this->responseError(null, $err->getMessage(), 500);
+        }
+    }
+
+    public function export(Request $request)
+    {
+        try {
+            return Excel::download(
+                new RegionExport($request, $this->RegionTable),
+                'wajira_region_data.xlsx'
+            );  
+        } catch (Exception $err) {
+            Log::error('Error export region : '.$err->getMessage());
+    
+            return $this->responseError(
+                $err->getMessage(),
+                'Region export failed',
+                500
+            );
         }
     }
 }

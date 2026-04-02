@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Imports\PersonImport;
 use App\Models\Person;
 use App\Repositories\AuthRepository;
+use App\Exports\PersonExport;
 use App\Traits\PersonTrait;
 use App\Traits\ResponseTrait;
 use Exception;
@@ -200,6 +201,24 @@ class MasterDealerController extends Controller
             ]);
 
             return $this->responseError(null, $err->getMessage(), 500);
+        }
+    }
+
+    public function export(Request $request)
+    {
+        try {
+            return Excel::download(
+                new PersonExport($request, $this->personTable, 'dealer'),
+                'wajira_dealer_data.xlsx'
+            );  
+        } catch (Exception $err) {
+            Log::error('Error export dealer : '.$err->getMessage());
+    
+            return $this->responseError(
+                $err->getMessage(),
+                'Dealer export failed',
+                500
+            );
         }
     }
 }

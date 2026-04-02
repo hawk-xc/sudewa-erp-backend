@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\MasterData;
 
+use App\Exports\UnitTypeExport;
 use App\Http\Controllers\Controller;
 use App\Imports\UnitTypeImport;
 use App\Models\Company;
@@ -241,6 +242,24 @@ class MasterUnitTypeController extends Controller
             ]);
 
             return $this->responseError(null, $err->getMessage(), 500);
+        }
+    }
+
+    public function export(Request $request)
+    {
+        try {
+            return Excel::download(
+                new UnitTypeExport($request, $this->unitTypeTable),
+                'wajira_unit_type_data.xlsx'
+            );  
+        } catch (Exception $err) {
+            Log::error('Error export unit type : ' . $err->getMessage());
+
+            return $this->responseError(
+                $err->getMessage(),
+                'Unit Type export failed',
+                500
+            );
         }
     }
 }

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\MasterData;
 
+use App\Exports\SparepartExport;
 use App\Http\Controllers\Controller;
 use App\Imports\SparepartImport;
 use App\Models\Sparepart;
@@ -17,7 +18,7 @@ class MasterSparepartController extends Controller
 {
     use ResponseTrait;
 
-    protected $unitTypeTable;
+    protected $sparepartTable;
 
     protected AuthRepository $authRepository;
 
@@ -30,7 +31,7 @@ class MasterSparepartController extends Controller
 
         $this->authRepository = $ar;
 
-        $this->unitTypeTable = ['id', 'sparepart_category_id', 'code', 'name', 'capacity', 'unit_type', 'buy_price', 'sell_price', 'created_at'];
+        $this->sparepartTable = ['id', 'sparepart_category_id', 'code', 'name', 'capacity', 'unit_type', 'buy_price', 'sell_price', 'created_at'];
     }
 
     public function index(Request $request)
@@ -179,6 +180,25 @@ class MasterSparepartController extends Controller
             ]);
 
             return $this->responseError(null, $err->getMessage(), 500);
+        }
+    }
+
+    public function export(Request $request)
+    {
+        try {
+            return Excel::download(
+                new SparepartExport($request, $this->sparepartTable),
+                'wajira_sparepart_data.xlsx'
+            );  
+        } catch (Exception $err) {
+            Log::error('Error export sparepart : '.$err->getMessage());
+
+            return $this->responseError($err->getMessage(), 'Internal Server Error', 500);
+            return $this->responseError(
+                $err->getMessage(),
+                'Sparepart export failed',
+                500
+            );
         }
     }
 }

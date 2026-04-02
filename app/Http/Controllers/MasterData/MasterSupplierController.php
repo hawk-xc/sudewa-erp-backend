@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\MasterData;
 
+use App\Exports\PersonExport;
 use App\Http\Controllers\Controller;
 use App\Imports\PersonImport;
 use App\Models\Person;
@@ -203,6 +204,24 @@ class MasterSupplierController extends Controller
             ]);
 
             return $this->responseError(null, $err->getMessage(), 500);
+        }
+    }
+
+    public function export(Request $request)
+    {
+        try {
+            return Excel::download(
+                new PersonExport($request, $this->personTable, 'supplier'),
+                'wajira_supplier_data.xlsx'
+            );  
+        } catch (Exception $err) {
+            Log::error('Error export supplier : '.$err->getMessage());
+    
+            return $this->responseError(
+                $err->getMessage(),
+                'Supplier export failed',
+                500
+            );
         }
     }
 }

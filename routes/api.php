@@ -103,6 +103,16 @@ Route::group(
             Route::post('sparepart/import', [MasterSparepartController::class, 'import']);
             Route::post('material/import', [MasterMaterialController::class, 'import']);
 
+            // Export
+            Route::get('customer/export', [MasterCustomerController::class, 'export']);
+            Route::get('supplier/export', [MasterSupplierController::class, 'export']);
+            Route::get('dealer/export', [MasterDealerController::class, 'export']);
+            Route::get('vendor/export', [MasterVendorController::class, 'export']);
+            Route::get('region/export', [MasterRegionController::class, 'export']);
+            Route::get('unit-type/export', [MasterUnitTypeController::class, 'export']);
+            Route::get('sparepart/export', [MasterSparepartController::class, 'export']);
+            // Route::get('material/export', [MasterMaterialController::class, 'export']);
+
             // Master Data
             Route::apiResource('account-group', MasterAccountGroupController::class);
             Route::apiResource('account', MasterAccountController::class);
