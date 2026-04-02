@@ -33,7 +33,7 @@ class MasterCustomerController extends Controller
 
         $this->authRepository = $ar;
 
-        $this->personTable = ['id', 'uuid', 'pic_name', 'code', 'type', 'name', 'address', 'npwp', 'phone', 'created_at'];
+        $this->personTable = ['id', 'uuid', 'pic_name', 'code', 'type', 'name', 'address', 'npwp', 'phone', 'identity_number', 'drive_license_identity_number', 'image', 'map_link', 'social_media_1_link', 'social_media_2_link', 'social_media_3_link', 'social_media_4_link', 'website_link', 'created_at'];
     }
 
     public function index(Request $request)

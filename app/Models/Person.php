@@ -22,6 +22,15 @@ class Person extends Model
         'npwp',
         'phone',
         'pic_name',
+        'identity_number',
+        'drive_license_identity_number',
+        'image',
+        'map_link',
+        'social_media_1_link',
+        'social_media_2_link',
+        'social_media_3_link',
+        'social_media_4_link',
+        'website_link',
     ];
 
     public function company()
