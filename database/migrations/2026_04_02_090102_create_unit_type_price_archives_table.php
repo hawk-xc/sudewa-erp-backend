@@ -13,6 +13,11 @@ return new class extends Migration
     {
         Schema::create('unit_type_price_archives', function (Blueprint $table) {
             $table->id();
+            $table->uuid();
+            $table->foreignId('unit_type_id')->constrained('users')->nullOnDelete();
+            $table->foreignId('user_id')->constrained('users')->nullOnDelete();
+            $table->decimal('buy_price', 15, 2)->nullable(false)->default(0);
+            $table->decimal('sell_price', 15, 2)->nullable(false)->default(0);
             $table->timestamps();
         });
     }
