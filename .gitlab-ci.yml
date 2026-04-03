@@ -8,40 +8,42 @@ deploy_finance_be_dev:
   script:
     - echo "🚀 Memulai sinkronisasi ke folder deployment..."
     
-    # 0. AMBIL ALIH KEPEMILIKAN (Agar Runner bisa reset file milik Docker/www-data)
+    # 0. AMBIL ALIH KEPEMILIKAN
     - sudo chown -R alpha-team:gitlab-runner /home/alpha-team/development/client/wajira/finance-be
     
-    # 1. Daftarkan folder asli ke safe directory
+    # 1. Safe directory
     - git config --global --add safe.directory /home/alpha-team/development/client/wajira/finance-be
     
-    # 2. Pindah ke folder asli di server
+    # 2. Masuk folder
     - cd /home/alpha-team/development/client/wajira/finance-be
     
-    # 3. Sinkronisasi Kode dari Master (Sekarang reset pasti GOL!)
-    - echo "🔄 Fetching latest code from master..."
-    - git fetch origin master
-    - git reset --hard origin/master
+    # 3. Sync dari development
+    - echo "🔄 Fetching latest code from development..."
+    - git fetch origin development
+    - git reset --hard origin/development
     
     # 4. Docker Build & Up
     - echo "🐳 Rebuilding Docker containers..."
     - docker compose up -d --build
     
-    # 5. FIX PERMISSION LARAVEL (Agar Laravel bisa nulis log & cache lagi)
-    - echo "🔓 Setting permissions for storage and cache..."
+    # 5. Permission Laravel
+    - echo "🔓 Setting permissions..."
     - docker exec wajira-finance-backend chown -R www-data:www-data /app/storage /app/bootstrap/cache
     - docker exec wajira-finance-backend chmod -R 775 /app/storage /app/bootstrap/cache
     
-    # 6. Database Readiness Check
-    - echo "⏳ Menunggu database siap (15 detik)..."
+    # 6. Wait DB
+    - echo "⏳ Menunggu database siap..."
     - sleep 15
     
-    # 7. Laravel Magic (Fresh Migrate & Multi Seeding)
-    - echo "✨ Running Laravel artisan commands..."
-    # Gabungin dalam satu docker exec biar efisien
-    - docker exec wajira-finance-backend php artisan migrate:fresh --seed
-    - docker exec wajira-finance-backend bash dummy-fresh.sh
-    - docker exec wajira-finance-backend php artisan optimize:clear
+    # 7. Laravel Command
+    - echo "✨ Running artisan..."
+    - docker exec wajira-finance-backend bash /app/dummy-fresh.sh
+    # - docker exec wajira-finance-backend php artisan migrate:fresh --seed
+    # - docker exec wajira-finance-backend php artisan db:seed --class=DummyDataSeeder
+    # - docker exec wajira-finance-backend php artisan db:seed --class=MainCompanyWarehouseSeeder
+    # - docker exec wajira-finance-backend php artisan optimize:clear
     
-    - echo "✅ Wajira Finance BE is officially Live & Stable!"
+    - echo "✅ Wajira Finance BE Dev is Live!"
+    
   only:
-    - master
+    - development
