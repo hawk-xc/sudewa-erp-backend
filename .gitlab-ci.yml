@@ -9,13 +9,13 @@ deploy_finance_be_dev:
     - echo "🚀 Memulai sinkronisasi ke folder deployment..."
     
     # 0. AMBIL ALIH KEPEMILIKAN
-    - sudo chown -R alpha-team:gitlab-runner /home/alpha-team/development/client/wajira/finance-be
+    - sudo chown -R alpha-team:gitlab-runner /home/alpha-team/development/client/wajira/finance-api
     
     # 1. Safe directory
-    - git config --global --add safe.directory /home/alpha-team/development/client/wajira/finance-be
+    - git config --global --add safe.directory /home/alpha-team/development/client/wajira/finance-api
     
     # 2. Masuk folder
-    - cd /home/alpha-team/development/client/wajira/finance-be
+    - cd /home/alpha-team/development/client/wajira/finance-api
     
     # 3. Sync dari development
     - echo "🔄 Fetching latest code from development..."
