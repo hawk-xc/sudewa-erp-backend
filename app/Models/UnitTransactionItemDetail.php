@@ -20,6 +20,7 @@ class UnitTransactionItemDetail extends Model
         'chassis_number',
         'in_stock',
         'is_forecast',
+        'status',
     ];
 
     protected $casts = [

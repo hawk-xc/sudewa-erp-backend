@@ -35,6 +35,7 @@ class UnitTransactionItemDetailController extends Controller
             'chassis_number',
             'in_stock',
             'is_forecast',
+            'status',
             'created_at',
         ];
     }
@@ -163,6 +164,7 @@ class UnitTransactionItemDetailController extends Controller
                 'color' => 'sometimes|required|string|max:255',
                 'machine_number' => 'sometimes|required|string|max:255|unique:unit_transaction_item_details,machine_number,'.$id,
                 'chassis_number' => 'sometimes|required|string|max:255|unique:unit_transaction_item_details,chassis_number,'.$id,
+                'status' => 'sometimes|string|in:minor_damage,major_damage,returned,refunded,lost,in_repair',
             ]);
 
             $validated['color'] = strtoupper($request->color);

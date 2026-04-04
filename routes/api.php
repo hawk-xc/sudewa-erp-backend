@@ -16,6 +16,7 @@ use App\Http\Controllers\MasterData\MasterSparepartCategoryController;
 use App\Http\Controllers\MasterData\MasterSparepartController;
 use App\Http\Controllers\MasterData\MasterSupplierController;
 use App\Http\Controllers\MasterData\MasterUnitTypeController;
+use App\Http\Controllers\MasterData\MasterUnitTypePriceArchiveController;
 use App\Http\Controllers\MasterData\MasterVendorController;
 use App\Http\Controllers\Permission\PermissionController;
 use App\Http\Controllers\Report\PpnDataController;
@@ -100,6 +101,7 @@ Route::group(
             Route::post('vendor/{id}/import', [MasterVendorController::class, 'import']);
             Route::post('region/import', [MasterRegionController::class, 'import']);
             Route::post('unit-type/import', [MasterUnitTypeController::class, 'import']);
+            Route::post('unit-type-price-archive/import', [MasterUnitTypePriceArchiveController::class, 'import']);
             Route::post('sparepart/import', [MasterSparepartController::class, 'import']);
             Route::post('material/import', [MasterMaterialController::class, 'import']);
 
@@ -122,6 +124,7 @@ Route::group(
             Route::apiResource('dealer', MasterDealerController::class);
             Route::apiResource('brand', MasterBrandController::class);
             Route::apiResource('unit-type', MasterUnitTypeController::class);
+            Route::apiResource('unit-type-price-archive', MasterUnitTypePriceArchiveController::class);
             Route::apiResource('sparepart-category', MasterSparepartCategoryController::class);
             Route::apiResource('sparepart', MasterSparepartController::class);
             Route::apiResource('region', MasterRegionController::class);
