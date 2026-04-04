@@ -10,21 +10,30 @@ class UnitTypePriceArchive extends Model
     use HasFactory;
 
     protected $table = 'unit_type_price_archives';
-    
+
     protected $fillable = [
         'uuid',
         'unit_type_id',
         'user_id',
         'buy_price',
         'sell_price',
+        'note',
     ];
 
     protected $casts = [
         'unit_type_id' => 'integer',
         'user_id' => 'integer',
         'buy_price' => 'integer',
-        'sell_price' => 'integer'
+        'sell_price' => 'integer',
     ];
 
-    public function 
+    public function unitType()
+    {
+        return $this->belongsTo(UnitType::class);
+    }
+
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
 }

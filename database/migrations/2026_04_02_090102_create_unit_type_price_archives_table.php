@@ -18,6 +18,7 @@ return new class extends Migration
             $table->foreignId('user_id')->constrained('users')->nullOnDelete();
             $table->decimal('buy_price', 15, 2)->nullable(false)->default(0);
             $table->decimal('sell_price', 15, 2)->nullable(false)->default(0);
+            $table->string('note')->nullable(true);
             $table->timestamps();
         });
     }
