@@ -12,7 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('unit_transaction_item_details', function (Blueprint $table) {
-            $table->enum('status', ['minor_damage', 'major_damage', 'returned', 'refunded', 'lost', 'in_repair'])->default('minor_damage')->after('is_forecast');
+            $table->enum('status', ['normal', 'minor_damage', 'major_damage', 'returned', 'refunded', 'lost', 'in_repair'])->default('normal')->after('is_forecast');
         });
     }
 

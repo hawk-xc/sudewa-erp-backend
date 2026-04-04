@@ -26,6 +26,7 @@ class UnitTransactionItemDetail extends Model
     protected $casts = [
         'unit_transaction_item_id' => 'integer',
         'in_stock' => 'bool',
+        'is_forecast' => 'bool',
     ];
 
     protected static function booted()
