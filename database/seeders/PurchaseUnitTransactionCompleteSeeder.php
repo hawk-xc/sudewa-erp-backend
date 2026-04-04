@@ -79,7 +79,7 @@ class PurchaseUnitTransactionCompleteSeeder extends Seeder
                     'person_id' => $persons->random()->id,
                     'code' => $code,
                     'type' => 'purchase',
-                    'max_capacity' => 100,
+                    'max_capacity' => 10,
                     'stock_state' => 'draft',
                 ]);
 

@@ -21,7 +21,7 @@ class MainCompanyWarehouseSeeder extends Seeder
             Warehouse::create([
                 'company_id' => (int) $company->id,
                 'name' => (string) $company->name.' Warehouse',
-                'capacity' => (int) 100,
+                'capacity' => (int) 10000,
                 'description' => null,
             ]);
         }
