@@ -43,15 +43,12 @@ deploy_finance_be_dev:
     - echo "⏳ Menunggu database siap..."
     - sleep 15
     
-    # 7. Laravel Command
-    - echo "✨ Running artisan..."
-    - docker exec wajira-finance-backend bash /app/dummy-fresh.sh
-    # - docker exec wajira-finance-backend php artisan migrate:fresh --seed
-    # - docker exec wajira-finance-backend php artisan db:seed --class=DummyDataSeeder
-    # - docker exec wajira-finance-backend php artisan db:seed --class=MainCompanyWarehouseSeeder
-    # - docker exec wajira-finance-backend php artisan optimize:clear
-    
-    - echo "✅ Wajira Finance BE Dev is Live!"
+    # 7. Laravel Magic (Fresh Migrate & Multi Seeding)
+    - echo "✨ Running Laravel artisan commands..."
+    # Gabungin dalam satu docker exec biar efisien
+    - docker exec wajira-finance-backend php artisan migrate:fresh --seed
+    - docker exec wajira-finance-backend bash dummy-fresh.sh
+    - docker exec wajira-finance-backend php artisan optimize:clear
     
     - echo "✅ Wajira Finance BE Dev is Live!"
     
