@@ -12,11 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('unit_transaction_item_details', function (Blueprint $table) {
-<<<<<<< HEAD
             $table->enum('status', ['normal', 'minor_damage', 'major_damage', 'returned', 'refunded', 'lost', 'in_repair'])->default('normal')->after('is_forecast');
-=======
-            //
->>>>>>> 3046f9a (fix: resolve conflict)
         });
     }
 
@@ -26,11 +22,7 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('unit_transaction_item_details', function (Blueprint $table) {
-<<<<<<< HEAD
             $table->dropColumn('status');
-=======
-            //
->>>>>>> 3046f9a (fix: resolve conflict)
         });
     }
 };
