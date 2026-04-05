@@ -19,6 +19,7 @@ use App\Http\Controllers\MasterData\MasterUnitTypeController;
 use App\Http\Controllers\MasterData\MasterUnitTypePriceArchiveController;
 use App\Http\Controllers\MasterData\MasterVendorController;
 use App\Http\Controllers\Permission\PermissionController;
+use App\Http\Controllers\Report\LiabilityController;
 use App\Http\Controllers\Report\PpnDataController;
 use App\Http\Controllers\Role\RoleController;
 use App\Http\Controllers\Transaction\TransactionFlowController;
@@ -180,6 +181,7 @@ Route::group(
         // Report Data
         Route::group(['prefix' => 'report', 'as' => 'report.'], function () {
             Route::apiResource('ppn-report', PpnDataController::class);
+            Route::apiResource('liability-report', LiabilityController::class)->only(['index', 'show']);
         });
     },
 );

@@ -346,6 +346,27 @@ class UnitTransactionController extends Controller
                 'unit_transaction_details.*' => 'integer|distinct|exists:unit_transaction_item_details,id',
             ]);
 
+            if (in_array((string) $validated['stock_validate'], ['inbound_return', 'outbound_return'])) {
+                if (! $unitTransaction->unitTransactionBilling->is_paid) {
+                    return $this->responseError(null, 'Transaction has not been paid.', 422);
+                }
+
+                switch ($validated['stock_state']) {
+                    case 'inbound_return':
+                        if ($unitTransaction->type !== 'purchase') {
+                            return $this->responseError(null, 'inbound_return is only allowed for purchase transactions.', 422);
+                        }
+                        break;
+                    case 'outbound_return':
+                        if ($unitTransaction->type !== 'sales' && $unitTransaction->unitTransactionBilling->is_paid) {
+                            return $this->responseError(null, 'outbound_return is only allowed for sales transactions.', 422);
+                        }
+                    default:
+                        break;
+
+                }
+            }
+
             $allowedStates = $unitTransaction->type === 'purchase' ? $purchaseStates : $salesStates;
 
             if (! in_array($validated['stock_state'], $allowedStates)) {
