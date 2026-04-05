@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Auth\AuthController;
+use App\Http\Controllers\Finance\DailyCashFlowController;
 use App\Http\Controllers\Global\GlobalCompanyController;
 use App\Http\Controllers\Global\GlobalModuleController;
 use App\Http\Controllers\MasterData\MasterAccountController;
@@ -20,7 +21,7 @@ use App\Http\Controllers\MasterData\MasterUnitTypePriceArchiveController;
 use App\Http\Controllers\MasterData\MasterVendorController;
 use App\Http\Controllers\Permission\PermissionController;
 use App\Http\Controllers\Report\LiabilityController;
-use App\Http\Controllers\Report\PpnDataController;
+use App\Http\Controllers\Finance\PpnDataController;
 use App\Http\Controllers\Role\RoleController;
 use App\Http\Controllers\Transaction\TransactionFlowController;
 use App\Http\Controllers\Transaction\UnitTransactionBillingController;
@@ -178,9 +179,14 @@ Route::group(
             });
         });
 
+        // Finance
+        Route::group(['prefix' => 'finance', 'as' => 'finance.'], function () {
+            Route::apiResource('ppn', PpnDataController::class);
+            Route::apiResource('cash-flow', DailyCashFlowController::class);
+        });        
+
         // Report Data
         Route::group(['prefix' => 'report', 'as' => 'report.'], function () {
-            Route::apiResource('ppn-report', PpnDataController::class);
             Route::apiResource('liability-report', LiabilityController::class)->only(['index', 'show']);
         });
     },

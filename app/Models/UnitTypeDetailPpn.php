@@ -17,8 +17,8 @@ class UnitTypeDetailPpn extends Model
         'unit_transaction_item_detail_id',
         'unit_transaction_id',
         'type',
-        'fpm_date',
-        'nsfpm_age',
+        'fp_date',
+        'nsfp_age',
         'nsfp_amount',
         'amount',
     ];
