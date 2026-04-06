@@ -8,6 +8,7 @@ use App\Models\Person;
 use App\Models\UnitTransaction;
 use App\Models\UnitTransactionItem;
 use App\Models\UnitTransactionItemDetail;
+use App\Models\UnitTransactionRefund;
 use App\Models\UnitType;
 use App\Traits\FileTrait;
 use App\Traits\ResponseTrait;
@@ -41,6 +42,7 @@ class UnitTransactionController extends Controller
             'max_capacity',
             'stock_state',
             'invoice_file',
+            'is_refunded',
             'created_at',
         ];
     }
@@ -344,26 +346,46 @@ class UnitTransactionController extends Controller
                 'stock_state' => 'required|string',
                 'unit_transaction_details' => 'nullable|array',
                 'unit_transaction_details.*' => 'integer|distinct|exists:unit_transaction_item_details,id',
+                'cash_id' => 'required_if:stock_state,inbound_return,outbound_return|exists:cashes,id',
+                'description' => 'required_with:cash_id|string',
             ]);
 
-            if (in_array((string) $validated['stock_validate'], ['inbound_return', 'outbound_return'])) {
-                if (! $unitTransaction->unitTransactionBilling->is_paid) {
-                    return $this->responseError(null, 'Transaction has not been paid.', 422);
-                }
-
+            if (in_array((string) $validated['stock_state'], ['inbound_return', 'outbound_return'])) {
                 switch ($validated['stock_state']) {
                     case 'inbound_return':
+                        if (!$unitTransaction->unitTransactionBilling) {
+                            return $this->responseError(null, 'Transaction has no billing data.', 422);
+                        }
+
+                        if (!$unitTransaction->unitTransactionBilling->is_paid) {
+                            return $this->responseError(null, 'Transaction has not been paid.', 422);
+                        }
+
                         if ($unitTransaction->type !== 'purchase') {
                             return $this->responseError(null, 'inbound_return is only allowed for purchase transactions.', 422);
                         }
                         break;
+
                     case 'outbound_return':
-                        if ($unitTransaction->type !== 'sales' && $unitTransaction->unitTransactionBilling->is_paid) {
+                        if (!$request->filled('cash_id')) {
+                            return $this->responseError(null, 'Please provide cash_id.', 422);
+                        }
+
+                        if (!$unitTransaction->unitTransactionBilling) {
+                            return $this->responseError(null, 'Transaction has no billing data.', 422);
+                        }
+
+                        if (!$unitTransaction->unitTransactionBilling->is_paid) {
+                            return $this->responseError(null, 'Transaction has not been paid.', 422);
+                        }
+
+                        if ($unitTransaction->type !== 'sales') {
                             return $this->responseError(null, 'outbound_return is only allowed for sales transactions.', 422);
                         }
-                    default:
                         break;
 
+                    default:
+                        break;
                 }
             }
 
@@ -422,17 +444,44 @@ class UnitTransactionController extends Controller
                 }
 
                 switch ($validated['stock_state']) {
-
                     case 'inbound_return':
+                        if ($unitTransaction->is_refunded == true) {
+                            return $this->responseError(null, 'Transaction has already been refunded.', 400);
+                        } else {
+                            $unitTransaction->update(['is_refunded' => true]);
+
+                            // create unit transaction refund data
+                            UnitTransactionRefund::create([
+                                'unit_transaction_id' => $unitTransaction->id,
+                                'cash_id' => (int) $validated['cash_id'],
+                                'refund_total' => (float) $unitTransaction->getBrutoAmount(),
+                                'description'=> $validated['description'],
+                            ]);
+                        }
+                        
                         UnitTransactionItemDetail::whereIn('id', $validDetails->pluck('id'))
-                            ->update([
+                        ->update([
                                 'status' => 'returned',
                                 'in_stock' => false,
                                 'is_forecast' => false,
                             ]);
                         break;
-
+                        
                     case 'outbound_return':
+                        if ($unitTransaction->is_refunded) {
+                            return $this->responseError(null, 'Transaction has already been refunded.', 400);
+                        } else {
+                            $unitTransaction->update(['is_refunded' => true]);
+
+                            // create unit transaction refund data
+                            UnitTransactionRefund::create([
+                                'unit_transaction_id' => $unitTransaction->id,
+                                'cash_id' => (int) $validated['cash_id'],
+                                'refund_total' => (float) $unitTransaction->getBrutoAmount(),
+                                'description'=> $validated['description'],
+                            ]);
+                        }
+
                         UnitTransactionItemDetail::whereIn('id', $validDetails->pluck('id'))
                             ->update([
                                 'status' => 'refunded',
@@ -463,6 +512,7 @@ class UnitTransactionController extends Controller
                     'unitTransactionItems:id,uuid,unit_transaction_id,unit_type_id,sparepart_id,price',
                     'unitTransactionItems.unitTransactionItemDetails:id,uuid,unit_transaction_item_id,color,machine_number,chassis_number,in_stock,is_forecast,status',
                     'unitTransactionItems.unitTypeSoldDetails:id,uuid,unit_transaction_item_id,color,machine_number,chassis_number,in_stock,is_forecast,status',
+                    'unitTransactionRefund:id,uuid,unit_transaction_id,cash_id,refund_total,description,created_at',
                 ]),
                 'Unit Transaction state updated successfully',
                 200
