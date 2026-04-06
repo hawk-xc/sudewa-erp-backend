@@ -3,11 +3,14 @@
 namespace App\Http\Controllers\MasterData;
 
 use App\Http\Controllers\Controller;
+use App\Imports\CashImport;
 use App\Models\Cash;
 use App\Traits\ResponseTrait;
 use Illuminate\Http\Request;
+use App\Exports\CashExport;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Maatwebsite\Excel\Facades\Excel;
 
 class MasterCashController extends Controller
 {
@@ -55,7 +58,7 @@ class MasterCashController extends Controller
             );
 
         } catch (\Exception $e) {
-            Log::error('Error retrieving cash list: '.$e->getMessage());
+            Log::error('Error retrieving cash list: ' . $e->getMessage());
 
             return $this->responseError(
                 null,
@@ -93,7 +96,7 @@ class MasterCashController extends Controller
             );
 
         } catch (\Exception $e) {
-            Log::error('Error storing cash: '.$e->getMessage());
+            Log::error('Error storing cash: ' . $e->getMessage());
 
             return $this->responseError(
                 null,
@@ -129,7 +132,7 @@ class MasterCashController extends Controller
             $cash = Cash::findOrFail($id);
 
             $validated = $request->validate([
-                'code' => 'sometimes|required|string|max:50|unique:cashes,code,'.$id,
+                'code' => 'sometimes|required|string|max:50|unique:cashes,code,' . $id,
                 'description' => 'nullable|string',
                 'type' => 'sometimes|required|string|max:50',
             ]);
@@ -152,7 +155,7 @@ class MasterCashController extends Controller
             );
 
         } catch (\Exception $e) {
-            Log::error('Error updating cash: '.$e->getMessage());
+            Log::error('Error updating cash: ' . $e->getMessage());
 
             return $this->responseError(
                 null,
@@ -178,11 +181,51 @@ class MasterCashController extends Controller
             );
 
         } catch (\Exception $e) {
-            Log::error('Error deleting cash: '.$e->getMessage());
+            Log::error('Error deleting cash: ' . $e->getMessage());
 
             return $this->responseError(
                 null,
                 'Failed to delete cash',
+                500
+            );
+        }
+    }
+
+    public function import(Request $request)
+    {
+        $request->validate([
+            'company_id' => 'required|exists:companies,id',
+            'file' => 'required|file|mimes:xlsx,xls',
+        ]);
+
+        try {
+            Excel::import(new CashImport((int) $request->company_id), $request->file('file'));
+
+            return $this->responseSuccess(null, 'Cash data imported successfully', 201);
+        } catch (\Exception $e) {
+            Log::error('Cash import error: ' . $e->getMessage());
+
+            return $this->responseError(
+                null,
+                $e->getMessage(),
+                500
+            );
+        }
+    }
+
+    public function export(Request $request)
+    {
+        try {
+            return Excel::download(
+                new CashExport($request, $this->cashTable),
+                'wajira_cash_data.xlsx'
+            );
+        } catch (\Exception $err) {
+            Log::error('Error export cash : ' . $err->getMessage());
+
+            return $this->responseError(
+                $err->getMessage(),
+                'Cash export failed',
                 500
             );
         }

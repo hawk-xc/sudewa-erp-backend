@@ -103,12 +103,14 @@ Route::group(
             Route::post('vendor/{id}/import', [MasterVendorController::class, 'import']);
             Route::post('region/import', [MasterRegionController::class, 'import']);
             Route::post('unit-type/import', [MasterUnitTypeController::class, 'import']);
+            Route::post('cash/import', [MasterCashController::class, 'import']);
             Route::post('unit-type-price-archive/import', [MasterUnitTypePriceArchiveController::class, 'import']);
             Route::post('sparepart/import', [MasterSparepartController::class, 'import']);
             Route::post('material/import', [MasterMaterialController::class, 'import']);
 
             // Export
             Route::get('customer/export', [MasterCustomerController::class, 'export']);
+            Route::get('cash/export', [MasterCashController::class, 'export']);
             Route::get('supplier/export', [MasterSupplierController::class, 'export']);
             Route::get('dealer/export', [MasterDealerController::class, 'export']);
             Route::get('vendor/export', [MasterVendorController::class, 'export']);
@@ -116,7 +118,7 @@ Route::group(
             Route::get('unit-type/export', [MasterUnitTypeController::class, 'export']);
             Route::get('sparepart/export', [MasterSparepartController::class, 'export']);
             // Route::get('material/export', [MasterMaterialController::class, 'export']);
-
+    
             // Master Data
             Route::apiResource('account-group', MasterAccountGroupController::class);
             Route::apiResource('account', MasterAccountController::class);
@@ -183,7 +185,7 @@ Route::group(
         Route::group(['prefix' => 'finance', 'as' => 'finance.'], function () {
             Route::apiResource('ppn', PpnDataController::class);
             Route::apiResource('cash-flow', DailyCashFlowController::class);
-        });        
+        });
 
         // Report Data
         Route::group(['prefix' => 'report', 'as' => 'report.'], function () {
