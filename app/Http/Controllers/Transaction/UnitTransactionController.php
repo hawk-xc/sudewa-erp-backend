@@ -52,6 +52,8 @@ class UnitTransactionController extends Controller
         try {
             $query = UnitTransaction::query();
 
+            $query->withCount('unitTransactionItems');
+
             if ($request->type) {
                 $query->where('type', match ($request->type) {
                     'purchase' => 'purchase',
@@ -61,6 +63,9 @@ class UnitTransactionController extends Controller
             }
 
             $query->select($this->unitTransactionTable)
+                ->withCount([
+                    'unitTransactionItems as unit_transaction_item_counts'
+                ])
                 ->with([
                     'warehouse:id,uuid,name,capacity',
                     'person:id,uuid,code,name,type',

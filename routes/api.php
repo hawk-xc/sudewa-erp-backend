@@ -30,6 +30,7 @@ use App\Http\Controllers\Transaction\UnitTransactionController;
 use App\Http\Controllers\Transaction\UnitTransactionItemController;
 use App\Http\Controllers\Transaction\UnitTransactionItemDetailController;
 use App\Http\Controllers\Transaction\UnitTransactionItemSalesController;
+use App\Http\Controllers\Finance\UnitTransactionRefundController;
 use App\Http\Controllers\User\UserController;
 use App\Http\Controllers\Warehouse\WarehouseActivityController;
 use App\Http\Controllers\Warehouse\WarehouseController;
@@ -185,6 +186,8 @@ Route::group(
         Route::group(['prefix' => 'finance', 'as' => 'finance.'], function () {
             Route::apiResource('ppn', PpnDataController::class);
             Route::apiResource('cash-flow', DailyCashFlowController::class);
+            Route::apiResource('refund', UnitTransactionRefundController::class);
+
         });
 
         // Report Data
