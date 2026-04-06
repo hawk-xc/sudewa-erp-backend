@@ -2,6 +2,8 @@
 
 use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\Finance\DailyCashFlowController;
+use App\Http\Controllers\Finance\PpnDataController;
+use App\Http\Controllers\Finance\UnitTransactionRefundController;
 use App\Http\Controllers\Global\GlobalCompanyController;
 use App\Http\Controllers\Global\GlobalModuleController;
 use App\Http\Controllers\MasterData\MasterAccountController;
@@ -21,7 +23,6 @@ use App\Http\Controllers\MasterData\MasterUnitTypePriceArchiveController;
 use App\Http\Controllers\MasterData\MasterVendorController;
 use App\Http\Controllers\Permission\PermissionController;
 use App\Http\Controllers\Report\LiabilityController;
-use App\Http\Controllers\Finance\PpnDataController;
 use App\Http\Controllers\Role\RoleController;
 use App\Http\Controllers\Transaction\TransactionFlowController;
 use App\Http\Controllers\Transaction\UnitTransactionBillingController;
@@ -30,7 +31,7 @@ use App\Http\Controllers\Transaction\UnitTransactionController;
 use App\Http\Controllers\Transaction\UnitTransactionItemController;
 use App\Http\Controllers\Transaction\UnitTransactionItemDetailController;
 use App\Http\Controllers\Transaction\UnitTransactionItemSalesController;
-use App\Http\Controllers\Finance\UnitTransactionRefundController;
+use App\Http\Controllers\UnitTypeDetailReportController;
 use App\Http\Controllers\User\UserController;
 use App\Http\Controllers\Warehouse\WarehouseActivityController;
 use App\Http\Controllers\Warehouse\WarehouseController;
@@ -193,6 +194,7 @@ Route::group(
         // Report Data
         Route::group(['prefix' => 'report', 'as' => 'report.'], function () {
             Route::apiResource('liability-report', LiabilityController::class)->only(['index', 'show']);
+            Route::get('unit-type-detail-report', [UnitTypeDetailReportController::class, 'index']);
         });
     },
 );
