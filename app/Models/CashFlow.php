@@ -25,9 +25,11 @@ class CashFlow extends Model
     ];
 
     protected $casts = [
+        'company_id' => 'integer',
+        'cash_id' => 'integer',
         'date' => 'date',
-        'debet' => 'decimal:15,2',
-        'credit' => 'decimal:15,2',
+        'debet' => 'integer',
+        'credit' => 'integer',
     ];
 
     public function company()

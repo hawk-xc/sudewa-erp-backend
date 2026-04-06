@@ -92,8 +92,8 @@ class DailyCashFlowController extends Controller
             'cash_id' => 'required|integer|exists:cashes,id',
             'date' => 'required|date',
             'note' => 'nullable|string',
-            'debet' => 'required|numeric|min:0',
-            'credit' => 'required|numeric|min:0',
+            'debet' => 'nullable|numeric|min:0',
+            'credit' => 'nullable|numeric|min:0',
         ]);
 
         try {
