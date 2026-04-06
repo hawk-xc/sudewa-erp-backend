@@ -31,6 +31,11 @@ class Cash extends Model
         return $this->hasMany(CashFlow::class);
     }
 
+    public function unitTransactionRefunds()
+    {
+        return $this->hasMany(UnitTransactionRefund::class);
+    }
+
     protected static function booted()
     {
         static::creating(function ($model) {
