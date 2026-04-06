@@ -96,7 +96,7 @@ class PpnDataController extends Controller
                 $item = $detail->unitTransactionItem;
                 $unitType = $item->unitType;
 
-                if (! $trx || ! $detail || ! $item) {
+                if (!$trx || !$detail || !$item) {
                     continue;
                 }
 
@@ -179,14 +179,30 @@ class PpnDataController extends Controller
                 ]);
             }
 
+            $perPage = (int) ($request->per_page ?? 10);
+            $page = (int) ($request->page ?? 1);
+
+            $total = $result->count();
+
+            $paginated = new \Illuminate\Pagination\LengthAwarePaginator(
+                $result->forPage($page, $perPage)->values(),
+                $total,
+                $perPage,
+                $page,
+                [
+                    'path' => $request->url(),
+                    'query' => $request->query(),
+                ]
+            );
+
             return $this->responseSuccess(
-                $result->values(),
+                $paginated,
                 'PPN Pembelian retrieved successfully',
                 200
             );
 
         } catch (Exception $err) {
-            Log::error('Error PPN Purchase: '.$err->getMessage());
+            Log::error('Error PPN Purchase: ' . $err->getMessage());
 
             return $this->responseError(
                 $err->getMessage(),
@@ -224,7 +240,7 @@ class PpnDataController extends Controller
         } catch (\Illuminate\Validation\ValidationException $err) {
             return $this->responseError($err->errors(), 'Validation failed', 422);
         } catch (Exception $err) {
-            Log::error('Error Update PPN Purchase: '.$err->getMessage());
+            Log::error('Error Update PPN Purchase: ' . $err->getMessage());
 
             return $this->responseError(
                 null,
