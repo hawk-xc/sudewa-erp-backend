@@ -188,13 +188,19 @@ Route::group(
             Route::apiResource('ppn', PpnDataController::class);
             Route::apiResource('cash-flow', DailyCashFlowController::class);
             Route::apiResource('refund', UnitTransactionRefundController::class);
-
         });
 
         // Report Data
         Route::group(['prefix' => 'report', 'as' => 'report.'], function () {
             Route::apiResource('liability-report', LiabilityController::class)->only(['index', 'show']);
             Route::get('unit-type-detail-report', [UnitTypeDetailReportController::class, 'index']);
+            Route::get('unit-type-detail-stock', [UnitTransactionController::class, 'getStock']);
+            Route::get('unit-type-detail-stock/export', [UnitTransactionController::class, 'exportStock']);
+        });
+
+        // Stats
+        Route::group(['prefix'=> 'status','as'=> 'stats'], function () {
+            
         });
     },
 );

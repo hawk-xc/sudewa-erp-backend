@@ -344,29 +344,10 @@ class WarehouseController extends Controller
                     }
                 })
                 ->with([
-                    'unitTransactionItem' => function ($q) {
-                        $q->select([
-                            'id',
-                            'unit_transaction_id',
-                            'unit_type_id',
-                        ]);
-                    },
-                    'unitTransactionItem.unitType' => function ($q) {
-                        $q->select([
-                            'id',
-                            'code',
-                            'name',
-                            'unit_type',
-                            'unit_model',
-                        ]);
-                    },
-                    'unitTransactionItem.unitTransaction' => function ($q) {
-                        $q->select([
-                            'id',
-                            'code',
-                            'stock_state',
-                        ]);
-                    },
+                    'unitTransactionItem:id,unit_transaction_id,unit_type_id,price,qty_total',
+                    'unitTransactionItem.unitType:id,code,brand_id,name,unit_type,unit_model',
+                    'unitTransactionItem.unitType.brand:id,uuid,name',
+                    'unitTransactionItem.unitTransaction:id,code,stock_state',
                 ]);
 
             if ($request->has('in_stock')) {
@@ -408,6 +389,7 @@ class WarehouseController extends Controller
                     'chassis_number' => $item->chassis_number,
                     'stock_available' => $item->in_stock ? 1 : 0,
                     'stock_forecast' => ! $item->in_stock ? 1 : 0,
+                    'purchase_price' => (int) $item->unitTransactionItem->price / $item->unitTransactionItem->qty_total,
                     'status' => $unitItem->unitTransaction->stock_state ?? null,
                 ];
             });

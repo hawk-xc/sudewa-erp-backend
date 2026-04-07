@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Transaction;
 
+use App\Exports\UnitTransactionUnitTypeStockExport;
 use App\Http\Controllers\Controller;
 use App\Models\Company;
 use App\Models\Person;
@@ -18,6 +19,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
+use Maatwebsite\Excel\Facades\Excel;
 
 class UnitTransactionController extends Controller
 {
@@ -529,6 +531,109 @@ class UnitTransactionController extends Controller
             Log::error('Error updating Unit Transaction state: '.$err->getMessage());
 
             return $this->responseError($err->getMessage(), 'Unit Transaction state update failed', 500);
+        }
+    }
+
+    public function getStock(Request $request)
+    {
+        try {
+            $query = UnitTransaction::query();
+
+            if ($request->filled('type') && in_array($request->type, ['purchase', 'sales'])) {
+                $query->where('type', (string) $request->type);
+            }
+
+            if ($request->filled('start_date')) {
+                $query->whereDate('created_at', '>=', $request->start_date);
+            }
+
+            if ($request->filled('end_date')) {
+                $query->whereDate('created_at', '<=', $request->end_date);
+            }
+
+            $query->with([
+                'person:id,name',
+                'unitTransactionItems.unitType:id,code,name,unit_type',
+                'unitTransactionItems.unitTransactionItemDetails:id,unit_transaction_item_id,is_forecast',
+            ]);
+
+            if ($request->filled('search')) {
+                $search = $request->search;
+
+                $query->where(function ($q) use ($search) {
+                    $q->where('code', 'like', "%$search%");
+                });
+            }
+
+            $data = $query->paginate($request->input('per_page', 10));
+
+            $collection = $data->getCollection()->transform(function ($trx) {
+
+                $items = collect();
+
+                foreach ($trx->unitTransactionItems as $item) {
+
+                    $forecastQty = $item->unitTransactionItemDetails
+                        ->where('is_forecast', true)
+                        ->count();
+
+                    $actualQty = $item->unitTransactionItemDetails->count();
+
+                    $items->push([
+                        'unit_transaction' => [
+                            'id' => $trx->id,
+                            'code' => $trx->code,
+                            'person' => $trx->person?->name,
+                            'created_at' => $trx->created_at,
+                        ],
+                        'unit_type' => [
+                            'id' => $item->unitType?->id,
+                            'code' => $item->unitType?->code,
+                            'name' => $item->unitType?->name,
+                            'unit_type' => $item->unitType?->unit_type,
+                        ],
+                        'qty_forecast' => $forecastQty,
+                        'qty_actual' => $actualQty,
+                        'qty_input' => (int) $item->qty_total,
+                        'qty_difference' => (int) $item->qty_total - $actualQty,
+                    ]);
+                }
+
+                return [
+                    'id' => $trx->id,
+                    'code' => $trx->code,
+                    'date' => preg_replace('/\s.*/', '', (string) $trx->created_at),
+                    'person' => $trx->person?->name,
+                    'items' => $items,
+                ];
+            });
+
+            $data->setCollection($collection);
+
+            return $this->responseSuccess($data, 'Stock data retrieved successfully', 200);
+
+        } catch (Exception $err) {
+            Log::error($err->getMessage());
+
+            return $this->responseError(null, 'Failed to retrieve stock data', 500);
+        }
+    }
+
+    public function exportStock(Request $request)
+    {
+        try {
+            return Excel::download(
+                new UnitTransactionUnitTypeStockExport($request),
+                'wajira_stock_data.xlsx'
+            );
+        } catch (Exception $err) {
+            Log::error('Error export stock : '.$err->getMessage());
+
+            return $this->responseError(
+                $err->getMessage(),
+                'Stock export failed',
+                500
+            );
         }
     }
 }

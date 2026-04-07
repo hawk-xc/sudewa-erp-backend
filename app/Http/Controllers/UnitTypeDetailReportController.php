@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Exports\UnitTypeDetailReportExport;
 use App\Models\UnitTransactionItemDetail;
+use App\Repositories\AuthRepository;
 use App\Traits\ResponseTrait;
 use Exception;
 use Illuminate\Http\Request;
@@ -13,6 +14,15 @@ use Maatwebsite\Excel\Facades\Excel;
 class UnitTypeDetailReportController extends Controller
 {
     use ResponseTrait;
+
+    protected AuthRepository $authRepository;
+
+    public function __construct(AuthRepository $ar)
+    {
+        $this->authRepository = $ar;
+
+        $this->middleware(['permission:report:list'])->only(['index', 'show']);
+    }
 
     public function index(Request $request)
     {
@@ -34,6 +44,7 @@ class UnitTypeDetailReportController extends Controller
                     'unitTransactionItem.unitType:id,code,name,unit_type,unit_model',
                     'unitTransactionItem.unitTransaction:id,code,type,stock_state,person_id,created_at',
                     'unitTransactionItem.unitTransaction.person:id,name',
+                    'warehouseMovement:id,uuid,serial_number,warehouse_activity_id,unit_transaction_id,unit_transaction_item_detail_id,status,created_at'
                 ]);
 
             if ($request->filled('type')) {
@@ -100,7 +111,8 @@ class UnitTypeDetailReportController extends Controller
             $data->getCollection()->transform(function ($item) {
                 return [
                     'id' => $item->id,
-                    'date' => $item->created_at,
+                    'created_date' => $item->created_at,
+                    'receipt_date' => $item->warehouseMovement->created_at,
                     'transaction_code' => $item->unitTransactionItem->unitTransaction->code ?? null,
                     'type' => $item->unitTransactionItem->unitTransaction->type ?? null,
                     'stock_state' => $item->unitTransactionItem->unitTransaction->stock_state ?? null,
@@ -112,6 +124,7 @@ class UnitTypeDetailReportController extends Controller
                     'in_stock' => $item->in_stock,
                     'is_forecast' => $item->is_forecast,
                     'status' => $item->status,
+                    'warehouse_movement' => $item->warehouseMovement,
                 ];
             });
 
