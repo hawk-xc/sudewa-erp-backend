@@ -1,0 +1,76 @@
+stages:
+  - build
+  - test
+  - deploy
+
+# =========================
+# DEVELOPMENT PIPELINE
+# =========================
+build-dev:
+  stage: build
+  tags:
+    - development
+  script:
+    - echo "Build for development"
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "development"'
+
+test-dev:
+  stage: test
+  tags:
+    - development
+  script:
+    - echo "Testing development"
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "development"'
+
+deploy-dev:
+  stage: deploy
+  tags:
+    - development
+  environment:
+    name: staging
+  script:
+    - echo "Deploy to staging"
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "development"'
+
+
+# =========================
+# PRODUCTION PIPELINE
+# =========================
+build-prod:
+  stage: build
+  tags:
+    - client
+    - wajira
+    - production
+  script:
+    - echo "Build for production"
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "production"'
+
+test-prod:
+  stage: test
+  tags:
+    - client
+    - wajira
+    - production
+  script:
+    - echo "Testing production"
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "production"'
+
+deploy-prod:
+  stage: deploy
+  tags:
+    - client
+    - wajira
+    - production
+  environment:
+    name: production
+  script:
+    - echo "Deploy to production"
+  when: manual
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "production"'
