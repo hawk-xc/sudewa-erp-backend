@@ -243,7 +243,7 @@ class PpnDataController extends Controller
             Log::error('Error Update PPN Purchase: ' . $err->getMessage());
 
             return $this->responseError(
-                null,
+                $err->getMessage(),
                 'Failed to update PPN Purchase',
                 500
             );
