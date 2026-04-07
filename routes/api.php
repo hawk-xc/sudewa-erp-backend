@@ -1,6 +1,9 @@
 <?php
 
 use App\Http\Controllers\Auth\AuthController;
+use App\Http\Controllers\Finance\DailyCashFlowController;
+use App\Http\Controllers\Finance\PpnDataController;
+use App\Http\Controllers\Finance\UnitTransactionRefundController;
 use App\Http\Controllers\Global\GlobalCompanyController;
 use App\Http\Controllers\Global\GlobalModuleController;
 use App\Http\Controllers\MasterData\MasterAccountController;
@@ -20,7 +23,6 @@ use App\Http\Controllers\MasterData\MasterUnitTypePriceArchiveController;
 use App\Http\Controllers\MasterData\MasterVendorController;
 use App\Http\Controllers\Permission\PermissionController;
 use App\Http\Controllers\Report\LiabilityController;
-use App\Http\Controllers\Report\PpnDataController;
 use App\Http\Controllers\Role\RoleController;
 use App\Http\Controllers\Transaction\TransactionFlowController;
 use App\Http\Controllers\Transaction\UnitTransactionBillingController;
@@ -29,6 +31,7 @@ use App\Http\Controllers\Transaction\UnitTransactionController;
 use App\Http\Controllers\Transaction\UnitTransactionItemController;
 use App\Http\Controllers\Transaction\UnitTransactionItemDetailController;
 use App\Http\Controllers\Transaction\UnitTransactionItemSalesController;
+use App\Http\Controllers\UnitTypeDetailReportController;
 use App\Http\Controllers\User\UserController;
 use App\Http\Controllers\Warehouse\WarehouseActivityController;
 use App\Http\Controllers\Warehouse\WarehouseController;
@@ -102,12 +105,14 @@ Route::group(
             Route::post('vendor/{id}/import', [MasterVendorController::class, 'import']);
             Route::post('region/import', [MasterRegionController::class, 'import']);
             Route::post('unit-type/import', [MasterUnitTypeController::class, 'import']);
+            Route::post('cash/import', [MasterCashController::class, 'import']);
             Route::post('unit-type-price-archive/import', [MasterUnitTypePriceArchiveController::class, 'import']);
             Route::post('sparepart/import', [MasterSparepartController::class, 'import']);
             Route::post('material/import', [MasterMaterialController::class, 'import']);
 
             // Export
             Route::get('customer/export', [MasterCustomerController::class, 'export']);
+            Route::get('cash/export', [MasterCashController::class, 'export']);
             Route::get('supplier/export', [MasterSupplierController::class, 'export']);
             Route::get('dealer/export', [MasterDealerController::class, 'export']);
             Route::get('vendor/export', [MasterVendorController::class, 'export']);
@@ -115,7 +120,7 @@ Route::group(
             Route::get('unit-type/export', [MasterUnitTypeController::class, 'export']);
             Route::get('sparepart/export', [MasterSparepartController::class, 'export']);
             // Route::get('material/export', [MasterMaterialController::class, 'export']);
-
+    
             // Master Data
             Route::apiResource('account-group', MasterAccountGroupController::class);
             Route::apiResource('account', MasterAccountController::class);
@@ -178,10 +183,24 @@ Route::group(
             });
         });
 
+        // Finance
+        Route::group(['prefix' => 'finance', 'as' => 'finance.'], function () {
+            Route::apiResource('ppn', PpnDataController::class);
+            Route::apiResource('cash-flow', DailyCashFlowController::class);
+            Route::apiResource('refund', UnitTransactionRefundController::class);
+        });
+
         // Report Data
         Route::group(['prefix' => 'report', 'as' => 'report.'], function () {
-            Route::apiResource('ppn-report', PpnDataController::class);
             Route::apiResource('liability-report', LiabilityController::class)->only(['index', 'show']);
+            Route::get('unit-type-detail-report', [UnitTypeDetailReportController::class, 'index']);
+            Route::get('unit-type-detail-stock', [UnitTransactionController::class, 'getStock']);
+            Route::get('unit-type-detail-stock/export', [UnitTransactionController::class, 'exportStock']);
+        });
+
+        // Stats
+        Route::group(['prefix'=> 'status','as'=> 'stats'], function () {
+            
         });
     },
 );

@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\Report;
+namespace App\Http\Controllers\Finance;
 
 use App\Http\Controllers\Controller;
 use App\Models\UnitTypeDetailPpn;
@@ -24,8 +24,8 @@ class PpnDataController extends Controller
      */
     public function __construct(AuthRepository $ar)
     {
-        $this->middleware(['permission:report:list'])->only(['index', 'show']);
-        $this->middleware(['permission:transaction:edit'])->only('update');
+        $this->middleware(['permission:finance:list'])->only(['index', 'show']);
+        $this->middleware(['permission:finance:edit'])->only('update');
 
         $this->authRepository = $ar;
 
@@ -35,8 +35,8 @@ class PpnDataController extends Controller
             'unit_transaction_item_detail_id',
             'unit_transaction_id',
             'type',
-            'fpm_date',
-            'nsfpm_age',
+            'fp_date',
+            'nsfp_age',
             'nsfp_amount',
             'amount',
             'created_at',
@@ -96,7 +96,7 @@ class PpnDataController extends Controller
                 $item = $detail->unitTransactionItem;
                 $unitType = $item->unitType;
 
-                if (! $trx || ! $detail || ! $item) {
+                if (!$trx || !$detail || !$item) {
                     continue;
                 }
 
@@ -150,9 +150,9 @@ class PpnDataController extends Controller
                     'buy_date' => $trx->created_at,
                     'supplier' => $trx->person?->name,
 
-                    'fpm_date' => $ppn->fpm_date,
-                    'nsfpm_age' => $ppn->nsfpm_age,
-                    'nsfpm_input' => $ppn->nsfp_amount,
+                    'fp_date' => $ppn->fp_date,
+                    'nsfp_age' => $ppn->nsfp_age,
+                    'nsfp_input' => $ppn->nsfp_amount,
 
                     'qty' => 1,
 
@@ -179,17 +179,33 @@ class PpnDataController extends Controller
                 ]);
             }
 
+            $perPage = (int) ($request->per_page ?? 10);
+            $page = (int) ($request->page ?? 1);
+
+            $total = $result->count();
+
+            $paginated = new \Illuminate\Pagination\LengthAwarePaginator(
+                $result->forPage($page, $perPage)->values(),
+                $total,
+                $perPage,
+                $page,
+                [
+                    'path' => $request->url(),
+                    'query' => $request->query(),
+                ]
+            );
+
             return $this->responseSuccess(
-                $result->values(),
+                $paginated,
                 'PPN Pembelian retrieved successfully',
                 200
             );
 
         } catch (Exception $err) {
-            Log::error('Error PPN Purchase: '.$err->getMessage());
+            Log::error('Error PPN Purchase: ' . $err->getMessage());
 
             return $this->responseError(
-                null,
+                $err->getMessage(),
                 'Failed to retrieve PPN Pembelian',
                 500
             );
@@ -202,15 +218,15 @@ class PpnDataController extends Controller
             $ppn = UnitTypeDetailPpn::findOrFail($id);
 
             $validated = $request->validate([
-                'fpm_date' => 'nullable|date',
-                'nsfpm_age' => 'nullable|string|max:50',
+                'fp_date' => 'nullable|date',
+                'nsfp_age' => 'nullable|string|max:50',
                 'nsfp_amount' => 'nullable|numeric|min:0',
                 'amount' => 'nullable|numeric|min:0',
             ]);
 
             $ppn->update([
-                'fpm_date' => $validated['fpm_date'] ?? $ppn->fpm_date,
-                'nsfpm_age' => $validated['nsfpm_age'] ?? $ppn->nsfpm_age,
+                'fp_date' => $validated['fp_date'] ?? $ppn->fp_date,
+                'nsfp_age' => $validated['nsfp_age'] ?? $ppn->nsfp_age,
                 'nsfp_amount' => $validated['nsfp_amount'] ?? $ppn->nsfp_amount,
                 'amount' => $validated['amount'] ?? $ppn->amount,
             ]);
@@ -224,10 +240,10 @@ class PpnDataController extends Controller
         } catch (\Illuminate\Validation\ValidationException $err) {
             return $this->responseError($err->errors(), 'Validation failed', 422);
         } catch (Exception $err) {
-            Log::error('Error Update PPN Purchase: '.$err->getMessage());
+            Log::error('Error Update PPN Purchase: ' . $err->getMessage());
 
             return $this->responseError(
-                null,
+                $err->getMessage(),
                 'Failed to update PPN Purchase',
                 500
             );

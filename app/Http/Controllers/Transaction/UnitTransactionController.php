@@ -2,12 +2,14 @@
 
 namespace App\Http\Controllers\Transaction;
 
+use App\Exports\UnitTransactionUnitTypeStockExport;
 use App\Http\Controllers\Controller;
 use App\Models\Company;
 use App\Models\Person;
 use App\Models\UnitTransaction;
 use App\Models\UnitTransactionItem;
 use App\Models\UnitTransactionItemDetail;
+use App\Models\UnitTransactionRefund;
 use App\Models\UnitType;
 use App\Traits\FileTrait;
 use App\Traits\ResponseTrait;
@@ -17,6 +19,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
+use Maatwebsite\Excel\Facades\Excel;
 
 class UnitTransactionController extends Controller
 {
@@ -41,6 +44,7 @@ class UnitTransactionController extends Controller
             'max_capacity',
             'stock_state',
             'invoice_file',
+            'is_refunded',
             'created_at',
         ];
     }
@@ -49,6 +53,8 @@ class UnitTransactionController extends Controller
     {
         try {
             $query = UnitTransaction::query();
+
+            $query->withCount('unitTransactionItems');
 
             if ($request->type) {
                 $query->where('type', match ($request->type) {
@@ -59,6 +65,9 @@ class UnitTransactionController extends Controller
             }
 
             $query->select($this->unitTransactionTable)
+                ->withCount([
+                    'unitTransactionItems as unit_transaction_item_counts'
+                ])
                 ->with([
                     'warehouse:id,uuid,name,capacity',
                     'person:id,uuid,code,name,type',
@@ -344,26 +353,46 @@ class UnitTransactionController extends Controller
                 'stock_state' => 'required|string',
                 'unit_transaction_details' => 'nullable|array',
                 'unit_transaction_details.*' => 'integer|distinct|exists:unit_transaction_item_details,id',
+                'cash_id' => 'required_if:stock_state,inbound_return,outbound_return|exists:cashes,id',
+                'description' => 'required_with:cash_id|string',
             ]);
 
-            if (in_array((string) $validated['stock_validate'], ['inbound_return', 'outbound_return'])) {
-                if (! $unitTransaction->unitTransactionBilling->is_paid) {
-                    return $this->responseError(null, 'Transaction has not been paid.', 422);
-                }
-
+            if (in_array((string) $validated['stock_state'], ['inbound_return', 'outbound_return'])) {
                 switch ($validated['stock_state']) {
                     case 'inbound_return':
+                        if (!$unitTransaction->unitTransactionBilling) {
+                            return $this->responseError(null, 'Transaction has no billing data.', 422);
+                        }
+
+                        if (!$unitTransaction->unitTransactionBilling->is_paid) {
+                            return $this->responseError(null, 'Transaction has not been paid.', 422);
+                        }
+
                         if ($unitTransaction->type !== 'purchase') {
                             return $this->responseError(null, 'inbound_return is only allowed for purchase transactions.', 422);
                         }
                         break;
+
                     case 'outbound_return':
-                        if ($unitTransaction->type !== 'sales' && $unitTransaction->unitTransactionBilling->is_paid) {
+                        if (!$request->filled('cash_id')) {
+                            return $this->responseError(null, 'Please provide cash_id.', 422);
+                        }
+
+                        if (!$unitTransaction->unitTransactionBilling) {
+                            return $this->responseError(null, 'Transaction has no billing data.', 422);
+                        }
+
+                        if (!$unitTransaction->unitTransactionBilling->is_paid) {
+                            return $this->responseError(null, 'Transaction has not been paid.', 422);
+                        }
+
+                        if ($unitTransaction->type !== 'sales') {
                             return $this->responseError(null, 'outbound_return is only allowed for sales transactions.', 422);
                         }
-                    default:
                         break;
 
+                    default:
+                        break;
                 }
             }
 
@@ -422,17 +451,44 @@ class UnitTransactionController extends Controller
                 }
 
                 switch ($validated['stock_state']) {
-
                     case 'inbound_return':
+                        if ($unitTransaction->is_refunded == true) {
+                            return $this->responseError(null, 'Transaction has already been refunded.', 400);
+                        } else {
+                            $unitTransaction->update(['is_refunded' => true]);
+
+                            // create unit transaction refund data
+                            UnitTransactionRefund::create([
+                                'unit_transaction_id' => $unitTransaction->id,
+                                'cash_id' => (int) $validated['cash_id'],
+                                'refund_total' => (float) $unitTransaction->getBrutoAmount(),
+                                'description'=> $validated['description'],
+                            ]);
+                        }
+                        
                         UnitTransactionItemDetail::whereIn('id', $validDetails->pluck('id'))
-                            ->update([
+                        ->update([
                                 'status' => 'returned',
                                 'in_stock' => false,
                                 'is_forecast' => false,
                             ]);
                         break;
-
+                        
                     case 'outbound_return':
+                        if ($unitTransaction->is_refunded) {
+                            return $this->responseError(null, 'Transaction has already been refunded.', 400);
+                        } else {
+                            $unitTransaction->update(['is_refunded' => true]);
+
+                            // create unit transaction refund data
+                            UnitTransactionRefund::create([
+                                'unit_transaction_id' => $unitTransaction->id,
+                                'cash_id' => (int) $validated['cash_id'],
+                                'refund_total' => (float) $unitTransaction->getBrutoAmount(),
+                                'description'=> $validated['description'],
+                            ]);
+                        }
+
                         UnitTransactionItemDetail::whereIn('id', $validDetails->pluck('id'))
                             ->update([
                                 'status' => 'refunded',
@@ -463,6 +519,7 @@ class UnitTransactionController extends Controller
                     'unitTransactionItems:id,uuid,unit_transaction_id,unit_type_id,sparepart_id,price',
                     'unitTransactionItems.unitTransactionItemDetails:id,uuid,unit_transaction_item_id,color,machine_number,chassis_number,in_stock,is_forecast,status',
                     'unitTransactionItems.unitTypeSoldDetails:id,uuid,unit_transaction_item_id,color,machine_number,chassis_number,in_stock,is_forecast,status',
+                    'unitTransactionRefund:id,uuid,unit_transaction_id,cash_id,refund_total,description,created_at',
                 ]),
                 'Unit Transaction state updated successfully',
                 200
@@ -474,6 +531,109 @@ class UnitTransactionController extends Controller
             Log::error('Error updating Unit Transaction state: '.$err->getMessage());
 
             return $this->responseError($err->getMessage(), 'Unit Transaction state update failed', 500);
+        }
+    }
+
+    public function getStock(Request $request)
+    {
+        try {
+            $query = UnitTransaction::query();
+
+            if ($request->filled('type') && in_array($request->type, ['purchase', 'sales'])) {
+                $query->where('type', (string) $request->type);
+            }
+
+            if ($request->filled('start_date')) {
+                $query->whereDate('created_at', '>=', $request->start_date);
+            }
+
+            if ($request->filled('end_date')) {
+                $query->whereDate('created_at', '<=', $request->end_date);
+            }
+
+            $query->with([
+                'person:id,name',
+                'unitTransactionItems.unitType:id,code,name,unit_type',
+                'unitTransactionItems.unitTransactionItemDetails:id,unit_transaction_item_id,is_forecast',
+            ]);
+
+            if ($request->filled('search')) {
+                $search = $request->search;
+
+                $query->where(function ($q) use ($search) {
+                    $q->where('code', 'like', "%$search%");
+                });
+            }
+
+            $data = $query->paginate($request->input('per_page', 10));
+
+            $collection = $data->getCollection()->transform(function ($trx) {
+
+                $items = collect();
+
+                foreach ($trx->unitTransactionItems as $item) {
+
+                    $forecastQty = $item->unitTransactionItemDetails
+                        ->where('is_forecast', true)
+                        ->count();
+
+                    $actualQty = $item->unitTransactionItemDetails->count();
+
+                    $items->push([
+                        'unit_transaction' => [
+                            'id' => $trx->id,
+                            'code' => $trx->code,
+                            'person' => $trx->person?->name,
+                            'created_at' => $trx->created_at,
+                        ],
+                        'unit_type' => [
+                            'id' => $item->unitType?->id,
+                            'code' => $item->unitType?->code,
+                            'name' => $item->unitType?->name,
+                            'unit_type' => $item->unitType?->unit_type,
+                        ],
+                        'qty_forecast' => $forecastQty,
+                        'qty_actual' => $actualQty,
+                        'qty_input' => (int) $item->qty_total,
+                        'qty_difference' => (int) $item->qty_total - $actualQty,
+                    ]);
+                }
+
+                return [
+                    'id' => $trx->id,
+                    'code' => $trx->code,
+                    'date' => preg_replace('/\s.*/', '', (string) $trx->created_at),
+                    'person' => $trx->person?->name,
+                    'items' => $items,
+                ];
+            });
+
+            $data->setCollection($collection);
+
+            return $this->responseSuccess($data, 'Stock data retrieved successfully', 200);
+
+        } catch (Exception $err) {
+            Log::error($err->getMessage());
+
+            return $this->responseError(null, 'Failed to retrieve stock data', 500);
+        }
+    }
+
+    public function exportStock(Request $request)
+    {
+        try {
+            return Excel::download(
+                new UnitTransactionUnitTypeStockExport($request),
+                'wajira_stock_data.xlsx'
+            );
+        } catch (Exception $err) {
+            Log::error('Error export stock : '.$err->getMessage());
+
+            return $this->responseError(
+                $err->getMessage(),
+                'Stock export failed',
+                500
+            );
         }
     }
 }

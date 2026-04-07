@@ -11,8 +11,8 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('unit_transaction_item_details', function (Blueprint $table) {
-            $table->enum('status', ['normal', 'minor_damage', 'major_damage', 'returned', 'refunded', 'lost', 'in_repair'])->default('normal')->after('is_forecast');
+        Schema::table('unit_transactions', function (Blueprint $table) {
+            $table->boolean('is_refunded')->default(false)->after('invoice_file');
         });
     }
 
@@ -21,8 +21,8 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('unit_transaction_item_details', function (Blueprint $table) {
-            $table->dropColumn('status');
+        Schema::table('unit_transactions', function (Blueprint $table) {
+            $table->dropColumn('is_refunded');  
         });
     }
 };

@@ -8,7 +8,6 @@ use Illuminate\Database\Eloquent\Model;
 class UnitTypePriceArchive extends Model
 {
     use HasFactory;
-<<<<<<< HEAD
 
     protected $table = 'unit_type_price_archives';
 
@@ -37,6 +36,4 @@ class UnitTypePriceArchive extends Model
     {
         return $this->belongsTo(User::class);
     }
-=======
->>>>>>> 3046f9a (fix: resolve conflict)
 }

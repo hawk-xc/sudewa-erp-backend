@@ -17,8 +17,8 @@ return new class extends Migration
             $table->foreignId('unit_transaction_item_detail_id')->constrained('unit_transaction_item_details')->cascadeOnDelete();
             $table->foreignId('unit_transaction_id')->constrained('unit_transactions')->cascadeOnDelete();
             $table->enum('type', ['ppn_purchase', 'ppn_sales'])->default('ppn_purchase');
-            $table->date('fpm_date')->nullable(true);
-            $table->date('nsfpm_age')->nullable(true);
+            $table->date('fp_date')->nullable(true);
+            $table->date('nsfp_age')->nullable(true);
             $table->decimal('nsfp_amount', 15, 2)->default(0);
             $table->decimal('amount', 15, 2)->default(0);
             $table->timestamps();

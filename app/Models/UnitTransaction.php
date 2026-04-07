@@ -21,11 +21,13 @@ class UnitTransaction extends Model
         'max_capacity',
         'stock_state',
         'invoice_file',
+        'is_refunded'
     ];
 
     protected $casts = [
         'max_capacity' => 'decimal:2',
         'stock_state' => 'string',
+        'is_refunded' => 'boolean'
     ];
 
     public function person()
@@ -51,6 +53,11 @@ class UnitTransaction extends Model
     public function warehouse()
     {
         return $this->belongsTo(Warehouse::class);
+    }
+
+    public function unitTransactionRefund()
+    {
+        return $this->hasOne(UnitTransactionRefund::class);
     }
 
     public function getBrutoAmount()
