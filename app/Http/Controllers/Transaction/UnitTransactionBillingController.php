@@ -259,7 +259,10 @@ class UnitTransactionBillingController extends Controller
                 'unit_transaction_id' => 'required|integer|exists:unit_transactions,id',
             ]);
 
-            $unitTransaction = UnitTransaction::with('unitTransactionItems.unitTransactionItemDetails')
+            $unitTransaction = UnitTransaction::with([
+                    'unitTransactionItems.unitTransactionItemDetails',
+                    'unitTransactionItems.unitTransactionItemSales'
+                ])
                 ->findOrFail($validated['unit_transaction_id']);
 
             if ((int) $unitTransaction->warehouse->company_id !== (int) $validated['company_id']) {
@@ -272,7 +275,12 @@ class UnitTransactionBillingController extends Controller
             $summary = [];
 
             foreach ($unitTransaction->unitTransactionItems as $item) {
-                $actualQty = $item->unitTransactionItemDetails->count();
+
+                if ($unitTransaction->type === 'purchase') {
+                    $actualQty = $item->unitTransactionItemDetails->count();
+                } else {
+                    $actualQty = $item->unitTransactionItemSales->count();
+                }
 
                 $summary[] = [
                     'item_id' => $item->id,
