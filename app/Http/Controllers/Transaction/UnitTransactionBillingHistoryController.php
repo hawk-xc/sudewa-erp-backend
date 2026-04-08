@@ -171,8 +171,12 @@ class UnitTransactionBillingHistoryController extends Controller
                 }
             });
 
+            $billingFresh = $billing->fresh('unitTransactionBillingHistories');
+
+            $billingFresh->remaining_payment = $billingFresh->getRemainingPayment();
+
             return $this->responseSuccess(
-                $billing->fresh('unitTransactionBillingHistories'),
+                $billingFresh,
                 'Payment history created successfully',
                 201
             );
