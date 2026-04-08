@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Auth\AuthController;
+use App\Http\Controllers\Dashboard\BillingStatController;
 use App\Http\Controllers\Finance\DailyCashFlowController;
 use App\Http\Controllers\Finance\PpnDataController;
 use App\Http\Controllers\Finance\UnitTransactionRefundController;
@@ -199,8 +200,10 @@ Route::group(
         });
 
         // Stats
-        Route::group(['prefix'=> 'status','as'=> 'stats'], function () {
-            
+        Route::group(['prefix'=> 'stats','as'=> 'stats'], function () {
+            Route::get('billing-stats', [BillingStatController::class, 'billingStat']);
+            Route::get('customer-stats', [BillingStatController::class, 'customerOverview']);
+            Route::get('unit-type-stats', [BillingStatController::class, 'unitTypeOverview']);
         });
     },
 );
