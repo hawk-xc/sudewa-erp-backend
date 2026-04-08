@@ -75,6 +75,12 @@ class UnitTransactionController extends Controller
                     'unitTransactionBilling.unitTransactionBillingHistories',
                 ]);
 
+            if ($request->filled('is_paid')) {
+                $query->whereHas('unitTransactionBilling', function ($q) use ($request) {
+                    $q->where('is_paid', $request->is_paid == 'true' ? true : 0);
+                });
+            }
+
             if ($request->filled('search')) {
                 $search = $request->search;
 
