@@ -199,11 +199,11 @@ Route::group(
             Route::get('unit-type-detail-stock/export', [UnitTransactionController::class, 'exportStock']);
         });
 
-        // Stats
-        Route::group(['prefix'=> 'stats','as'=> 'stats'], function () {
-            Route::get('billing-stats', [BillingStatController::class, 'billingStat']);
-            Route::get('customer-stats', [BillingStatController::class, 'customerOverview']);
-            Route::get('unit-type-stats', [BillingStatController::class, 'unitTypeOverview']);
-        });
+	// Stats
+	Route::group(['prefix'=> 'stats','as'=> 'stats.'], function () {
+    		Route::get('billing-stats', [BillingStatController::class, 'billingStat']);
+    		Route::get('customer-stats', [BillingStatController::class, 'customerOverview']);
+    		Route::get('unit-type-stats', [BillingStatController::class, 'unitTypeOverview']);
+	});
     },
 );

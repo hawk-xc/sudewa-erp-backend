@@ -18,7 +18,7 @@ class MainCompanyWarehouseSeeder extends Seeder
         $companies = Company::whereIn('id', $main_company)->get();
 
         foreach ($companies as $company) {
-            Warehouse::create([
+            Warehouse::firstOrCreate([
                 'company_id' => (int) $company->id,
                 'name' => (string) $company->name.' Warehouse',
                 'capacity' => (int) 10000,
