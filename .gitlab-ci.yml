@@ -83,7 +83,8 @@ deploy-prod:
   script:
     - echo "🚀 Deploy Production Started"
 
-    - sudo -u wajira-team bash << 'EOF'
+    - |
+      sudo -u wajira-team bash << 'EOF'
       set -e
 
       cd /home/wajira-team/production/finance-api
@@ -99,7 +100,6 @@ deploy-prod:
 
       echo "⚙️ Run install script"
       docker exec wajira-finance-backend bash prod-install.sh
-      
       EOF
 
     - echo "✅ Deploy Done"
