@@ -92,6 +92,10 @@ deploy-prod:
       echo "📥 Pull latest code"
       git pull origin master
 
+      echo "📁 Setup & Fix Permissions (Host)"
+      mkdir -p storage/logs bootstrap/cache storage/framework/{sessions,views,cache}
+      chmod -R 775 storage bootstrap/cache
+
       echo "🐳 Rebuild container"
       docker compose -f docker-compose.prod.yaml up -d --build
 
