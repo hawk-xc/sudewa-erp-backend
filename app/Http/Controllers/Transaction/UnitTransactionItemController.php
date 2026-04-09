@@ -350,7 +350,7 @@ class UnitTransactionItemController extends Controller
 
             // SSOT guard
             if ($request->unit_type_id) {
-                if ($item->unitTransactionItemDetails->count() > 0) {
+                if ($item->qty_total < $request->qty_total) {
                     return $this->responseError(
                         'Cannot update unit_type_id, because this unit transaction item has unit transaction item details data',
                         'Validation failed',

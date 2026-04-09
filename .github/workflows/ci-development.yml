@@ -42,4 +42,5 @@ jobs:
             php artisan queue:restart
 
             echo "========= Update Docker Container ========="
+            composer install
             docker-compose restart
