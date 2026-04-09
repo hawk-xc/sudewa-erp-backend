@@ -3,74 +3,107 @@ stages:
   - test
   - deploy
 
+workflow:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "push"
+
+# =========================
+# GLOBAL BEFORE SCRIPT
+# =========================
+default:
+  before_script:
+    - 'echo "🚧 Runner: $(hostname)"'
+    - 'echo "👤 User: $(whoami)"'
+    - 'docker --version || true'
+
+# =========================
+# BASE TEMPLATE
+# =========================
+.default-dev: &default-dev
+  tags:
+    - stagging
+    - deraly
+    - hq
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "development"'
+
+.default-prod: &default-prod
+  tags:
+    - cloud
+    - wajira
+    - production
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "master"'
+
+
 # =========================
 # DEVELOPMENT PIPELINE
 # =========================
 build-dev:
+  <<: *default-dev
   stage: build
-  tags:
-    - development
   script:
-    - echo "Build for development"
-  rules:
-    - if: '$CI_COMMIT_BRANCH == "development"'
+    - echo "Build development (optional)"
 
 test-dev:
+  <<: *default-dev
   stage: test
-  tags:
-    - development
   script:
-    - echo "Testing development"
-  rules:
-    - if: '$CI_COMMIT_BRANCH == "development"'
+    - echo "Testing development (optional)"
 
 deploy-dev:
+  <<: *default-dev
   stage: deploy
-  tags:
-    - development
   environment:
     name: staging
   script:
     - echo "Deploy to staging"
-  rules:
-    - if: '$CI_COMMIT_BRANCH == "development"'
 
 
 # =========================
 # PRODUCTION PIPELINE
 # =========================
 build-prod:
+  <<: *default-prod
   stage: build
-  tags:
-    - client
-    - wajira
-    - production
   script:
-    - echo "Build for production"
-  rules:
-    - if: '$CI_COMMIT_BRANCH == "production"'
+    - echo "Build production (optional)"
 
 test-prod:
+  <<: *default-prod
   stage: test
-  tags:
-    - client
-    - wajira
-    - production
   script:
-    - echo "Testing production"
-  rules:
-    - if: '$CI_COMMIT_BRANCH == "production"'
+    - echo "Testing production (optional)"
 
 deploy-prod:
+  <<: *default-prod
   stage: deploy
-  tags:
-    - client
-    - wajira
-    - production
   environment:
     name: production
   script:
-    - echo "Deploy to production"
+    - echo "🚀 Deploy Production Started"
+
+    - |
+      sudo -u wajira-team bash << 'EOF'
+      set -e
+
+      cd /home/wajira-team/production/finance-api
+
+      echo "📥 Pull latest code"
+      git pull origin master
+
+      echo "📁 Setup & Fix Permissions (Host)"
+
+      echo "🐳 Rebuild container"
+      docker compose -f docker-compose.prod.yaml up -d --build
+
+      echo "⏳ Wait container ready"
+      sleep 5
+
+      echo "⚙️ Run install script"
+      docker exec wajira-finance-backend bash prod-install.sh
+      EOF
+
+    - echo "✅ Deploy Done"
+
   when: manual
-  rules:
-    - if: '$CI_COMMIT_BRANCH == "production"'

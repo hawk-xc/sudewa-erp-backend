@@ -10,10 +10,10 @@ services:
       - .env
     volumes:
       - .:/app
-      - ./.env:/app/.env:ro
+      - /app/vendor
+      - ./.env:/app/.env
     networks:
-      - client-wajira-net
-      - databases-net
+      - prod-wajira-net
 
   nginx:
     image: nginx:alpine
@@ -27,10 +27,8 @@ services:
     depends_on:
       - finance-backend
     networks:
-      - client-wajira-net
+      - prod-wajira-net
 
 networks:
-  client-wajira-net:
-    external: true
-  databases-net:
+  prod-wajira-net:
     external: true
