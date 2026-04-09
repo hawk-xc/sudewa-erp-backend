@@ -93,7 +93,7 @@ deploy-prod:
       git pull origin master
 
       echo "📁 Setup & Fix Permissions (Host)"
-      chmod -R 777 storage bootstrap/cache
+      sudo chmod -R 777 storage bootstrap/cache
 
       echo "🐳 Rebuild container"
       docker compose -f docker-compose.prod.yaml up -d --build
