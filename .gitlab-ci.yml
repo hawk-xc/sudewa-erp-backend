@@ -12,9 +12,9 @@ workflow:
 # =========================
 default:
   before_script:
-    - echo "🚧 Runner: $(hostname)"
-    - echo "👤 User: $(whoami)"
-    - docker --version || true
+    - 'echo "🚧 Runner: $(hostname)"'
+    - 'echo "👤 User: $(whoami)"'
+    - 'docker --version || true'
 
 # =========================
 # BASE TEMPLATE
