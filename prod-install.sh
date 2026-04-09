@@ -1,8 +1,6 @@
 git config --global --add safe.directory /app
 
-#composer install
-
-composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist
+composer install
 
 php artisan config:clear
 php artisan route:clear
