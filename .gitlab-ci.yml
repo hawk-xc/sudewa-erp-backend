@@ -94,6 +94,7 @@ deploy-prod:
 
       echo "📁 Setup & Fix Permissions (Host)"
       chmod -R 775 storage bootstrap/cache
+      chown -R www-data:www-data storage bootstrap/cache
 
       echo "🐳 Rebuild container"
       docker compose -f docker-compose.prod.yaml up -d --build
