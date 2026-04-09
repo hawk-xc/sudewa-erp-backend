@@ -29,7 +29,7 @@ default:
 
 .default-prod: &default-prod
   tags:
-    - client
+    - cloud
     - wajira
     - production
   rules:
