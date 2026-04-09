@@ -110,7 +110,21 @@ class GlobalCompanyController extends Controller
     public function show(string $id)
     {
         try {
-            $company = Company::with('modules')->findOrFail($id);
+            $company = Company::with('modules')->find($id);
+
+            if (!$company) {
+                $company = Company::with('modules')
+                    ->where('slug', $id)
+                    ->first();
+            }
+
+            if (!$company) {
+                return $this->responseError(
+                    null,
+                    'Company not found',
+                    404
+                );
+            }
 
             return $this->responseSuccess(
                 $company,
