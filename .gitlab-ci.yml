@@ -29,7 +29,7 @@ default:
 
 .default-prod: &default-prod
   tags:
-    - cloud
+    - client
     - wajira
     - production
   rules:
@@ -83,23 +83,24 @@ deploy-prod:
   script:
     - echo "🚀 Deploy Production Started"
 
-    - sudo -u wajira-team bash -c '
-        set -e
+    - sudo -u wajira-team bash << 'EOF'
+      set -e
 
-        cd /home/wajira-team/production/finance-api
+      cd /home/wajira-team/production/finance-api
 
-        echo "📥 Pull latest code"
-        git pull origin master
+      echo "📥 Pull latest code"
+      git pull origin master
 
-        echo "🐳 Rebuild container"
-        docker compose -f docker-compose.prod.yaml up -d --build
+      echo "🐳 Rebuild container"
+      docker compose -f docker-compose.prod.yaml up -d --build
 
-        echo "⏳ Wait container ready"
-        sleep 5
+      echo "⏳ Wait container ready"
+      sleep 5
 
-        echo "⚙️ Run install script"
-        docker exec wajira-finance-backend bash prod-install.sh
-      '
+      echo "⚙️ Run install script"
+      docker exec wajira-finance-backend bash prod-install.sh
+      
+      EOF
 
     - echo "✅ Deploy Done"
 
