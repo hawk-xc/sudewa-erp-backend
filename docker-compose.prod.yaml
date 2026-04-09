@@ -10,7 +10,7 @@ services:
       - .env
     volumes:
       - .:/app
-      - ./.env:/app/.env:ro
+      - ./.env:/app/.env
     networks:
       - prod-wajira-net
 
