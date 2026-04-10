@@ -61,7 +61,7 @@ class MasterCashController extends Controller
             Log::error('Error retrieving cash list: ' . $e->getMessage());
 
             return $this->responseError(
-                null,
+                $e->getMessage(),
                 'Failed to retrieve cash list',
                 500
             );
@@ -99,7 +99,7 @@ class MasterCashController extends Controller
             Log::error('Error storing cash: ' . $e->getMessage());
 
             return $this->responseError(
-                null,
+                $e->getMessage(),
                 'Failed to create cash',
                 500
             );
@@ -119,7 +119,7 @@ class MasterCashController extends Controller
 
         } catch (\Exception $e) {
             return $this->responseError(
-                null,
+                $e->getMessage(),
                 'Cash not found',
                 404
             );
@@ -158,7 +158,7 @@ class MasterCashController extends Controller
             Log::error('Error updating cash: ' . $e->getMessage());
 
             return $this->responseError(
-                null,
+                $e->getMessage(),
                 'Failed to update cash',
                 500
             );
@@ -184,7 +184,7 @@ class MasterCashController extends Controller
             Log::error('Error deleting cash: ' . $e->getMessage());
 
             return $this->responseError(
-                null,
+                $e->getMessage(),
                 'Failed to delete cash',
                 500
             );
@@ -206,8 +206,8 @@ class MasterCashController extends Controller
             Log::error('Cash import error: ' . $e->getMessage());
 
             return $this->responseError(
-                null,
                 $e->getMessage(),
+                'Cash data imported failed',
                 500
             );
         }

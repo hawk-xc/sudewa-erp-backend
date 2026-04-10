@@ -131,7 +131,7 @@ class MasterOwnershipTransferFeeController extends Controller
         } catch (Exception $err) {
             Log::error('Error while trying update OwnershipTransferFee : '.$err->getMessage());
 
-            return $this->responseError(null, 'Internal Server Error', 500);
+            return $this->responseError($err->getMessage(), 'Internal Server Error', 500);
         }
     }
 
@@ -145,7 +145,7 @@ class MasterOwnershipTransferFeeController extends Controller
         } catch (Exception $err) {
             Log::error('Error while trying delete OwnershipTransferFee : '.$err->getMessage());
 
-            return $this->responseError(null, 'Internal Server Error', 500);
+            return $this->responseError($err->getMessage(), 'Internal Server Error', 500);
         }
     }
 }

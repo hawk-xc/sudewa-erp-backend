@@ -179,7 +179,7 @@ class MasterSparepartController extends Controller
                 'message' => $err->getMessage(),
             ]);
 
-            return $this->responseError(null, $err->getMessage(), 500);
+            return $this->responseError($err->getMessage(), 'Sparepart import error', 500);
         }
     }
 

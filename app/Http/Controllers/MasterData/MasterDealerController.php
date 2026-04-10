@@ -200,7 +200,7 @@ class MasterDealerController extends Controller
                 'message' => $err->getMessage(),
             ]);
 
-            return $this->responseError(null, $err->getMessage(), 500);
+            return $this->responseError($err->getMessage(), 'Person dealer import error', 500);
         }
     }
 
