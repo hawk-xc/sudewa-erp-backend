@@ -107,7 +107,7 @@ class MasterSparepartCategoryController extends Controller
         } catch (Exception $err) {
             Log::error('Error while trying update Sparepart Category : '.$err->getMessage());
 
-            return $this->responseError(null, 'Internal Server Error', 500);
+            return $this->responseError($err->getMessage(), 'Internal Server Error', 500);
         }
     }
 
@@ -121,7 +121,7 @@ class MasterSparepartCategoryController extends Controller
         } catch (Exception $err) {
             Log::error('Error while trying delete Sparepart Category : '.$err->getMessage());
 
-            return $this->responseError(null, 'Internal Server Error', 500);
+            return $this->responseError($err->getMessage(), 'Internal Server Error', 500);
         }
     }
 }

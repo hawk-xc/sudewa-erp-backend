@@ -208,7 +208,7 @@ class MasterUnitTypeController extends Controller
         } catch (Exception $err) {
             Log::error('Error while trying update Unit Type : ' . $err->getMessage());
 
-            return $this->responseError(null, 'Internal Server Error', 500);
+            return $this->responseError($err->getMessage(), 'Internal Server Error', 500);
         }
     }
 
@@ -222,7 +222,7 @@ class MasterUnitTypeController extends Controller
         } catch (Exception $err) {
             Log::error('Error while trying delete Unit Type : ' . $err->getMessage());
 
-            return $this->responseError(null, 'Internal Server Error', 500);
+            return $this->responseError($err->getMessage(), 'Internal Server Error', 500);
         }
     }
 
@@ -241,7 +241,7 @@ class MasterUnitTypeController extends Controller
                 'message' => $err->getMessage(),
             ]);
 
-            return $this->responseError(null, $err->getMessage(), 500);
+            return $this->responseError($err->getMessage(), 'Unit Type import error', 500);
         }
     }
 

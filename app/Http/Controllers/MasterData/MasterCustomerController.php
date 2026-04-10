@@ -200,7 +200,7 @@ class MasterCustomerController extends Controller
                 'message' => $err->getMessage(),
             ]);
 
-            return $this->responseError(null, $err->getMessage(), 500);
+            return $this->responseError($err->getMessage(), 'Person Customer import error', 500);
         }
     }
 

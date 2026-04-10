@@ -110,7 +110,7 @@ class MasterRegionController extends Controller
         } catch (Exception $err) {
             Log::error('Error while trying update Region : '.$err->getMessage());
 
-            return $this->responseError(null, 'Internal Server Error', 500);
+            return $this->responseError($err->getMessage(), 'Internal Server Error', 500);
         }
     }
 
@@ -124,7 +124,7 @@ class MasterRegionController extends Controller
         } catch (Exception $err) {
             Log::error('Error while trying delete Region : '.$err->getMessage());
 
-            return $this->responseError(null, 'Internal Server Error', 500);
+            return $this->responseError($err->getMessage(), 'Internal Server Error', 500);
         }
     }
 
@@ -143,7 +143,7 @@ class MasterRegionController extends Controller
                 'message' => $err->getMessage(),
             ]);
 
-            return $this->responseError(null, $err->getMessage(), 500);
+            return $this->responseError($err->getMessage(), 'Region import error', 500);
         }
     }
 
