@@ -8,6 +8,9 @@ RUN apt-get update && apt-get install -y \
     libzip-dev \
     unzip \
     libpng-dev \
+    libjpeg62-turbo-dev \
+    libwebp-dev \
+    libfreetype6-dev \
     default-mysql-client \
     && rm -rf /var/lib/apt/lists/*
 
@@ -18,6 +21,12 @@ RUN docker-php-ext-install \
     bcmath \
     pcntl \
     gd
+
+RUN docker-php-ext-configure gd \
+    --with-freetype \
+    --with-jpeg \
+    --with-webp \
+    && docker-php-ext-install gd
 
 RUN pecl install redis && docker-php-ext-enable redis
 
