@@ -133,7 +133,10 @@ class UnitTransactionBillingController extends Controller
                 'unit_transaction_id' => 'required|integer|exists:unit_transactions,id|unique:unit_transaction_billings,unit_transaction_id',
             ]);
 
-            $unitTransaction = UnitTransaction::with('unitTransactionItems')
+            $unitTransaction = UnitTransaction::with([
+                    'unitTransactionItems.unitTransactionItemDetails',
+                    'unitTransactionItems.unitTransactionItemSales'
+                ])
                 ->findOrFail($validated['unit_transaction_id']);
 
             if ((int) $unitTransaction->warehouse->company_id !== (int) $validated['company_id']) {
@@ -142,10 +145,22 @@ class UnitTransactionBillingController extends Controller
                 ]);
             }
 
+            foreach ($unitTransaction->unitTransactionItems as $item) {
+                $actualQty = $unitTransaction->type === 'purchase'
+                    ? $item->unitTransactionItemDetails->count()
+                    : $item->unitTransactionItemSales->count();
+
+                if ((int) $item->qty_total !== (int) $actualQty) {
+                    throw ValidationException::withMessages([
+                        "message" => 'The unit transaction items are invalid. Please ensure all items have the correct amount of details/sales records.',
+                        "hint" => "unit transaction item detail count not filled correct with unit transcation item qty total"
+                    ]);
+                }
+            }
+
             if ($unitTransaction->type === 'purchase') {
                 $grandTotal = $unitTransaction->getBrutoAmountActual();
             } else {
-                // SALES → pakai total biasa (tidak pakai item details)
                 $grandTotal = $unitTransaction->getBrutoAmount();
             }
 
