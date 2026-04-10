@@ -59,6 +59,7 @@ class CashExport implements FromCollection, WithHeadings
             'ID',
             'UUID',
             'Company ID',
+            'Account ID',
             'Code',
             'Description',
             'Type',

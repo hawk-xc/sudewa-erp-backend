@@ -15,6 +15,7 @@ class Cash extends Model
     protected $fillable = [
         'uuid',
         'company_id',
+        'account_id',
         'code',
         'description',
         'amount',
@@ -24,6 +25,11 @@ class Cash extends Model
     public function company()
     {
         return $this->belongsTo(Company::class);
+    }
+
+    public function account()
+    {
+        return $this->belongsTo(Account::class);
     }
 
     public function cashFlows()

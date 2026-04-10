@@ -16,12 +16,12 @@ class MasterCashController extends Controller
 {
     use ResponseTrait;
 
-    protected $cashTable = ['id', 'uuid', 'company_id', 'code', 'description', 'type', 'created_at'];
+    protected $cashTable = ['id', 'uuid', 'company_id', 'account_id', 'code', 'description', 'type', 'created_at'];
 
     public function index(Request $request)
     {
         try {
-            $query = Cash::query()->select($this->cashTable);
+            $query = Cash::query()->select($this->cashTable)->with('account');
 
             if ($request->filled('search')) {
                 $search = $request->search;
@@ -73,6 +73,7 @@ class MasterCashController extends Controller
         try {
             $validated = $request->validate([
                 'company_id' => 'required|exists:companies,id',
+                'account_id' => 'nullable|exists:accounts,id',
                 'code' => 'required|string|max:50|unique:cashes,code',
                 'description' => 'nullable|string',
                 'type' => 'required|string|max:50|in:cash,bank',
@@ -109,7 +110,7 @@ class MasterCashController extends Controller
     public function show(string $id)
     {
         try {
-            $cash = Cash::select($this->cashTable)->with('company')->findOrFail($id);
+            $cash = Cash::select($this->cashTable)->with(['company', 'account'])->findOrFail($id);
 
             return $this->responseSuccess(
                 $cash,
@@ -132,6 +133,7 @@ class MasterCashController extends Controller
             $cash = Cash::findOrFail($id);
 
             $validated = $request->validate([
+                'account_id' => 'nullable|exists:accounts,id',
                 'code' => 'sometimes|required|string|max:50|unique:cashes,code,' . $id,
                 'description' => 'nullable|string',
                 'type' => 'sometimes|required|string|max:50',
