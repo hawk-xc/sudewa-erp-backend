@@ -77,7 +77,7 @@ class MasterBrandController extends Controller
         } catch (\Exception $err) {
             Log::error('List Brand Error : ' . $err->getMessage());
 
-            return $this->responseError(null, 'Error while trying to list Brand', 500);
+            return $this->responseError($err->getMessage(), 'Error while trying to list Brand', 500);
         }
     }
 
@@ -166,7 +166,7 @@ class MasterBrandController extends Controller
 
             return $this->responseSuccess($brand, 'Brand retrieved successfully', 200);
         } catch (\Exception $err) {
-            return $this->responseError(null, 'Brand not found', 404);
+            return $this->responseError($err->getMessage(), 'Brand not found', 404);
         }
     }
 
@@ -215,7 +215,7 @@ class MasterBrandController extends Controller
         } catch (\Exception $err) {
             Log::error('Error updating brand: ' . $err->getMessage());
 
-            return $this->responseError(null, 'Error updating brand', 500);
+            return $this->responseError($err->getMessage(), 'Error updating brand', 500);
         }
     }
 
@@ -230,7 +230,7 @@ class MasterBrandController extends Controller
 
             return $this->responseSuccess(null, 'Brand deleted successfully', 200);
         } catch (\Exception $err) {
-            return $this->responseError(null, 'Brand not found or cannot be deleted', 404);
+            return $this->responseError($err->getMessage(), 'Brand not found or cannot be deleted', 404);
         }
     }
 }

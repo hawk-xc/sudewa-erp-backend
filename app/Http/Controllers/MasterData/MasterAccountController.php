@@ -91,7 +91,7 @@ class MasterAccountController extends Controller
         } catch (Exception $err) {
             Log::error('Error While retrieved Account data : '.$err->getMessage());
 
-            return $this->responseError(null, 'Account list retrieved Failed', 500);
+            return $this->responseError($err->getMessage(), 'Account list retrieved Failed', 500);
         }
     }
 
@@ -127,7 +127,7 @@ class MasterAccountController extends Controller
         } catch (Exception $err) {
             Log::error('Error While storing Account data : '.$err->getMessage());
 
-            return $this->responseError(null, 'Account creation failed', 500);
+            return $this->responseError($err->getMessage(), 'Account creation failed', 500);
         }
     }
 
@@ -173,7 +173,7 @@ class MasterAccountController extends Controller
 
             return $this->responseSuccess([], 'Account sucessfully Deleted', 200);
         } catch (Exception $err) {
-            return $this->responseError([], 'Account Not Found or Failed Deleted', 500);
+            return $this->responseError($err->getMessage(), 'Account Not Found or Failed Deleted', 500);
         }
     }
 
@@ -192,7 +192,7 @@ class MasterAccountController extends Controller
                 'message' => $e->getMessage(),
             ]);
 
-            return $this->responseError(null, $e->getMessage(), 500);
+            return $this->responseError($e->getMessage(), 'Account import error', 500);
         }
     }
 }

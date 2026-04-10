@@ -92,7 +92,7 @@ class MasterSupplierController extends Controller
         } catch (Exception $err) {
             Log::error('Error While retrieved Supplier data : '.$err->getMessage());
 
-            return $this->responseError(null, 'Supplier list retrieved Failed', 500);
+            return $this->responseError($err->getMessage(), 'Supplier list retrieved Failed', 500);
         }
     }
 
@@ -109,7 +109,7 @@ class MasterSupplierController extends Controller
         } catch (Exception $err) {
             Log::error('Error While retrieved Supplier data : '.$err->getMessage());
 
-            return $this->responseError(null, 'Supplier retrieved Failed', 500);
+            return $this->responseError($err->getMessage(), 'Supplier retrieved Failed', 500);
         }
     }
 
@@ -136,7 +136,7 @@ class MasterSupplierController extends Controller
         } catch (Exception $err) {
             Log::error('Error while trying create Supplier Data : '.$err->getMessage());
 
-            return $this->responseError(null, 'Error while trying create Supplier Data', 500);
+            return $this->responseError($err->getMessage(), 'Error while trying create Supplier Data', 500);
         }
     }
 
@@ -170,7 +170,7 @@ class MasterSupplierController extends Controller
         } catch (Exception $err) {
             Log::error('Error while trying update Supplier data : '.$err->getMessage());
 
-            return $this->responseError(null, 'Error while trying update Supplier data', 500);
+            return $this->responseError($err->getMessage(), 'Error while trying update Supplier data', 500);
         }
     }
 
@@ -184,7 +184,7 @@ class MasterSupplierController extends Controller
         } catch (Exception $err) {
             Log::error('Error while trying delete Supplier data : '.$err->getMessage());
 
-            return $this->responseError(null, 'Supplier Deleted Failed');
+            return $this->responseError($err->getMessage(), 'Supplier Deleted Failed');
         }
     }
 
@@ -203,7 +203,7 @@ class MasterSupplierController extends Controller
                 'message' => $err->getMessage(),
             ]);
 
-            return $this->responseError(null, $err->getMessage(), 500);
+            return $this->responseError($err->getMessage(), 'Person Supplier import error', 500);
         }
     }
 
