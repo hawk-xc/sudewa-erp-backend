@@ -119,7 +119,7 @@ class MasterCustomerController extends Controller
             'phone' => 'sometimes|string|max:249',
             'npwp' => 'sometimes|string',
             'pic_name' => 'nullable|string',
-            'map_link' => 'nulllable|string'
+            'map_link' => 'nullable|string'
         ]);
 
         try {
