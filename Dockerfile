@@ -46,4 +46,8 @@ RUN chown -R www-data:www-data /app/storage && chown -R www-data:www-data /app/b
 
 EXPOSE 9000
 
+RUN chown -R www-data:www-data /app \
+    && chmod -R 775 /app/storage \
+    && chmod -R 775 /app/bootstrap/cache
+
 CMD ["php-fpm"]
