@@ -164,7 +164,7 @@ class MasterAccountGroupController extends Controller
         } catch (Exception $err) {
             Log::error('Error While updating Account data : '.$err->getMessage());
 
-            return $this->responseError(null, 'Account update failed', 500);
+            return $this->responseError($err->getMessage(), 'Account update failed', 500);
         }
     }
 
