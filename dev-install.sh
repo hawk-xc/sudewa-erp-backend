@@ -1,4 +1,5 @@
 composer install
+composer dump-autoload
 
 php artisan config:clear
 php artisan route:clear
