@@ -105,5 +105,3 @@ deploy-prod:
       EOF
 
     - echo "✅ Deploy Done"
-
-  when: manual
