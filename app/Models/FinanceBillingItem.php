@@ -4,17 +4,15 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Str;
 
-class UnitTransactionBillingHistory extends Model
+class FinanceBillingItem extends Model
 {
     use HasFactory;
 
-    protected $table = 'unit_transaction_billing_histories';
+    protected $table = 'finance_billing_items';
 
     protected $fillable = [
-        'uuid',
-        'unit_transaction_billing_id',
+        'finance_billing_id',
         'bca_payment_amount',
         'bca_payment_usd_amount',
         'cash_payment_amount',
@@ -30,15 +28,8 @@ class UnitTransactionBillingHistory extends Model
         'payment_at' => 'date',
     ];
 
-    public function unitTransactionBilling()
+    public function financeBilling()
     {
-        return $this->belongsTo(UnitTransactionBilling::class, 'unit_transaction_billing_id', 'id');
-    }
-
-    protected static function booted()
-    {
-        static::creating(function ($model) {
-            $model->uuid = (string) Str::uuid();
-        });
+        return $this->belongsTo(FinanceBilling::class);
     }
 }

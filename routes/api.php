@@ -192,7 +192,7 @@ Route::group(
             Route::apiResource('cash-flow', DailyCashFlowController::class);
             Route::apiResource('refund', UnitTransactionRefundController::class);
             Route::apiResource('finance-billing', FinanceBillingController::class);
-            Route::post('finance-billing-item', [FinanceBillingController::class, 'addItem']);
+            Route::post('finance-billing-item/{unit_transaction_billing_id}', [FinanceBillingController::class, 'addItem']);
             Route::put('finance-billing-item/{id}', [FinanceBillingController::class, 'updateItem']);
             Route::delete('finance-billing-item/{id}', [FinanceBillingController::class, 'destroyItem']);
         });

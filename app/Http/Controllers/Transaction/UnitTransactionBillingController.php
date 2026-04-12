@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Transaction;
 use App\Http\Controllers\Controller;
 use App\Models\UnitTransaction;
 use App\Models\UnitTransactionBilling;
+use App\Models\FinanceBilling;
 use App\Traits\ResponseTrait;
 use Exception;
 use Illuminate\Http\Request;
@@ -145,24 +146,26 @@ class UnitTransactionBillingController extends Controller
                 ]);
             }
 
-            foreach ($unitTransaction->unitTransactionItems as $item) {
-                $actualQty = $unitTransaction->type === 'purchase'
-                    ? $item->unitTransactionItemDetails->count()
-                    : $item->unitTransactionItemSales->count();
+            // unit type detail checker
+            // foreach ($unitTransaction->unitTransactionItems as $item) {
+            //     $actualQty = $unitTransaction->type === 'purchase'
+            //         ? $item->unitTransactionItemDetails->count()
+            //         : $item->unitTransactionItemSales->count();
 
-                if ((int) $item->qty_total !== (int) $actualQty) {
-                    throw ValidationException::withMessages([
-                        "message" => 'The unit transaction items are invalid. Please ensure all items have the correct amount of details/sales records.',
-                        "hint" => "unit transaction item detail count not filled correct with unit transcation item qty total"
-                    ]);
-                }
-            }
+            //     if ((int) $item->qty_total !== (int) $actualQty) {
+            //         throw ValidationException::withMessages([
+            //             "message" => 'The unit transaction items are invalid. Please ensure all items have the correct amount of details/sales records.',
+            //             "hint" => "unit transaction item detail count not filled correct with unit transcation item qty total"
+            //         ]);
+            //     }
+            // }
 
-            if ($unitTransaction->type === 'purchase') {
-                $grandTotal = $unitTransaction->getBrutoAmountActual();
-            } else {
-                $grandTotal = $unitTransaction->getBrutoAmount();
-            }
+            // get bruto total
+            // if ($unitTransaction->type === 'purchase') {
+            //     $grandTotal = $unitTransaction->getBrutoAmountActual();
+            // } else {
+            $grandTotal = $unitTransaction->getBrutoAmount();
+            // }
 
             if ($grandTotal <= 0) {
                 throw ValidationException::withMessages([
@@ -171,11 +174,18 @@ class UnitTransactionBillingController extends Controller
             }
 
             $billing = DB::transaction(function () use ($validated, $grandTotal) {
-                return UnitTransactionBilling::create([
+                $billing = UnitTransactionBilling::create([
                     'unit_transaction_id' => $validated['unit_transaction_id'],
                     'grand_total' => $grandTotal,
                     'is_paid' => false,
                 ]);
+
+                // Finance Fractal
+                FinanceBilling::create([
+                    'unit_transaction_billing_id' => $billing->id,
+                ]);
+
+                return $billing;
             });
 
             return $this->responseSuccess($billing, 'Billing created successfully', 201);
