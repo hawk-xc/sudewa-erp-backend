@@ -36,7 +36,7 @@ class GlobalModuleController extends Controller
                 200
             );
 
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             Log::error('Error retrieving modules: '.$e->getMessage());
 
             return $this->responseError(

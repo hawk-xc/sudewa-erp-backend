@@ -3,9 +3,11 @@
 namespace App\Http\Controllers\User;
 
 use App\Http\Controllers\Controller;
+use App\Models\Module;
 use App\Models\User;
 use App\Repositories\AuthRepository;
 use App\Traits\ResponseTrait;
+use Exception;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -232,7 +234,7 @@ class UserController extends Controller
             DB::commit();
 
             return $this->responseSuccess($user->load('roles'), 'Roles assigned successfully');
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             DB::rollBack();
 
             return $this->responseError(null, $e->getMessage(), 500);
@@ -360,5 +362,86 @@ class UserController extends Controller
             ],
             'Users retrieved successfully',
         );
+    }
+
+    public function showModule(string $id): JsonResponse
+    {
+        try {
+            $user = User::findOrFail($id);
+
+            $modules = Module::with([
+                'features' => function ($q) {
+                    $q->where('is_active', true)
+                        ->select('features.id', 'slug', 'name', 'description');
+                }
+            ])->get();
+
+            $isAdmin = $user->hasRole('admin');
+            $userPermissions = $user->getAllPermissions()->pluck('name')->toArray();
+
+            $data = $modules->map(function ($module) use ($isAdmin, $userPermissions) {
+                $moduleSlug = $module->slug;
+
+                $filteredFeatures = $module->features->filter(function ($feature) use ($isAdmin, $userPermissions, $moduleSlug) {
+                    if ($isAdmin) {
+                        return true;
+                    }
+
+                    $featureSlug = $feature->slug;
+                    $singularFeatureSlug = Str::singular($featureSlug);
+
+                    // We consider a feature available if the user has any permission matching:
+                    // - module_slug:feature_slug:*
+                    // - feature_slug:*
+                    // - singular_feature_slug:*
+                    $prefixes = [
+                        $moduleSlug.':'.$featureSlug,
+                        $featureSlug,
+                        $singularFeatureSlug,
+                    ];
+
+                    foreach ($userPermissions as $permission) {
+                        foreach ($prefixes as $prefix) {
+                            if ($permission === $prefix || str_starts_with($permission, $prefix.':')) {
+                                return true;
+                            }
+                        }
+                    }
+
+                    // Fallback: If user has general access to the module (e.g., master-data:list)
+                    $modulePermissions = [$moduleSlug.':list', $moduleSlug.':view', $moduleSlug.':all'];
+                    foreach ($modulePermissions as $modPerm) {
+                        if (in_array($modPerm, $userPermissions)) {
+                            return true;
+                        }
+                    }
+
+                    return false;
+                })->values();
+
+                if ($filteredFeatures->isEmpty()) {
+                    return null;
+                }
+
+                return [
+                    'module' => [
+                        'id' => $module->id,
+                        'name' => $module->name,
+                        'slug' => $module->slug,
+                        'description' => $module->description,
+                    ],
+                    'features' => $filteredFeatures,
+                ];
+            })->filter()->values();
+
+            return $this->responseSuccess($data, 'User modules and features retrieved successfully', 200);
+
+        } catch (Exception $err) {
+            return $this->responseError(
+                $err->getMessage(),
+                'Failed to retrieve modules and features',
+                500
+            );
+        }
     }
 }

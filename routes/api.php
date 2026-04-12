@@ -3,6 +3,7 @@
 use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\Dashboard\BillingStatController;
 use App\Http\Controllers\Finance\DailyCashFlowController;
+use App\Http\Controllers\Finance\FinanceBillingController;
 use App\Http\Controllers\Finance\PpnDataController;
 use App\Http\Controllers\Finance\UnitTransactionRefundController;
 use App\Http\Controllers\Global\GlobalCompanyController;
@@ -68,6 +69,7 @@ Route::group(
             Route::put('{id}/deactivate-user', [UserController::class, 'deactivateUser'])->name('deactivate-user');
             Route::get('{id}/get-user-password', [UserController::class, 'getUserPassword'])->name('get-user-password');
             Route::get('/action/get-status', [UserController::class, 'getStatus'])->name('get-status');
+            Route::get('{id}/show-module', [UserController::class, 'showModule'])->name('show-module');
         });
 
         // Role API
@@ -189,6 +191,10 @@ Route::group(
             Route::apiResource('ppn', PpnDataController::class);
             Route::apiResource('cash-flow', DailyCashFlowController::class);
             Route::apiResource('refund', UnitTransactionRefundController::class);
+            Route::apiResource('finance-billing', FinanceBillingController::class);
+            Route::post('finance-billing-item', [FinanceBillingController::class, 'addItem']);
+            Route::put('finance-billing-item/{id}', [FinanceBillingController::class, 'updateItem']);
+            Route::delete('finance-billing-item/{id}', [FinanceBillingController::class, 'destroyItem']);
         });
 
         // Report Data
