@@ -32,6 +32,11 @@ class UnitTransactionBilling extends Model
         return $this->belongsTo(UnitTransaction::class);
     }
 
+    public function financeBilling()
+    {
+        return $this->hasOne(FinanceBilling::class, 'unit_transaction_billing_id', 'id');
+    }
+
     public function unitTransactionBillingHistories()
     {
         return $this->hasMany(UnitTransactionBillingHistory::class);

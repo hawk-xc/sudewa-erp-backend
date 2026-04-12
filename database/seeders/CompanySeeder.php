@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Models\Cash;
 use App\Models\Company;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Str;
@@ -13,6 +14,21 @@ class CompanySeeder extends Seeder
      */
     public function run(): void
     {
+        $cashes = [
+            [
+                'cash_idr',
+                'cash'
+            ],
+            [
+                'bca_idr',
+                'bank'
+            ],
+            [
+                'bca_usd',
+                'bank'
+            ]
+        ];
+
         $companies = [
             [
                 'code' => 1,
@@ -57,5 +73,19 @@ class CompanySeeder extends Seeder
         ];
 
         Company::insert($companies);
+
+        $companies = Company::all();
+
+        foreach ($companies as $company) {
+            foreach ($cashes as $cash) {
+                Cash::create([
+                    'company_id' => (int) $company->id,
+                    'code' => (string) $cash[0],
+                    'description' => (string) "Kas " . $cash[0] . " " . $company['name'],
+                    'type' => (string) $cash[1],
+                    'amount' => (int) 0,
+                ]);
+            }
+        }
     }
 }
