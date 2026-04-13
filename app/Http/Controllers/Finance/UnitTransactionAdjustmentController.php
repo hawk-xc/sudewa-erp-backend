@@ -4,30 +4,31 @@ namespace App\Http\Controllers\Finance;
 
 use App\Http\Controllers\Controller;
 use App\Models\UnitTransaction;
-use App\Models\UnitTransactionRefund;
+use App\Models\UnitTransactionAdjustment;
 use App\Traits\ResponseTrait;
 use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
-class UnitTransactionRefundController extends Controller
+class UnitTransactionAdjustmentController extends Controller
 {
     use ResponseTrait;
 
-    protected $unitTransactionRefundTable;
+    protected $unitTransactionAdjustmentTable;
 
     public function __construct()
     {
         $this->middleware(['permission:transaction:list'])->only(['index', 'show']);
 
-        $this->unitTransactionRefundTable = [
+        $this->unitTransactionAdjustmentTable = [
             'id',
             'uuid',
             'unit_transaction_id',
             'cash_id',
-            'refund_total',
+            'amount',
             'description',
+            'type',
             'created_at',
         ];
     }
@@ -35,19 +36,17 @@ class UnitTransactionRefundController extends Controller
     public function index(Request $request)
     {
         try {
-            $query = UnitTransactionRefund::query();
+            $query = UnitTransactionAdjustment::query();
 
-            $query->select($this->unitTransactionRefundTable)
+            $query->select($this->unitTransactionAdjustmentTable)
                 ->with([
                     'unitTransaction:id,uuid,person_id,code,type,stock_state',
                     'unitTransaction.person:id,uuid,code,type,name',
                     'cash:id,uuid,code,description,type',
                 ]);
 
-            if ($request->filled('refund_type')) {
-                $query->whereHas('unitTransaction', function ($q) use ($request) {
-                    $q->where('type', $request->refund_type);
-                });
+            if ($request->filled('adjustment_type')) {
+                $query->where('type', $request->adjustment_type);
             }
 
             if ($request->filled('search')) {
@@ -61,35 +60,35 @@ class UnitTransactionRefundController extends Controller
             }
 
             $query->orderBy(
-                in_array($request->sort_by, $this->unitTransactionRefundTable) ? $request->sort_by : 'id',
+                in_array($request->sort_by, $this->unitTransactionAdjustmentTable) ? $request->sort_by : 'id',
                 $request->sort_order === 'asc' ? 'asc' : 'desc'
             );
 
             $data = $query->paginate($request->per_page ?? 10);
 
-            return $this->responseSuccess($data, 'Unit Transaction Refund list retrieved successfully', 200);
+            return $this->responseSuccess($data, 'Unit Transaction Adjustment list retrieved successfully', 200);
 
         } catch (Exception $err) {
-            Log::error('Error While retrieved Unit Transaction Refund data : '.$err->getMessage());
+            Log::error('Error While retrieved Unit Transaction Adjustment data : '.$err->getMessage());
 
-            return $this->responseError($err->getMessage(), 'Unit Transaction Refund list retrieved Failed', 500);
+            return $this->responseError($err->getMessage(), 'Unit Transaction Adjustment list retrieved Failed', 500);
         }
     }
 
     public function show(string $id)
     {
         try {
-            $data = UnitTransactionRefund::with([
+            $data = UnitTransactionAdjustment::with([
                 'unitTransaction:id,uuid,code,type,stock_state',
                 'cash:id,uuid,code,description,type',
             ])
-                ->select($this->unitTransactionRefundTable)
+                ->select($this->unitTransactionAdjustmentTable)
                 ->findOrFail($id);
 
-            return $this->responseSuccess($data, 'Unit Transaction Refund retrieved successfully', 200);
+            return $this->responseSuccess($data, 'Unit Transaction Adjustment retrieved successfully', 200);
 
         } catch (Exception $err) {
-            return $this->responseError($err->getMessage(), 'Unit Transaction Refund not found', 404);
+            return $this->responseError($err->getMessage(), 'Unit Transaction Adjustment not found', 404);
         }
     }
 
@@ -99,58 +98,59 @@ class UnitTransactionRefundController extends Controller
             $validated = $request->validate([
                 'unit_transaction_id' => 'required|integer|exists:unit_transactions,id',
                 'cash_id' => 'required|integer|exists:cashes,id',
-                'refund_total' => 'sometimes|numeric|min:0',
+                'amount' => 'required|integer|min:0',
                 'description' => 'nullable|string',
+                'type' => 'required|string|in:refund,return',
             ]);
 
             $unitTransaction = UnitTransaction::findOrFail($request->unit_transaction_id);
 
             if ($unitTransaction->is_refunded) {
-                return $this->responseError(null, 'Transaction has already been refunded.', 422);
+                return $this->responseError(null, 'Transaction has already been adjusted/refunded.', 422);
             }
 
             if (!$unitTransaction->unitTransactionBilling || !$unitTransaction->unitTransactionBilling->is_paid) {
                 return $this->responseError(null, 'Transaction has not been paid or has no billing data.', 422);
             }
 
-            if (!isset($validated['refund_total'])) {
-                $validated['refund_total'] = (float) $unitTransaction->getBrutoAmount();
+            if (!isset($validated['amount'])) {
+                $validated['amount'] = (int) $unitTransaction->getBrutoAmount();
             }
 
-            $refund = DB::transaction(function () use ($validated, $unitTransaction) {
+            $adjustment = DB::transaction(function () use ($validated, $unitTransaction) {
                 $unitTransaction->update(['is_refunded' => true]);
 
-                return UnitTransactionRefund::create($validated);
+                return UnitTransactionAdjustment::create($validated);
             });
 
-            return $this->responseSuccess($refund, 'Unit Transaction Refund created successfully', 201);
+            return $this->responseSuccess($adjustment, 'Unit Transaction Adjustment created successfully', 201);
 
         } catch (Exception $err) {
-            Log::error('Error while creating Unit Transaction Refund: '.$err->getMessage());
+            Log::error('Error while creating Unit Transaction Adjustment: '.$err->getMessage());
 
-            return $this->responseError($err->getMessage(), 'Unit Transaction Refund creation failed', 500);
+            return $this->responseError($err->getMessage(), 'Unit Transaction Adjustment creation failed', 500);
         }
     }
 
     public function destroy(string $id)
     {
         try {
-            $refund = UnitTransactionRefund::findOrFail($id);
-            $unitTransaction = $refund->unitTransaction;
+            $adjustment = UnitTransactionAdjustment::findOrFail($id);
+            $unitTransaction = $adjustment->unitTransaction;
 
-            DB::transaction(function () use ($refund, $unitTransaction) {
+            DB::transaction(function () use ($adjustment, $unitTransaction) {
                 if ($unitTransaction) {
                     $unitTransaction->update(['is_refunded' => false]);
                 }
-                $refund->delete();
+                $adjustment->delete();
             });
 
-            return $this->responseSuccess((object) [], 'Unit Transaction Refund deleted successfully', 200);
+            return $this->responseSuccess((object) [], 'Unit Transaction Adjustment deleted successfully', 200);
 
         } catch (Exception $err) {
-            Log::error('Error while deleting Unit Transaction Refund: '.$err->getMessage());
+            Log::error('Error while deleting Unit Transaction Adjustment: '.$err->getMessage());
 
-            return $this->responseError($err->getMessage(), 'Unit Transaction Refund deletion failed', 500);
+            return $this->responseError($err->getMessage(), 'Unit Transaction Adjustment deletion failed', 500);
         }
     }
 }

@@ -5,7 +5,7 @@ use App\Http\Controllers\Dashboard\BillingStatController;
 use App\Http\Controllers\Finance\DailyCashFlowController;
 use App\Http\Controllers\Finance\FinanceBillingController;
 use App\Http\Controllers\Finance\PpnDataController;
-use App\Http\Controllers\Finance\UnitTransactionRefundController;
+use App\Http\Controllers\Finance\UnitTransactionAdjustmentController;
 use App\Http\Controllers\Global\GlobalCompanyController;
 use App\Http\Controllers\Global\GlobalModuleController;
 use App\Http\Controllers\MasterData\MasterAccountController;
@@ -153,6 +153,8 @@ Route::group(
             // Receipt Stock
             Route::put('warehouse-activity/{id}/receipt-stock', [WarehouseActivityController::class, 'receiptStock']);
             Route::put('warehouse-activity/{id}/dispatch-stock', [WarehouseActivityController::class, 'dispatchStock']);
+            Route::post('warehouse-activity/refund-stock', [WarehouseActivityController::class, 'refundStock']);
+            Route::post('warehouse-activity/return-stock', [WarehouseActivityController::class, 'returnStock']);
 
             Route::apiResource('warehouse-activity', WarehouseActivityController::class);
             Route::apiResource('warehouse-data', WarehouseController::class);
@@ -171,6 +173,8 @@ Route::group(
 
                 // Additional Route
                 Route::put('unit-transaction/{id}/update-state', [UnitTransactionController::class, 'updateState'])->name('update-state');
+                Route::put('unit-transaction/{id}/refund', [UnitTransactionController::class, 'refund'])->name('refund');
+                Route::put('unit-transaction/{id}/return', [UnitTransactionController::class, 'return'])->name('return');
                 Route::get('unit-transaction-item/get-formula', [UnitTransactionItemController::class, 'getFormula'])->name('get-formula');
                 Route::delete('unit-transaction-item/transcation-item-detail-bulk-delete/{id}', [UnitTransactionItemController::class, 'bulkDelete'])->name('bulk-delete');
 
@@ -190,7 +194,7 @@ Route::group(
         Route::group(['prefix' => 'finance', 'as' => 'finance.'], function () {
             Route::apiResource('ppn', PpnDataController::class);
             Route::apiResource('cash-flow', DailyCashFlowController::class);
-            Route::apiResource('refund', UnitTransactionRefundController::class);
+            Route::apiResource('adjustment', UnitTransactionAdjustmentController::class);
             Route::apiResource('finance-billing', FinanceBillingController::class);
             Route::post('finance-billing-item/{unit_transaction_billing_id}', [FinanceBillingController::class, 'addItem']);
             Route::put('finance-billing-item/{id}', [FinanceBillingController::class, 'updateItem']);

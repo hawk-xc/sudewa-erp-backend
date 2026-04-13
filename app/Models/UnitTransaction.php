@@ -55,9 +55,9 @@ class UnitTransaction extends Model
         return $this->belongsTo(Warehouse::class);
     }
 
-    public function unitTransactionRefunds()
+    public function unitTransactionAdjustments()
     {
-        return $this->hasMany(UnitTransactionRefund::class);
+        return $this->hasMany(UnitTransactionAdjustment::class);
     }
 
     public function getBrutoAmount()

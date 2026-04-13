@@ -75,10 +75,42 @@ class UnitTransactionItemDetail extends Model
             'status' => 'out',
         ]);
 
-        UnitTransactionItemDetail::findOrFail($movement->unitTransactionItemDetail->id)->update([
+        $this->update([
             'in_stock' => false,
         ]);
 
         return $movement;
+    }
+
+    public function refundStock()
+    {
+        $this->update([
+            'status' => 'refunded',
+            'is_forecast' => false,
+            'in_stock' => false,
+        ]);
+
+        $movement = $this->warehouseMovement()->where('status', 'in')->first();
+        if ($movement) {
+            $movement->update(['status' => 'out']);
+        }
+
+        return $this;
+    }
+
+    public function returnStock()
+    {
+        $this->update([
+            'status' => 'returned',
+            'is_forecast' => false,
+            'in_stock' => false,
+        ]);
+
+        $movement = $this->warehouseMovement()->where('status', 'in')->first();
+        if ($movement) {
+            $movement->update(['status' => 'out']);
+        }
+
+        return $this;
     }
 }

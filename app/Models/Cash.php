@@ -37,9 +37,9 @@ class Cash extends Model
         return $this->hasMany(CashFlow::class);
     }
 
-    public function unitTransactionRefunds()
+    public function unitTransactionAdjustments()
     {
-        return $this->hasMany(UnitTransactionRefund::class);
+        return $this->hasMany(UnitTransactionAdjustment::class);
     }
 
     protected static function booted()
