@@ -100,6 +100,22 @@ class FinanceBillingController extends Controller
             ->select($this->financeBillingTable)
             ->findOrFail($id);
 
+            $items = $data->financeBillingItems;
+
+            $totalCash = $items->sum('cash_payment_amount');
+            $totalBca = $items->sum('bca_payment_amount');
+            $totalUsd = $items->sum('bca_payment_usd_amount');
+
+            $totalPaid = $totalCash + $totalBca;
+            $remaining = ($data->unitTransactionBilling->grand_total ?? 0) - $totalPaid;
+
+            $data->total_cash_payment = $totalCash;
+            $data->total_bca_payment = $totalBca;
+            $data->total_usd_payment = $totalUsd;
+            $data->total_paid = $totalPaid;
+            $data->remaining_payment = $remaining;
+            $data->total_payment_count = $items->count();
+
             return $this->responseSuccess($data, 'Finance Billing retrieved successfully', 200);
         } catch (Exception $err) {
             return $this->responseError($err->getMessage(), 'Finance Billing not found', 404);
