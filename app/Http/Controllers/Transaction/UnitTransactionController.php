@@ -9,7 +9,7 @@ use App\Models\Person;
 use App\Models\UnitTransaction;
 use App\Models\UnitTransactionItem;
 use App\Models\UnitTransactionItemDetail;
-use App\Models\UnitTransactionRefund;
+use App\Models\UnitTransactionAdjustment;
 use App\Models\UnitType;
 use App\Traits\FileTrait;
 use App\Traits\ResponseTrait;
@@ -150,7 +150,7 @@ class UnitTransactionController extends Controller
                 'unitTransactionItems',
                 'unitTransactionItems.unitTransactionItemDetails',
                 'unitTransactionItems.unitTypeSoldDetails',
-                'unitTransactionRefunds'
+                'unitTransactionAdjustments'
             ])
                 ->select($this->unitTransactionTable)
                 ->findOrFail($id);
@@ -346,8 +346,8 @@ class UnitTransactionController extends Controller
 
     public function updateState(Request $request, string $id)
     {
-        $purchaseStates = ['draft', 'cancel', 'rejected', 'prepare', 'inbound_purcase_order', 'inbound_incoming_goods', 'inbound_receipt', 'inbound_return'];
-        $salesStates = ['draft', 'cancel', 'prepare', 'outbound_reserved', 'outbound_in_transit', 'outbound_delivered', 'outbound_return'];
+        $purchaseStates = ['draft', 'cancel', 'rejected', 'prepare', 'inbound_purcase_order', 'inbound_incoming_goods', 'inbound_receipt'];
+        $salesStates = ['draft', 'cancel', 'prepare', 'outbound_reserved', 'outbound_in_transit', 'outbound_delivered'];
 
         try {
             $unitTransaction = UnitTransaction::with('unitTransactionItems')->findOrFail((int) $id);
@@ -360,48 +360,7 @@ class UnitTransactionController extends Controller
                 'stock_state' => 'required|string',
                 'unit_transaction_details' => 'nullable|array',
                 'unit_transaction_details.*' => 'integer|distinct|exists:unit_transaction_item_details,id',
-                'cash_id' => 'required_if:stock_state,inbound_return,outbound_return|exists:cashes,id',
-                'description' => 'required_with:cash_id|string',
             ]);
-
-            if (in_array((string) $validated['stock_state'], ['inbound_return', 'outbound_return'])) {
-                switch ($validated['stock_state']) {
-                    case 'inbound_return':
-                        if (!$unitTransaction->unitTransactionBilling) {
-                            return $this->responseError(null, 'Transaction has no billing data.', 422);
-                        }
-
-                        if (!$unitTransaction->unitTransactionBilling->is_paid) {
-                            return $this->responseError(null, 'Transaction has not been paid.', 422);
-                        }
-
-                        if ($unitTransaction->type !== 'purchase') {
-                            return $this->responseError(null, 'inbound_return is only allowed for purchase transactions.', 422);
-                        }
-                        break;
-
-                    case 'outbound_return':
-                        if (!$request->filled('cash_id')) {
-                            return $this->responseError(null, 'Please provide cash_id.', 422);
-                        }
-
-                        if (!$unitTransaction->unitTransactionBilling) {
-                            return $this->responseError(null, 'Transaction has no billing data.', 422);
-                        }
-
-                        if (!$unitTransaction->unitTransactionBilling->is_paid) {
-                            return $this->responseError(null, 'Transaction has not been paid.', 422);
-                        }
-
-                        if ($unitTransaction->type !== 'sales') {
-                            return $this->responseError(null, 'outbound_return is only allowed for sales transactions.', 422);
-                        }
-                        break;
-
-                    default:
-                        break;
-                }
-            }
 
             $allowedStates = $unitTransaction->type === 'purchase' ? $purchaseStates : $salesStates;
 
@@ -458,52 +417,6 @@ class UnitTransactionController extends Controller
                 }
 
                 switch ($validated['stock_state']) {
-                    case 'inbound_return':
-                        if ($unitTransaction->is_refunded == true) {
-                            return $this->responseError(null, 'Transaction has already been refunded.', 400);
-                        } else {
-                            $unitTransaction->update(['is_refunded' => true]);
-
-                            // create unit transaction refund data
-                            UnitTransactionRefund::create([
-                                'unit_transaction_id' => $unitTransaction->id,
-                                'cash_id' => (int) $validated['cash_id'],
-                                'refund_total' => (float) $unitTransaction->getBrutoAmount(),
-                                'description'=> $validated['description'],
-                            ]);
-                        }
-                        
-                        UnitTransactionItemDetail::whereIn('id', $validDetails->pluck('id'))
-                        ->update([
-                                'status' => 'returned',
-                                'in_stock' => false,
-                                'is_forecast' => false,
-                            ]);
-                        break;
-                        
-                    case 'outbound_return':
-                        if ($unitTransaction->is_refunded) {
-                            return $this->responseError(null, 'Transaction has already been refunded.', 400);
-                        } else {
-                            $unitTransaction->update(['is_refunded' => true]);
-
-                            // create unit transaction refund data
-                            UnitTransactionRefund::create([
-                                'unit_transaction_id' => $unitTransaction->id,
-                                'cash_id' => (int) $validated['cash_id'],
-                                'refund_total' => (float) $unitTransaction->getBrutoAmount(),
-                                'description'=> $validated['description'],
-                            ]);
-                        }
-
-                        UnitTransactionItemDetail::whereIn('id', $validDetails->pluck('id'))
-                            ->update([
-                                'status' => 'refunded',
-                                'in_stock' => true,
-                                'is_forecast' => false,
-                            ]);
-                        break;
-
                     case 'inbound_incoming_goods':
                         UnitTransactionItemDetail::whereIn('id', $validDetails->pluck('id'))
                             ->update([
@@ -517,7 +430,6 @@ class UnitTransactionController extends Controller
                                 'is_forecast' => true,
                             ]);
                         break;
-
                 }
             });
 
@@ -526,7 +438,7 @@ class UnitTransactionController extends Controller
                     'unitTransactionItems:id,uuid,unit_transaction_id,unit_type_id,sparepart_id,price',
                     'unitTransactionItems.unitTransactionItemDetails:id,uuid,unit_transaction_item_id,color,machine_number,chassis_number,in_stock,is_forecast,status',
                     'unitTransactionItems.unitTypeSoldDetails:id,uuid,unit_transaction_item_id,color,machine_number,chassis_number,in_stock,is_forecast,status',
-                    'unitTransactionRefund:id,uuid,unit_transaction_id,cash_id,refund_total,description,created_at',
+                    'unitTransactionAdjustments:id,uuid,unit_transaction_id,cash_id,amount,description,created_at',
                 ]),
                 'Unit Transaction state updated successfully',
                 200
@@ -641,6 +553,104 @@ class UnitTransactionController extends Controller
                 'Stock export failed',
                 500
             );
+        }
+    }
+    
+    public function refund(Request $request, string $id)
+    {
+        $validated = $request->validate([
+            'cash_id' => 'required|integer|exists:cashes,id',
+            'amount' => 'nullable|numeric|min:0',
+            'description' => 'required|string',
+            'unit_transaction_details' => 'required|array|min:1',
+            'unit_transaction_details.*' => 'integer|exists:unit_transaction_item_details,id',
+        ]);
+
+        try {
+            $unitTransaction = UnitTransaction::findOrFail($id);
+
+            if ($unitTransaction->type !== 'sales') {
+                return $this->responseError(null, 'Refund is only allowed for sales transactions.', 422);
+            }
+
+            if (!$unitTransaction->unitTransactionBilling || !$unitTransaction->unitTransactionBilling->is_paid) {
+                return $this->responseError(null, 'Transaction has not been paid.', 422);
+            }
+
+            $amount = (int) ($validated['amount'] ?? $unitTransaction->getBrutoAmount());
+
+            $data = DB::transaction(function () use ($unitTransaction, $validated, $amount) {
+                $unitTransaction->update(['is_refunded' => true]);
+
+                $adjustment = $unitTransaction->unitTransactionAdjustments()->create([
+                    'cash_id' => $validated['cash_id'],
+                    'amount' => $amount,
+                    'description' => $validated['description'],
+                    'type' => 'refund',
+                ]);
+
+                $details = UnitTransactionItemDetail::whereIn('id', $validated['unit_transaction_details'])->get();
+                foreach ($details as $detail) {
+                    $detail->refundStock();
+                }
+
+                return $adjustment;
+            });
+
+            return $this->responseSuccess($data, 'Refund processed successfully');
+
+        } catch (Exception $e) {
+            Log::error('Refund error: ' . $e->getMessage());
+            return $this->responseError($e->getMessage(), 'Refund failed', 500);
+        }
+    }
+
+    public function return(Request $request, string $id)
+    {
+        $validated = $request->validate([
+            'cash_id' => 'required|integer|exists:cashes,id',
+            'amount' => 'nullable|numeric|min:0',
+            'description' => 'required|string',
+            'unit_transaction_details' => 'required|array|min:1',
+            'unit_transaction_details.*' => 'integer|exists:unit_transaction_item_details,id',
+        ]);
+
+        try {
+            $unitTransaction = UnitTransaction::findOrFail($id);
+
+            if ($unitTransaction->type !== 'purchase') {
+                return $this->responseError(null, 'Return is only allowed for purchase transactions.', 422);
+            }
+
+            if (!$unitTransaction->unitTransactionBilling || !$unitTransaction->unitTransactionBilling->is_paid) {
+                return $this->responseError(null, 'Transaction has not been paid.', 422);
+            }
+
+            $amount = (int) ($validated['amount'] ?? $unitTransaction->getBrutoAmount());
+
+            $data = DB::transaction(function () use ($unitTransaction, $validated, $amount) {
+                $unitTransaction->update(['is_refunded' => true]);
+
+                $adjustment = $unitTransaction->unitTransactionAdjustments()->create([
+                    'cash_id' => $validated['cash_id'],
+                    'amount' => $amount,
+                    'description' => $validated['description'],
+                    'type' => 'return',
+                ]);
+
+                $details = UnitTransactionItemDetail::whereIn('id', $validated['unit_transaction_details'])->get();
+                foreach ($details as $detail) {
+                    $detail->returnStock();
+                }
+
+                return $adjustment;
+            });
+
+            return $this->responseSuccess($data, 'Return processed successfully');
+
+        } catch (Exception $e) {
+            Log::error('Return error: ' . $e->getMessage());
+            return $this->responseError($e->getMessage(), 'Return failed', 500);
         }
     }
 }

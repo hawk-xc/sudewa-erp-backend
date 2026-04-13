@@ -359,4 +359,92 @@ class WarehouseActivityController extends Controller
             return $this->responseError(null, $e->getMessage(), 500);
         }
     }
+
+    public function refundStock(Request $request)
+    {
+        if (is_string($request->unit_transaction_details)) {
+            $request->merge([
+                'unit_transaction_details' => json_decode($request->unit_transaction_details, true),
+            ]);
+        }
+
+        $validated = $request->validate([
+            'unit_transaction_details' => 'required|array|min:1',
+            'unit_transaction_details.*' => 'integer|exists:unit_transaction_item_details,id',
+        ]);
+
+        try {
+            $unitTransactionItemDetailList = [];
+
+            DB::transaction(function () use ($validated, &$unitTransactionItemDetailList) {
+                $details = UnitTransactionItemDetail::with(['unitTransactionItem.unitTransaction'])
+                    ->whereIn('id', $validated['unit_transaction_details'])
+                    ->get();
+
+                foreach ($details as $detail) {
+                    if ($detail->unitTransactionItem->unitTransaction->type !== 'sales') {
+                        throw new Exception("Detail ID {$detail->id} is not a sales transaction");
+                    }
+                    $detail->refundStock();
+                    $unitTransactionItemDetailList[] = $detail;
+                }
+            });
+
+            return $this->responseSuccess(
+                (object) $unitTransactionItemDetailList,
+                'Refund stock processed successfully'
+            );
+
+        } catch (Exception $e) {
+            Log::error('WarehouseActivity refundStock error', [
+                'message' => $e->getMessage(),
+            ]);
+
+            return $this->responseError(null, $e->getMessage(), 500);
+        }
+    }
+
+    public function returnStock(Request $request)
+    {
+        if (is_string($request->unit_transaction_details)) {
+            $request->merge([
+                'unit_transaction_details' => json_decode($request->unit_transaction_details, true),
+            ]);
+        }
+
+        $validated = $request->validate([
+            'unit_transaction_details' => 'required|array|min:1',
+            'unit_transaction_details.*' => 'integer|exists:unit_transaction_item_details,id',
+        ]);
+
+        try {
+            $unitTransactionItemDetailList = [];
+
+            DB::transaction(function () use ($validated, &$unitTransactionItemDetailList) {
+                $details = UnitTransactionItemDetail::with(['unitTransactionItem.unitTransaction'])
+                    ->whereIn('id', $validated['unit_transaction_details'])
+                    ->get();
+
+                foreach ($details as $detail) {
+                    if ($detail->unitTransactionItem->unitTransaction->type !== 'purchase') {
+                        throw new Exception("Detail ID {$detail->id} is not a purchase transaction");
+                    }
+                    $detail->returnStock();
+                    $unitTransactionItemDetailList[] = $detail;
+                }
+            });
+
+            return $this->responseSuccess(
+                (object) $unitTransactionItemDetailList,
+                'Return stock processed successfully'
+            );
+
+        } catch (Exception $e) {
+            Log::error('WarehouseActivity returnStock error', [
+                'message' => $e->getMessage(),
+            ]);
+
+            return $this->responseError(null, $e->getMessage(), 500);
+        }
+    }
 }
