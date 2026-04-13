@@ -330,6 +330,7 @@ class WarehouseController extends Controller
                     'machine_number',
                     'chassis_number',
                     'in_stock',
+                    'status',
                     'created_at',
                 ])
                 ->whereHas('unitTransactionItem.unitTransaction', function ($q) use ($warehouse, $request) {
@@ -390,7 +391,8 @@ class WarehouseController extends Controller
                     'stock_available' => $item->in_stock ? 1 : 0,
                     'stock_forecast' => ! $item->in_stock ? 1 : 0,
                     'purchase_price' => (int) $item->unitTransactionItem->price / $item->unitTransactionItem->qty_total,
-                    'status' => $unitItem->unitTransaction->stock_state ?? null,
+                    'status' => $item->status,
+                    'stock_status' => $unitItem->unitTransaction->stock_state ?? null,
                 ];
             });
 

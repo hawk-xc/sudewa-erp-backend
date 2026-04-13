@@ -150,6 +150,7 @@ class UnitTransactionController extends Controller
                 'unitTransactionItems',
                 'unitTransactionItems.unitTransactionItemDetails',
                 'unitTransactionItems.unitTypeSoldDetails',
+                'unitTransactionRefunds'
             ])
                 ->select($this->unitTransactionTable)
                 ->findOrFail($id);
