@@ -11,13 +11,14 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('unit_transaction_refunds', function (Blueprint $table) {
+        Schema::create('unit_transaction_adjustments', function (Blueprint $table) {
             $table->id();
             $table->uuid();
             $table->foreignId('unit_transaction_id')->nullable(false)->constrained('unit_transactions')->cascadeOnDelete();
             $table->foreignId('cash_id')->nullable(false)->constrained('cashes')->cascadeOnDelete();
-            $table->decimal('refund_total', 15, 2)->default(0)->nullable(false);
+            $table->integer('amount')->default(0)->nullable(false);
             $table->string('description')->nullable(true);
+            $table->enum('type', ['refund', 'return'])->default('refund')->nullable(false);
             $table->timestamps();
         });
     }
@@ -27,6 +28,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('unit_transaction_refunds');
+        Schema::dropIfExists('unit_transaction_adjustments');
     }
 };

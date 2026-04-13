@@ -6,18 +6,25 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
 
-class UnitTransactionRefund extends Model
+class UnitTransactionAdjustment extends Model
 {
     use HasFactory;
 
-    protected $table = 'unit_transaction_refunds';
+    protected $table = 'unit_transaction_adjustments';
 
     protected $fillable = [
         'uuid',
         'unit_transaction_id',
         'cash_id',
-        'refund_total',
-        'description'
+        'amount',
+        'description',
+        'type',
+    ];
+
+    protected $casts = [
+        'unit_transaction_id' => 'integer',
+        'cash_id' => 'integer',
+        'amount' => 'integer',
     ];
 
     public function unitTransaction()
