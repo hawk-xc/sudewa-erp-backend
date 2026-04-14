@@ -11,7 +11,7 @@ trait ResponseTrait
      *
      * Returns the success data and message if there is any error
      *
-     * @param object $data
+     * @param mixed $data
      * @param string $message
      * @param integer $status_code
      * @return JsonResponse
