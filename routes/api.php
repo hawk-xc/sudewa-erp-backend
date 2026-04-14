@@ -37,6 +37,7 @@ use App\Http\Controllers\UnitTypeDetailReportController;
 use App\Http\Controllers\User\UserController;
 use App\Http\Controllers\Warehouse\WarehouseActivityController;
 use App\Http\Controllers\Warehouse\WarehouseController;
+use App\Models\UnitTransaction;
 use Illuminate\Support\Facades\Route;
 
 Route::options('{any}', function () {
@@ -181,6 +182,7 @@ Route::group(
                 // upload unit transaction invoice
                 Route::post('unit-transaction/{id}/upload-invoice', [UnitTransactionController::class, 'uploadInvoiceFile'])->name('upload-invoice-file');
 
+                Route::post('unit-transaction/{id}/transaction-adjustment', [UnitTransactionController::class, 'storeTransactionAdjustment']);
                 Route::apiResource('unit-transaction', UnitTransactionController::class);
                 Route::apiResource('unit-transaction-item', UnitTransactionItemController::class);
                 Route::apiResource('unit-transaction-item-sales', UnitTransactionItemSalesController::class);

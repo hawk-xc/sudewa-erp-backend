@@ -391,7 +391,7 @@ class WarehouseActivityController extends Controller
             });
 
             return $this->responseSuccess(
-                (object) $unitTransactionItemDetailList,
+                $unitTransactionItemDetailList,
                 'Refund stock processed successfully'
             );
 
@@ -435,7 +435,7 @@ class WarehouseActivityController extends Controller
             });
 
             return $this->responseSuccess(
-                (object) $unitTransactionItemDetailList,
+                $unitTransactionItemDetailList,
                 'Return stock processed successfully'
             );
 
