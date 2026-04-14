@@ -89,6 +89,46 @@ class UnitTransaction extends Model
             });
     }
 
+    public function getBrutoAmountRefund()
+    {
+        return (int) $this->unitTransactionItems()
+            ->with(['unitTransactionItemDetails' => function ($q) {
+                $q->where('status', 'refunded');
+            }])
+            ->get()
+            ->sum(function ($item) {
+                $qty = $item->unitTransactionItemDetails->count();
+                if ($qty === 0) {
+                    return 0;
+                }
+
+                $dpp = $qty * $item->dpp_per_unit_price;
+                $ppn = $qty * $item->ppn_per_unit_price;
+
+                return $dpp + $ppn;
+            });
+    }
+
+    public function getBrutoAmountReturn()
+    {
+        return (int) $this->unitTransactionItems()
+            ->with(['unitTransactionItemDetails' => function ($q) {
+                $q->where('status', 'returned');
+            }])
+            ->get()
+            ->sum(function ($item) {
+                $qty = $item->unitTransactionItemDetails->count();
+                if ($qty === 0) {
+                    return 0;
+                }
+
+                $dpp = $qty * $item->dpp_per_unit_price;
+                $ppn = $qty * $item->ppn_per_unit_price;
+
+                return $dpp + $ppn;
+            });
+    }
+
     public function getSumAmount(string $columnName): ?int
     {
         $validColumnName = [

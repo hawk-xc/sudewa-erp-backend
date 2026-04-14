@@ -157,6 +157,8 @@ class UnitTransactionController extends Controller
 
             $data->unit_transaction_bruto_total = $data->getBrutoAmount();
             $data->unit_transaction_bruto_total_actual = $data->getBrutoAmountActual();
+            $data->unit_transaction_bruto_refund = $data->getBrutoAmountRefund();
+            $data->unit_transaction_bruto_return = $data->getBrutoAmountReturn();
 
             if ($data->unitTransactionBilling) {
                 $billing = $data->unitTransactionBilling;
@@ -651,6 +653,48 @@ class UnitTransactionController extends Controller
         } catch (Exception $e) {
             Log::error('Return error: ' . $e->getMessage());
             return $this->responseError($e->getMessage(), 'Return failed', 500);
+        }
+    }
+
+    public function storeTransactionAdjustment(Request $request, string $id)
+    {
+        try {
+            $validated = $request->validate([
+                'cash_id' => 'required|integer|exists:cashes,id',
+                'amount' => 'required|integer|min:0',
+                'description' => 'nullable|string',
+            ]);
+
+            $unitTransaction = UnitTransaction::findOrFail($id);
+
+            if ($unitTransaction->is_refunded) {
+                return $this->responseError(null, 'Transaction has already been adjusted/refunded.', 422);
+            }
+
+            if (!$unitTransaction->unitTransactionBilling || !$unitTransaction->unitTransactionBilling->is_paid) {
+                return $this->responseError(null, 'Transaction has not been paid or has no billing data.', 422);
+            }
+
+            $adjustmentType = match ($unitTransaction->type) {
+                'purchase' => 'return',
+                'sales' => 'refund',
+                default => throw new Exception("Invalid transaction type for adjustment")
+            };
+
+            $adjustment = DB::transaction(function () use ($validated, $unitTransaction, $adjustmentType) {
+                $unitTransaction->update(['is_refunded' => true]);
+
+                $validated['type'] = $adjustmentType;
+
+                return $unitTransaction->unitTransactionAdjustments()->create($validated);
+            });
+
+            return $this->responseSuccess($adjustment, 'Unit Transaction Adjustment created successfully', 201);
+
+        } catch (Exception $err) {
+            Log::error('Error while creating Unit Transaction Adjustment: '.$err->getMessage());
+
+            return $this->responseError($err->getMessage(), 'Unit Transaction Adjustment creation failed', 500);
         }
     }
 }
