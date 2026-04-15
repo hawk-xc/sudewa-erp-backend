@@ -14,6 +14,11 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Maatwebsite\Excel\Facades\Excel;
 
+/**
+ * @group Master Data
+ *
+ * API for managing regions.
+ */
 class MasterRegionController extends Controller
 {
     use ResponseTrait;
@@ -34,6 +39,9 @@ class MasterRegionController extends Controller
         $this->RegionTable = ['id', 'uuid', 'code', 'name', 'created_at'];
     }
 
+    /**
+     * List all regions.
+     */
     public function index(Request $request)
     {
         try {
@@ -59,6 +67,9 @@ class MasterRegionController extends Controller
         }
     }
 
+    /**
+     * Get region details.
+     */
     public function show($id)
     {
         try {
@@ -72,6 +83,9 @@ class MasterRegionController extends Controller
         }
     }
 
+    /**
+     * Store a new region.
+     */
     public function store(Request $request)
     {
         $validated = $request->validate([
@@ -94,6 +108,9 @@ class MasterRegionController extends Controller
         }
     }
 
+    /**
+     * Update a region.
+     */
     public function update(Request $request, $id)
     {
         $Region = Region::findOrFail($id);
@@ -114,6 +131,9 @@ class MasterRegionController extends Controller
         }
     }
 
+    /**
+     * Delete a region.
+     */
     public function destroy($id)
     {
         try {
@@ -128,6 +148,9 @@ class MasterRegionController extends Controller
         }
     }
 
+    /**
+     * Import regions from Excel.
+     */
     public function import(Request $request)
     {
         $request->validate([
@@ -147,6 +170,9 @@ class MasterRegionController extends Controller
         }
     }
 
+    /**
+     * Export regions to Excel.
+     */
     public function export(Request $request)
     {
         try {

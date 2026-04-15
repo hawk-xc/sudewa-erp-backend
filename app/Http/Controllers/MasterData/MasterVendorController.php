@@ -15,6 +15,11 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Maatwebsite\Excel\Facades\Excel;
 
+/**
+ * @group Master Data
+ *
+ * API for managing vendors.
+ */
 class MasterVendorController extends Controller
 {
     use PersonTrait, ResponseTrait;
@@ -36,6 +41,9 @@ class MasterVendorController extends Controller
         $this->personTable = ['id', 'uuid', 'pic_name', 'code', 'type', 'name', 'address', 'npwp', 'phone', 'identity_number', 'drive_license_identity_number', 'image', 'map_link', 'social_media_1_link', 'social_media_2_link', 'social_media_3_link', 'social_media_4_link', 'website_link', 'created_at'];
     }
 
+    /**
+     * List all vendors.
+     */
     public function index(Request $request)
     {
         $query = Person::query();
@@ -93,6 +101,9 @@ class MasterVendorController extends Controller
         }
     }
 
+    /**
+     * Get vendor details.
+     */
     public function show(string $id)
     {
         try {
@@ -110,6 +121,9 @@ class MasterVendorController extends Controller
         }
     }
 
+    /**
+     * Store a new vendor.
+     */
     public function store(Request $request)
     {
         $validated = $request->validate([
@@ -137,6 +151,9 @@ class MasterVendorController extends Controller
         }
     }
 
+    /**
+     * Update a vendor.
+     */
     public function update(Request $request, string $id)
     {
         $request->validate([
@@ -171,6 +188,9 @@ class MasterVendorController extends Controller
         }
     }
 
+    /**
+     * Delete a vendor.
+     */
     public function destroy(string $id)
     {
         try {
@@ -185,6 +205,9 @@ class MasterVendorController extends Controller
         }
     }
 
+    /**
+     * Import vendors from Excel.
+     */
     public function import(Request $request, string $id)
     {
         $request->validate([
@@ -204,6 +227,9 @@ class MasterVendorController extends Controller
         }
     }
 
+    /**
+     * Export vendors to Excel.
+     */
     public function export(Request $request)
     {
         try {

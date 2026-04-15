@@ -10,6 +10,11 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
+/**
+ * @group Master Data
+ *
+ * API for managing vehicle data (customer & vehicle details).
+ */
 class VehicleDataController extends Controller
 {
     use ResponseTrait;
@@ -31,6 +36,9 @@ class VehicleDataController extends Controller
         ];
     }
 
+    /**
+     * List all vehicle data.
+     */
     public function index(Request $request)
     {
         $query = VehicleData::query();
@@ -66,6 +74,9 @@ class VehicleDataController extends Controller
         }
     }
 
+    /**
+     * Get vehicle data details.
+     */
     public function show(string $id)
     {
         try {
@@ -82,6 +93,9 @@ class VehicleDataController extends Controller
         }
     }
 
+    /**
+     * Store new vehicle data.
+     */
     public function store(Request $request)
     {
         $validated = $request->validate([
@@ -132,6 +146,9 @@ class VehicleDataController extends Controller
         }
     }
 
+    /**
+     * Update vehicle data.
+     */
     public function update(Request $request, string $id)
     {
         $request->validate([
@@ -185,6 +202,9 @@ class VehicleDataController extends Controller
         }
     }
 
+    /**
+     * Delete vehicle data.
+     */
     public function destroy(string $id)
     {
         try {

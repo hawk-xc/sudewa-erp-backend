@@ -14,6 +14,11 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Maatwebsite\Excel\Facades\Excel;
 
+/**
+ * @group Master Data
+ *
+ * API for managing spareparts.
+ */
 class MasterSparepartController extends Controller
 {
     use ResponseTrait;
@@ -34,6 +39,9 @@ class MasterSparepartController extends Controller
         $this->sparepartTable = ['id', 'sparepart_category_id', 'code', 'name', 'capacity', 'unit_type', 'buy_price', 'sell_price', 'created_at'];
     }
 
+    /**
+     * List all spareparts.
+     */
     public function index(Request $request)
     {
         try {
@@ -81,6 +89,9 @@ class MasterSparepartController extends Controller
         }
     }
 
+    /**
+     * Get sparepart details.
+     */
     public function show($id)
     {
         try {
@@ -94,6 +105,9 @@ class MasterSparepartController extends Controller
         }
     }
 
+    /**
+     * Store a new sparepart.
+     */
     public function store(Request $request)
     {
         $validated = $request->validate([
@@ -121,6 +135,9 @@ class MasterSparepartController extends Controller
         }
     }
 
+    /**
+     * Update a sparepart.
+     */
     public function update(Request $request, $id)
     {
         $sparepart = Sparepart::findOrFail($id);
@@ -150,6 +167,9 @@ class MasterSparepartController extends Controller
         }
     }
 
+    /**
+     * Delete a sparepart.
+     */
     public function destroy($id)
     {
         try {
@@ -164,6 +184,9 @@ class MasterSparepartController extends Controller
         }
     }
 
+    /**
+     * Import spareparts from Excel.
+     */
     public function import(Request $request)
     {
         $request->validate([
@@ -183,17 +206,19 @@ class MasterSparepartController extends Controller
         }
     }
 
+    /**
+     * Export spareparts to Excel.
+     */
     public function export(Request $request)
     {
         try {
             return Excel::download(
                 new SparepartExport($request, $this->sparepartTable),
                 'wajira_sparepart_data.xlsx'
-            );  
+            );
         } catch (Exception $err) {
-            Log::error('Error export sparepart : '.$err->getMessage());
+            Log::error('Error export sparepart : ' . $err->getMessage());
 
-            return $this->responseError($err->getMessage(), 'Internal Server Error', 500);
             return $this->responseError(
                 $err->getMessage(),
                 'Sparepart export failed',

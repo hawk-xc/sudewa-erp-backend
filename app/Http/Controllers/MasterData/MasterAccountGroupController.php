@@ -11,6 +11,11 @@ use App\Traits\ResponseTrait;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
+/**
+ * @group Master Data
+ *
+ * API for managing account groups.
+ */
 class MasterAccountGroupController extends Controller
 {
     use ResponseTrait;
@@ -35,6 +40,9 @@ class MasterAccountGroupController extends Controller
         $this->accountGroupTable = ['id', 'uuid', 'group_code', 'description', 'created_at'];
     }
 
+    /**
+     * List all account groups.
+     */
     public function index(Request $request)
     {
         try {
@@ -91,6 +99,9 @@ class MasterAccountGroupController extends Controller
         }
     }
 
+    /**
+     * Get account group details.
+     */
     public function show(string $id)
     {
         try {
@@ -111,6 +122,9 @@ class MasterAccountGroupController extends Controller
         }
     }
 
+    /**
+     * Store a new account group.
+     */
     public function store(Request $request)
     {
         try {
@@ -139,6 +153,9 @@ class MasterAccountGroupController extends Controller
         }
     }
 
+    /**
+     * Update an account group.
+     */
     public function update(Request $request, string $id)
     {
         try {
@@ -168,6 +185,9 @@ class MasterAccountGroupController extends Controller
         }
     }
 
+    /**
+     * Delete an account group.
+     */
     public function destroy(string $id)
     {
         try {

@@ -12,6 +12,11 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Maatwebsite\Excel\Facades\Excel;
 
+/**
+ * @group Master Data
+ *
+ * API for managing materials.
+ */
 class MasterMaterialController extends Controller
 {
     use ResponseTrait;
@@ -26,6 +31,9 @@ class MasterMaterialController extends Controller
         'created_at',
     ];
 
+    /**
+     * List all materials.
+     */
     public function index(Request $request)
     {
         $query = Material::query()->select($this->materialTable);
@@ -64,6 +72,9 @@ class MasterMaterialController extends Controller
         }
     }
 
+    /**
+     * Get material details.
+     */
     public function show(string $id)
     {
         try {
@@ -81,6 +92,9 @@ class MasterMaterialController extends Controller
         }
     }
 
+    /**
+     * Store a new material.
+     */
     public function store(Request $request)
     {
         $validated = $request->validate([
@@ -109,6 +123,9 @@ class MasterMaterialController extends Controller
         }
     }
 
+    /**
+     * Update a material.
+     */
     public function update(Request $request, string $id)
     {
         $request->validate([
@@ -143,6 +160,9 @@ class MasterMaterialController extends Controller
         }
     }
 
+    /**
+     * Delete a material.
+     */
     public function destroy(string $id)
     {
         try {
@@ -173,6 +193,9 @@ class MasterMaterialController extends Controller
         return 'TM-'.str_pad($nextNumber, 3, '0', STR_PAD_LEFT);
     }
 
+    /**
+     * Import materials from Excel.
+     */
     public function import(Request $request)
     {
         $request->validate([

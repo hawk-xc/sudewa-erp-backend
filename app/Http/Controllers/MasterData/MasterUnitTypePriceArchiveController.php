@@ -10,7 +10,14 @@ use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Maatwebsite\Excel\Facades\Excel;
+use App\Imports\UnitTypePriceChangeImport;
 
+/**
+ * @group Master Data
+ *
+ * API for managing unit type price archives.
+ */
 class MasterUnitTypePriceArchiveController extends Controller
 {
     use ResponseTrait;
@@ -27,6 +34,9 @@ class MasterUnitTypePriceArchiveController extends Controller
         $this->authRepository = $ar;
     }
 
+    /**
+     * List all unit type price archives.
+     */
     public function index(Request $request)
     {
         try {
@@ -72,6 +82,9 @@ class MasterUnitTypePriceArchiveController extends Controller
         }
     }
 
+    /**
+     * Get unit type price archive details.
+     */
     public function show(int $id)
     {
         try {
@@ -85,6 +98,9 @@ class MasterUnitTypePriceArchiveController extends Controller
         }
     }
 
+    /**
+     * Store a new unit type price archive.
+     */
     public function store(Request $request)
     {
         $validated = $request->validate([
@@ -110,6 +126,9 @@ class MasterUnitTypePriceArchiveController extends Controller
         }
     }
 
+    /**
+     * Update a unit type price archive.
+     */
     public function update(Request $request, int $id)
     {
         $unitTypePriceArchive = UnitTypePriceArchive::findOrFail($id);
@@ -135,6 +154,9 @@ class MasterUnitTypePriceArchiveController extends Controller
         }
     }
 
+    /**
+     * Delete a unit type price archive.
+     */
     public function destroy(int $id)
     {
         try {
@@ -149,6 +171,9 @@ class MasterUnitTypePriceArchiveController extends Controller
         }
     }
 
+    /**
+     * Import unit type price archives from Excel.
+     */
     public function import(Request $request)
     {
         $request->validate([

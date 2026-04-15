@@ -13,6 +13,11 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Maatwebsite\Excel\Facades\Excel;
 
+/**
+ * @group Master Data
+ *
+ * API for managing accounts.
+ */
 class MasterAccountController extends Controller
 {
     use ResponseTrait;
@@ -37,6 +42,9 @@ class MasterAccountController extends Controller
         $this->accountTable = ['id', 'uuid', 'code', 'account_group_id', 'name', 'description', 'type', 'created_at'];
     }
 
+    /**
+     * List all accounts.
+     */
     public function index(Request $request)
     {
         try {
@@ -95,6 +103,9 @@ class MasterAccountController extends Controller
         }
     }
 
+    /**
+     * Get account details.
+     */
     public function show(string $id)
     {
         try {
@@ -106,6 +117,9 @@ class MasterAccountController extends Controller
         }
     }
 
+    /**
+     * Store a new account.
+     */
     public function store(Request $request)
     {
         try {
@@ -131,6 +145,9 @@ class MasterAccountController extends Controller
         }
     }
 
+    /**
+     * Update an account.
+     */
     public function update(Request $request, string $id)
     {
         try {
@@ -162,6 +179,9 @@ class MasterAccountController extends Controller
         }
     }
 
+    /**
+     * Delete an account.
+     */
     public function destroy(string $id)
     {
         try {
@@ -177,6 +197,9 @@ class MasterAccountController extends Controller
         }
     }
 
+    /**
+     * Import accounts from Excel.
+     */
     public function import(Request $request, string $id)
     {
         $request->validate([

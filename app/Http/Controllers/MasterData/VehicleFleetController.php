@@ -11,6 +11,11 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
+/**
+ * @group Master Data
+ *
+ * API for managing vehicle fleets.
+ */
 class VehicleFleetController extends Controller
 {
     use ResponseTrait;
@@ -35,6 +40,9 @@ class VehicleFleetController extends Controller
         ];
     }
 
+    /**
+     * List all vehicle fleets.
+     */
     public function index(Request $request)
     {
         $query = VehicleFleet::query();
@@ -68,6 +76,9 @@ class VehicleFleetController extends Controller
         }
     }
 
+    /**
+     * Get vehicle fleet details.
+     */
     public function show(string $id)
     {
         try {
@@ -84,6 +95,9 @@ class VehicleFleetController extends Controller
         }
     }
 
+    /**
+     * Store a new vehicle fleet.
+     */
     public function store(Request $request)
     {
         $validated = $request->validate([
@@ -117,6 +131,9 @@ class VehicleFleetController extends Controller
         }
     }
 
+    /**
+     * Update a vehicle fleet.
+     */
     public function update(Request $request, string $id)
     {
         $request->validate([
@@ -154,6 +171,9 @@ class VehicleFleetController extends Controller
         }
     }
 
+    /**
+     * Delete a vehicle fleet.
+     */
     public function destroy(string $id)
     {
         try {
