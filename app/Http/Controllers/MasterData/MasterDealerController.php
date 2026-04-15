@@ -119,6 +119,7 @@ class MasterDealerController extends Controller
             'phone' => 'sometimes|string|max:249',
             'npwp' => 'sometimes|string',
             'pic_name' => 'nullable|string',
+            'map_link' => 'nullable|string',
         ]);
 
         try {
@@ -146,10 +147,11 @@ class MasterDealerController extends Controller
             'phone' => 'sometimes|string|max:249',
             'npwp' => 'sometimes|string',
             'pic_name' => 'sometimes|string',
+            'map_link' => 'nullable|string',
         ]);
 
         try {
-            $data = array_filter($request->only(['company_id', 'pic_name', 'name', 'address', 'phone', 'npwp']), fn ($value) => ! is_null($value) && $value !== '');
+            $data = array_filter($request->only(['company_id', 'pic_name', 'name', 'address', 'phone', 'npwp', 'map_link']), fn ($value) => ! is_null($value) && $value !== '');
 
             if (empty($data)) {
                 return $this->responseError(null, 'No data provided to update', 422);
