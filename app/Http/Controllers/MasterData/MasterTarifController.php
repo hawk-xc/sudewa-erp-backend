@@ -1,0 +1,179 @@
+<?php
+
+namespace App\Http\Controllers\MasterData;
+
+use App\Http\Controllers\Controller;
+use App\Models\Tarif;
+use App\Traits\ResponseTrait;
+use Exception;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+
+class MasterTarifController extends Controller
+{
+    use ResponseTrait;
+
+    protected $tarifTable;
+
+    public function __construct()
+    {
+        $this->middleware(['permission:master-data:list'])->only(['index', 'show']);
+        $this->middleware(['permission:master-data:create'])->only('store');
+        $this->middleware(['permission:master-data:edit'])->only('update');
+        $this->middleware(['permission:master-data:delete'])->only(['destroy']);
+
+        $this->tarifTable = [
+            'id', 
+            'uuid', 
+            'customer_id', 
+            'loading_in', 
+            'loading_out', 
+            'distance', 
+            'uj_towing', 
+            'uj_cdd', 
+            'uj_fuso', 
+            'inv_cdd', 
+            'inv_fuso', 
+            'is_active', 
+            'created_at',
+            'updated_at'
+        ];
+    }
+
+    public function index(Request $request)
+    {
+        $query = Tarif::query();
+
+        $query->with('customer:id,name,code');
+
+        try {
+            if ($request->filled('search')) {
+                $search = $request->search;
+                $query->where(function ($q) use ($search) {
+                    $q->where('loading_in', 'like', "%$search%")
+                        ->orWhere('loading_out', 'like', "%$search%")
+                        ->orWhereHas('customer', function($q_cust) use ($search) {
+                            $q_cust->where('name', 'like', "%$search%")
+                                ->orWhere('code', 'like', "%$search%");
+                        });
+                });
+            }
+
+            foreach ($this->tarifTable as $field) {
+                if ($request->filled($field)) {
+                    $query->where($field, $request->$field);
+                }
+            }
+
+            $allowedSort = $this->tarifTable;
+            $sortBy = in_array($request->sort_by, $allowedSort) ? $request->sort_by : 'id';
+            $sortOrder = $request->sort_order === 'asc' ? 'asc' : 'desc';
+
+            $data = $query->orderBy($sortBy, $sortOrder)->paginate($request->per_page ?? 10);
+
+            return $this->responseSuccess($data, 'Tarif list retrieved successfully', 200);
+        } catch (Exception $err) {
+            Log::error('Error while retrieving Tarif data: '.$err->getMessage());
+            return $this->responseError($err->getMessage(), 'Tarif list retrieved Failed', 500);
+        }
+    }
+
+    public function show(string $id)
+    {
+        try {
+            $tarif = Tarif::with('customer:id,name,code')->find($id);
+
+            if (!$tarif) {
+                return $this->responseError(null, 'Tarif not found', 404);
+            }
+
+            return $this->responseSuccess($tarif, 'Tarif retrieved successfully', 200);
+        } catch (Exception $err) {
+            Log::error('Error while retrieving Tarif data: '.$err->getMessage());
+            return $this->responseError($err->getMessage(), 'Tarif retrieved Failed', 500);
+        }
+    }
+
+    public function store(Request $request)
+    {
+        $validated = $request->validate([
+            'customer_id' => 'required|integer|exists:persons,id',
+            'loading_in' => 'required|string|max:249',
+            'loading_out' => 'required|string|max:249',
+            'distance' => 'required|integer',
+            'uj_towing' => 'nullable|integer',
+            'uj_cdd' => 'nullable|integer',
+            'uj_fuso' => 'nullable|integer',
+            'inv_cdd' => 'nullable|integer',
+            'inv_fuso' => 'nullable|integer',
+            'is_active' => 'sometimes|boolean',
+        ]);
+
+        try {
+            $tarif = DB::transaction(function () use ($validated) {
+                return Tarif::create($validated);
+            });
+
+            return $this->responseSuccess($tarif, 'Tarif created successfully', 201);
+        } catch (Exception $err) {
+            Log::error('Error while creating Tarif: '.$err->getMessage());
+            return $this->responseError($err->getMessage(), 'Error while trying to create Tarif data', 500);
+        }
+    }
+
+    public function update(Request $request, string $id)
+    {
+        $request->validate([
+            'customer_id' => 'sometimes|integer|exists:persons,id',
+            'loading_in' => 'sometimes|string|max:249',
+            'loading_out' => 'sometimes|string|max:249',
+            'distance' => 'sometimes|integer',
+            'uj_towing' => 'nullable|integer',
+            'uj_cdd' => 'nullable|integer',
+            'uj_fuso' => 'nullable|integer',
+            'inv_cdd' => 'nullable|integer',
+            'inv_fuso' => 'nullable|integer',
+            'is_active' => 'sometimes|boolean',
+        ]);
+
+        try {
+            $data = $request->only([
+                'customer_id', 
+                'loading_in', 
+                'loading_out', 
+                'distance', 
+                'uj_towing', 
+                'uj_cdd', 
+                'uj_fuso', 
+                'inv_cdd', 
+                'inv_fuso', 
+                'is_active'
+            ]);
+
+            $tarif = DB::transaction(function () use ($id, $data) {
+                $tarif = Tarif::findOrFail($id);
+                $tarif->update($data);
+                return $tarif->fresh();
+            });
+
+            return $this->responseSuccess($tarif, 'Tarif updated successfully', 200);
+        } catch (Exception $err) {
+            Log::error('Error while updating Tarif: '.$err->getMessage());
+            return $this->responseError($err->getMessage(), 'Error while trying to update Tarif data', 500);
+        }
+    }
+
+    public function destroy(string $id)
+    {
+        try {
+            $tarif = Tarif::findOrFail($id);
+            $tarif->delete();
+
+            return $this->responseSuccess([], 'Tarif deleted successfully', 200);
+        } catch (Exception $err) {
+            Log::error('Error while deleting Tarif: '.$err->getMessage());
+            return $this->responseError($err->getMessage(), 'Tarif deletion failed', 500);
+        }
+    }
+}
