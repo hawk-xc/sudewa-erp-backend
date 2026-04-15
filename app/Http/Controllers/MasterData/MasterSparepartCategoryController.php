@@ -11,6 +11,11 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
+/**
+ * @group Master Data
+ *
+ * API for managing sparepart categories.
+ */
 class MasterSparepartCategoryController extends Controller
 {
     use ResponseTrait;
@@ -31,6 +36,9 @@ class MasterSparepartCategoryController extends Controller
         $this->sparepartCategoryTable = ['id', 'uuid', 'code', 'name', 'created_at'];
     }
 
+    /**
+     * List all sparepart categories.
+     */
     public function index(Request $request)
     {
         try {
@@ -56,6 +64,9 @@ class MasterSparepartCategoryController extends Controller
         }
     }
 
+    /**
+     * Get sparepart category details.
+     */
     public function show($id)
     {
         try {
@@ -69,6 +80,9 @@ class MasterSparepartCategoryController extends Controller
         }
     }
 
+    /**
+     * Store a new sparepart category.
+     */
     public function store(Request $request)
     {
         $validated = $request->validate([
@@ -92,6 +106,9 @@ class MasterSparepartCategoryController extends Controller
         }
     }
 
+    /**
+     * Update a sparepart category.
+     */
     public function update(Request $request, $id)
     {
         $sparepartCategory = SparepartCategory::findOrFail($id);
@@ -111,6 +128,9 @@ class MasterSparepartCategoryController extends Controller
         }
     }
 
+    /**
+     * Delete a sparepart category.
+     */
     public function destroy($id)
     {
         try {

@@ -13,6 +13,11 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 
+/**
+ * @group Master Data
+ *
+ * API for managing ownership transfer fees (BBN).
+ */
 class MasterOwnershipTransferFeeController extends Controller
 {
     use ResponseTrait;
@@ -33,6 +38,9 @@ class MasterOwnershipTransferFeeController extends Controller
         $this->OwnershipTransferFeeTable = ['id', 'uuid', 'dealer_id', 'region_id', 'tnbk_code', 'vehicle_type', 'un_notice_fee', 'garwil_fee', 'countershop_fee', 'other_fee', 'created_at'];
     }
 
+    /**
+     * List all ownership transfer fees.
+     */
     public function index(Request $request)
     {
         try {
@@ -60,6 +68,9 @@ class MasterOwnershipTransferFeeController extends Controller
         }
     }
 
+    /**
+     * Get ownership transfer fee details.
+     */
     public function show($id)
     {
         try {
@@ -73,6 +84,9 @@ class MasterOwnershipTransferFeeController extends Controller
         }
     }
 
+    /**
+     * Store a new ownership transfer fee.
+     */
     public function store(Request $request)
     {
         $validated = $request->validate([
@@ -109,6 +123,9 @@ class MasterOwnershipTransferFeeController extends Controller
         }
     }
 
+    /**
+     * Update an ownership transfer fee.
+     */
     public function update(Request $request, $id)
     {
         $OwnershipTransferFee = OwnershipTransferFee::findOrFail($id);
@@ -135,6 +152,9 @@ class MasterOwnershipTransferFeeController extends Controller
         }
     }
 
+    /**
+     * Delete an ownership transfer fee.
+     */
     public function destroy($id)
     {
         try {

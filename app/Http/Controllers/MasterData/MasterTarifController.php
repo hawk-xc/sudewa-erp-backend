@@ -10,6 +10,11 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
+/**
+ * @group Master Data
+ *
+ * API for managing tariffs.
+ */
 class MasterTarifController extends Controller
 {
     use ResponseTrait;
@@ -41,6 +46,9 @@ class MasterTarifController extends Controller
         ];
     }
 
+    /**
+     * List all tariffs.
+     */
     public function index(Request $request)
     {
         $query = Tarif::query();
@@ -79,6 +87,9 @@ class MasterTarifController extends Controller
         }
     }
 
+    /**
+     * Get tariff details.
+     */
     public function show(string $id)
     {
         try {
@@ -95,6 +106,9 @@ class MasterTarifController extends Controller
         }
     }
 
+    /**
+     * Store a new tariff.
+     */
     public function store(Request $request)
     {
         $validated = $request->validate([
@@ -122,6 +136,9 @@ class MasterTarifController extends Controller
         }
     }
 
+    /**
+     * Update a tariff.
+     */
     public function update(Request $request, string $id)
     {
         $request->validate([
@@ -164,6 +181,9 @@ class MasterTarifController extends Controller
         }
     }
 
+    /**
+     * Delete a tariff.
+     */
     public function destroy(string $id)
     {
         try {

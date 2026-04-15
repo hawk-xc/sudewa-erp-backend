@@ -13,7 +13,9 @@ use App\Http\Controllers\MasterData\MasterAccountGroupController;
 use App\Http\Controllers\MasterData\MasterBrandController;
 use App\Http\Controllers\MasterData\MasterCashController;
 use App\Http\Controllers\MasterData\MasterCustomerController;
+use App\Http\Controllers\MasterData\MasterTarifController;
 use App\Http\Controllers\MasterData\MasterDealerController;
+use App\Http\Controllers\MasterData\MasterDriverController;
 use App\Http\Controllers\MasterData\MasterMaterialController;
 use App\Http\Controllers\MasterData\MasterOwnershipTransferFeeController;
 use App\Http\Controllers\MasterData\MasterRegionController;
@@ -23,6 +25,8 @@ use App\Http\Controllers\MasterData\MasterSupplierController;
 use App\Http\Controllers\MasterData\MasterUnitTypeController;
 use App\Http\Controllers\MasterData\MasterUnitTypePriceArchiveController;
 use App\Http\Controllers\MasterData\MasterVendorController;
+use App\Http\Controllers\MasterData\VehicleDataController;
+use App\Http\Controllers\MasterData\VehicleFleetController;
 use App\Http\Controllers\Permission\PermissionController;
 use App\Http\Controllers\Report\LiabilityController;
 use App\Http\Controllers\Role\RoleController;
@@ -37,7 +41,6 @@ use App\Http\Controllers\UnitTypeDetailReportController;
 use App\Http\Controllers\User\UserController;
 use App\Http\Controllers\Warehouse\WarehouseActivityController;
 use App\Http\Controllers\Warehouse\WarehouseController;
-use App\Models\UnitTransaction;
 use Illuminate\Support\Facades\Route;
 
 Route::options('{any}', function () {
@@ -106,6 +109,7 @@ Route::group(
             Route::post('customer/{id}/import', [MasterCustomerController::class, 'import']);
             Route::post('supplier/{id}/import', [MasterSupplierController::class, 'import']);
             Route::post('dealer/{id}/import', [MasterDealerController::class, 'import']);
+            Route::post('driver/{id}/import', [MasterDriverController::class, 'import']);
             Route::post('vendor/{id}/import', [MasterVendorController::class, 'import']);
             Route::post('region/import', [MasterRegionController::class, 'import']);
             Route::post('unit-type/import', [MasterUnitTypeController::class, 'import']);
@@ -119,6 +123,7 @@ Route::group(
             Route::get('cash/export', [MasterCashController::class, 'export']);
             Route::get('supplier/export', [MasterSupplierController::class, 'export']);
             Route::get('dealer/export', [MasterDealerController::class, 'export']);
+            Route::get('driver/export', [MasterDriverController::class, 'export']);
             Route::get('vendor/export', [MasterVendorController::class, 'export']);
             Route::get('region/export', [MasterRegionController::class, 'export']);
             Route::get('unit-type/export', [MasterUnitTypeController::class, 'export']);
@@ -132,6 +137,7 @@ Route::group(
             Route::apiResource('customer', MasterCustomerController::class);
             Route::apiResource('supplier', MasterSupplierController::class);
             Route::apiResource('dealer', MasterDealerController::class);
+            Route::apiResource('driver', MasterDriverController::class);
             Route::apiResource('brand', MasterBrandController::class);
             Route::apiResource('unit-type', MasterUnitTypeController::class);
             Route::apiResource('unit-type-price-archive', MasterUnitTypePriceArchiveController::class);
@@ -141,6 +147,9 @@ Route::group(
             Route::apiResource('bbn', MasterOwnershipTransferFeeController::class);
             Route::apiResource('material', MasterMaterialController::class);
             Route::apiResource('vendor', MasterVendorController::class);
+            Route::apiResource('tarif', MasterTarifController::class);
+            Route::apiResource('vehicle-fleet', VehicleFleetController::class);
+            Route::apiResource('vehicle-data', VehicleDataController::class);
         });
 
         // Warehouse API

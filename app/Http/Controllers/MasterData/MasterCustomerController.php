@@ -15,6 +15,11 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Maatwebsite\Excel\Facades\Excel;
 
+/**
+ * @group Master Data
+ *
+ * API for managing customers.
+ */
 class MasterCustomerController extends Controller
 {
     use PersonTrait, ResponseTrait;
@@ -36,6 +41,9 @@ class MasterCustomerController extends Controller
         $this->personTable = ['id', 'uuid', 'pic_name', 'code', 'type', 'name', 'address', 'npwp', 'phone', 'identity_number', 'drive_license_identity_number', 'image', 'map_link', 'social_media_1_link', 'social_media_2_link', 'social_media_3_link', 'social_media_4_link', 'website_link', 'created_at'];
     }
 
+    /**
+     * List all customers.
+     */
     public function index(Request $request)
     {
         $query = Person::query();
@@ -93,6 +101,9 @@ class MasterCustomerController extends Controller
         }
     }
 
+    /**
+     * Get customer details.
+     */
     public function show(string $id)
     {
         try {
@@ -110,6 +121,9 @@ class MasterCustomerController extends Controller
         }
     }
 
+    /**
+     * Store a new customer.
+     */
     public function store(Request $request)
     {
         $validated = $request->validate([
@@ -138,6 +152,9 @@ class MasterCustomerController extends Controller
         }
     }
 
+    /**
+     * Update a customer.
+     */
     public function update(Request $request, string $id)
     {
         $request->validate([
@@ -173,6 +190,9 @@ class MasterCustomerController extends Controller
         }
     }
 
+    /**
+     * Delete a customer.
+     */
     public function destroy(string $id)
     {
         try {
@@ -187,6 +207,9 @@ class MasterCustomerController extends Controller
         }
     }
 
+    /**
+     * Import customers from Excel.
+     */
     public function import(Request $request, string $id)
     {
         $request->validate([
@@ -206,6 +229,9 @@ class MasterCustomerController extends Controller
         }
     }
 
+    /**
+     * Export customers to Excel.
+     */
     public function export(Request $request)
     {
         try {

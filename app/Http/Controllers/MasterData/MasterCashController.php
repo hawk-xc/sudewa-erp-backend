@@ -13,12 +13,20 @@ use Illuminate\Support\Facades\Log;
 use Maatwebsite\Excel\Facades\Excel;
 use Symfony\Component\HttpFoundation\JsonResponse;
 
+/**
+ * @group Master Data
+ *
+ * API for managing cash and bank accounts.
+ */
 class MasterCashController extends Controller
 {
     use ResponseTrait;
 
     protected $cashTable = ['id', 'uuid', 'company_id', 'account_id', 'code', 'description', 'type', 'created_at'];
 
+    /**
+     * List all cash and bank accounts.
+     */
     public function index(Request $request): JsonResponse
     {
         try {
@@ -108,6 +116,9 @@ class MasterCashController extends Controller
     //     }
     // }
 
+    /**
+     * Get cash or bank account details.
+     */
     public function show(string $id)
     {
         try {
@@ -128,6 +139,9 @@ class MasterCashController extends Controller
         }
     }
 
+    /**
+     * Update a cash or bank account.
+     */
     public function update(Request $request, string $id)
     {
         try {
@@ -216,6 +230,9 @@ class MasterCashController extends Controller
     //     }
     // }
 
+    /**
+     * Export cash and bank accounts to Excel.
+     */
     public function export(Request $request)
     {
         try {

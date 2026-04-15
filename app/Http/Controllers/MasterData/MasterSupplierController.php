@@ -15,6 +15,11 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Maatwebsite\Excel\Facades\Excel;
 
+/**
+ * @group Master Data
+ *
+ * API for managing suppliers.
+ */
 class MasterSupplierController extends Controller
 {
     use PersonTrait, ResponseTrait;
@@ -39,6 +44,9 @@ class MasterSupplierController extends Controller
         $this->personTable = ['id', 'uuid', 'code', 'type', 'name', 'address', 'npwp', 'phone', 'created_at', 'pic_name'];
     }
 
+    /**
+     * List all suppliers.
+     */
     public function index(Request $request)
     {
         $query = Person::query();
@@ -96,6 +104,9 @@ class MasterSupplierController extends Controller
         }
     }
 
+    /**
+     * Get supplier details.
+     */
     public function show(string $id)
     {
         try {
@@ -113,6 +124,9 @@ class MasterSupplierController extends Controller
         }
     }
 
+    /**
+     * Store a new supplier.
+     */
     public function store(Request $request)
     {
         $validated = $request->validate([
@@ -140,6 +154,9 @@ class MasterSupplierController extends Controller
         }
     }
 
+    /**
+     * Update a supplier.
+     */
     public function update(Request $request, string $id)
     {
         $request->validate([
@@ -174,6 +191,9 @@ class MasterSupplierController extends Controller
         }
     }
 
+    /**
+     * Delete a supplier.
+     */
     public function destroy(string $id)
     {
         try {
@@ -188,6 +208,9 @@ class MasterSupplierController extends Controller
         }
     }
 
+    /**
+     * Import suppliers from Excel.
+     */
     public function import(Request $request, string $id)
     {
         $request->validate([
@@ -207,6 +230,9 @@ class MasterSupplierController extends Controller
         }
     }
 
+    /**
+     * Export suppliers to Excel.
+     */
     public function export(Request $request)
     {
         try {

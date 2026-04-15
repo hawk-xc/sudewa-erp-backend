@@ -16,6 +16,11 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Maatwebsite\Excel\Facades\Excel;
 
+/**
+ * @group Master Data
+ *
+ * API for managing unit types (motorcycles/vehicles).
+ */
 class MasterUnitTypeController extends Controller
 {
     use ResponseTrait;
@@ -36,6 +41,9 @@ class MasterUnitTypeController extends Controller
         $this->unitTypeTable = ['id', 'brand_id', 'name', 'capacity', 'unit_type', 'unit_model', 'price', 'netto_weight', 'bruto_weight', 'description', 'buy_price', 'sell_price', 'created_at'];
     }
 
+    /**
+     * List all unit types.
+     */
     public function index(Request $request)
     {
         try {
@@ -87,6 +95,9 @@ class MasterUnitTypeController extends Controller
         }
     }
 
+    /**
+     * Get unit type details.
+     */
     public function show(Request $request, int $id)
     {
         try {
@@ -144,6 +155,9 @@ class MasterUnitTypeController extends Controller
         }
     }
 
+    /**
+     * Store a new unit type.
+     */
     public function store(Request $request)
     {
         $validated = $request->validate([
@@ -178,6 +192,9 @@ class MasterUnitTypeController extends Controller
         }
     }
 
+    /**
+     * Update a unit type.
+     */
     public function update(Request $request, int $id)
     {
         $unitType = UnitType::findOrFail($id);
@@ -212,6 +229,9 @@ class MasterUnitTypeController extends Controller
         }
     }
 
+    /**
+     * Delete a unit type.
+     */
     public function destroy($id)
     {
         try {
@@ -226,6 +246,9 @@ class MasterUnitTypeController extends Controller
         }
     }
 
+    /**
+     * Import unit types from Excel.
+     */
     public function import(Request $request)
     {
         $request->validate([
@@ -245,6 +268,9 @@ class MasterUnitTypeController extends Controller
         }
     }
 
+    /**
+     * Export unit types to Excel.
+     */
     public function export(Request $request)
     {
         try {

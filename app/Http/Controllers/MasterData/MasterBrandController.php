@@ -15,6 +15,11 @@ use Illuminate\Support\Str;
 use Intervention\Image\Drivers\Gd\Driver;
 use Intervention\Image\ImageManager;
 
+/**
+ * @group Master Data
+ *
+ * API for managing brands.
+ */
 class MasterBrandController extends Controller
 {
     use ResponseTrait;
@@ -35,6 +40,9 @@ class MasterBrandController extends Controller
         $this->brandTable = ['id', 'name', 'image', 'created_at'];
     }
 
+    /**
+     * List all brands.
+     */
     public function index(Request $request)
     {
         try {
@@ -81,6 +89,9 @@ class MasterBrandController extends Controller
         }
     }
 
+    /**
+     * Store a new brand.
+     */
     public function store(Request $request)
     {
         $request->validate([
@@ -120,6 +131,9 @@ class MasterBrandController extends Controller
         }
     }
 
+    /**
+     * Get brand details.
+     */
     public function show(Request $request, string $id)
     {
         try {
@@ -170,6 +184,9 @@ class MasterBrandController extends Controller
         }
     }
 
+    /**
+     * Update a brand.
+     */
     public function update(Request $request, string $id)
     {
         $request->validate([
@@ -219,6 +236,9 @@ class MasterBrandController extends Controller
         }
     }
 
+    /**
+     * Delete a brand.
+     */
     public function destroy(string $id)
     {
         try {
