@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Transaction;
 
 use App\Http\Controllers\Controller;
+use App\Models\FinanceBilling;
 use App\Models\UnitTransactionBilling;
 use App\Models\UnitTransactionBillingHistory;
 use App\Models\UnitTypeDetailPpn;
@@ -139,8 +140,16 @@ class UnitTransactionBillingHistoryController extends Controller
 
                 if ($remaining <= 0) {
 
-                    $billing->unitTransaction->update([
-                        'stock_state' => 'inbound_receipt',
+                    // $billing->unitTransaction->update([
+                    //     'stock_state' => 'inbound_receipt',
+                    // ]);
+
+                    // Create Finance Billing Data
+                    FinanceBilling::create([
+                        'unit_transaction_billing_id' => $billing->id,
+                        'grand_total' => $billing->grand_total,
+                        'last_payment_at' => now(),
+                        'is_valid' => false,
                     ]);
 
                     foreach ($billing->unitTransaction->unitTransactionItems as $item) {

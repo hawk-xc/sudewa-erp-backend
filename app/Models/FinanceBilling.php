@@ -16,6 +16,7 @@ class FinanceBilling extends Model
         'uuid',
         'unit_transaction_billing_id',
         'last_payment_at',
+        'grand_total',
         'is_valid'
     ];
 
