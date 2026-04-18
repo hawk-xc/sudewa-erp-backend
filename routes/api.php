@@ -3,6 +3,7 @@
 use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\Dashboard\BillingStatController;
 use App\Http\Controllers\Finance\DailyCashFlowController;
+use App\Http\Controllers\Finance\FinanceAssetController;
 use App\Http\Controllers\Finance\FinanceBillingController;
 use App\Http\Controllers\Finance\PpnDataController;
 use App\Http\Controllers\Finance\UnitTransactionAdjustmentController;
@@ -10,6 +11,7 @@ use App\Http\Controllers\Global\GlobalCompanyController;
 use App\Http\Controllers\Global\GlobalModuleController;
 use App\Http\Controllers\MasterData\MasterAccountController;
 use App\Http\Controllers\MasterData\MasterAccountGroupController;
+use App\Http\Controllers\MasterData\MasterAssetController;
 use App\Http\Controllers\MasterData\MasterBrandController;
 use App\Http\Controllers\MasterData\MasterCashController;
 use App\Http\Controllers\MasterData\MasterCustomerController;
@@ -111,6 +113,7 @@ Route::group(
             Route::post('dealer/{id}/import', [MasterDealerController::class, 'import']);
             Route::post('driver/{id}/import', [MasterDriverController::class, 'import']);
             Route::post('vendor/{id}/import', [MasterVendorController::class, 'import']);
+            Route::post('asset/{id}/import', [MasterAssetController::class, 'import']);
             Route::post('region/import', [MasterRegionController::class, 'import']);
             Route::post('unit-type/import', [MasterUnitTypeController::class, 'import']);
             Route::post('cash/import', [MasterCashController::class, 'import']);
@@ -125,6 +128,7 @@ Route::group(
             Route::get('dealer/export', [MasterDealerController::class, 'export']);
             Route::get('driver/export', [MasterDriverController::class, 'export']);
             Route::get('vendor/export', [MasterVendorController::class, 'export']);
+            Route::get('asset/export', [MasterAssetController::class, 'export']);
             Route::get('region/export', [MasterRegionController::class, 'export']);
             Route::get('unit-type/export', [MasterUnitTypeController::class, 'export']);
             Route::get('sparepart/export', [MasterSparepartController::class, 'export']);
@@ -135,6 +139,7 @@ Route::group(
             Route::apiResource('account', MasterAccountController::class);
             Route::apiResource('cash', MasterCashController::class);
             Route::apiResource('customer', MasterCustomerController::class);
+            Route::apiResource('asset', MasterAssetController::class);
             Route::apiResource('supplier', MasterSupplierController::class);
             Route::apiResource('dealer', MasterDealerController::class);
             Route::apiResource('driver', MasterDriverController::class);
@@ -203,6 +208,9 @@ Route::group(
 
         // Finance
         Route::group(['prefix' => 'finance', 'as' => 'finance.'], function () {
+            Route::post('finance-asset/import', [FinanceAssetController::class, 'import']);
+            Route::get('finance-asset/export', [FinanceAssetController::class, 'export']);
+            Route::apiResource('finance-asset', FinanceAssetController::class)->except(['store', 'destroy']);
             Route::apiResource('ppn', PpnDataController::class);
             Route::apiResource('cash-flow', DailyCashFlowController::class);
             Route::apiResource('adjustment', UnitTransactionAdjustmentController::class);

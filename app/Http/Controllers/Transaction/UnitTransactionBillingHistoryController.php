@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Transaction;
 
 use App\Http\Controllers\Controller;
+use App\Models\Cash;
 use App\Models\FinanceBilling;
 use App\Models\UnitTransactionBilling;
 use App\Models\UnitTransactionBillingHistory;
@@ -73,6 +74,8 @@ class UnitTransactionBillingHistoryController extends Controller
 
     public function store(Request $request)
     {
+        $cashSlug = ['cash_idr', 'bca_idr', 'bca_usd'];
+        
         try {
             $validated = $request->validate([
                 'unit_transaction_billing_id' => 'required|exists:unit_transaction_billings,id',
@@ -92,6 +95,7 @@ class UnitTransactionBillingHistoryController extends Controller
             }
 
             $billing = UnitTransactionBilling::with([
+                'unitTransaction.warehouse',
                 'unitTransaction.unitTransactionItems.unitTransactionItemDetails',
             ])->findOrFail($validated['unit_transaction_billing_id']);
 
@@ -118,7 +122,7 @@ class UnitTransactionBillingHistoryController extends Controller
                 ]);
             }
 
-            DB::transaction(function () use ($billing, $validated, $newTotalPaid) {
+            DB::transaction(function () use ($billing, $validated, $newTotalPaid, $cashSlug) {
                 UnitTransactionBillingHistory::create([
                     'unit_transaction_billing_id' => $billing->id,
                     'bca_payment_amount' => $validated['bca_payment_amount'] ?? 0,
@@ -138,11 +142,29 @@ class UnitTransactionBillingHistoryController extends Controller
                     'last_payment_at' => now(),
                 ]);
 
+                $companyId = $billing->unitTransaction->warehouse->company_id;
+
+                foreach ($cashSlug as $slug) {
+                    $amountToAdd = match ($slug) {
+                        'cash_idr' => $validated['cash_payment_amount'] ?? 0,
+                        'bca_idr' => $validated['bca_payment_amount'] ?? 0,
+                        'bca_usd' => $validated['bca_payment_usd_amount'] ?? 0,
+                        default => 0,
+                    };
+
+                    if ($amountToAdd && $amountToAdd > 0) {
+                        Cash::where('company_id', $companyId)
+                            ->where('code', $slug)
+                            ->increment('amount', $amountToAdd);
+                    }
+                }
+
                 if ($remaining <= 0) {
 
-                    // $billing->unitTransaction->update([
-                    //     'stock_state' => 'inbound_receipt',
-                    // ]);
+                    // automate change stock state into inbound_incoming_goods
+                    $billing->unitTransaction->update([
+                        'stock_state' => 'inbound_incoming_goods',
+                    ]);
 
                     // Create Finance Billing Data
                     FinanceBilling::create([
@@ -202,18 +224,62 @@ class UnitTransactionBillingHistoryController extends Controller
     public function update(Request $request, string $id)
     {
         try {
-            $history = UnitTransactionBillingHistory::findOrFail($id);
+            $history = UnitTransactionBillingHistory::with('unitTransactionBilling.unitTransaction.warehouse')->findOrFail($id);
 
             $validated = $request->validate([
+                'bca_payment_amount' => 'nullable|numeric|min:0',
+                'bca_payment_usd_amount' => 'nullable|numeric|min:0',
+                'cash_payment_amount' => 'nullable|numeric|min:0',
                 'note' => 'nullable|string',
-                'payment_proof' => 'nullable|string',
+                'payment_proof' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:2048',
             ]);
 
-            $history->update($validated);
+            DB::transaction(function () use ($history, $validated, $request) {
+                $billing = $history->unitTransactionBilling;
+                $companyId = $billing->unitTransaction->warehouse->company_id;
 
-            return $this->responseSuccess($history, 'History updated successfully', 200);
+                if ($request->hasFile('payment_proof')) {
+                    $validated['payment_proof'] = $this->storeFile(
+                        $request->file('payment_proof'),
+                        'payment_proof'
+                    );
+                }
 
+                $diffs = [
+                    'cash_idr' => (array_key_exists('cash_payment_amount', $validated) ? $validated['cash_payment_amount'] : $history->cash_payment_amount) - $history->cash_payment_amount,
+                    'bca_idr' => (array_key_exists('bca_payment_amount', $validated) ? $validated['bca_payment_amount'] : $history->bca_payment_amount) - $history->bca_payment_amount,
+                    'bca_usd' => (array_key_exists('bca_payment_usd_amount', $validated) ? $validated['bca_payment_usd_amount'] : $history->bca_payment_usd_amount) - $history->bca_payment_usd_amount,
+                ];
+
+                foreach (['cash_idr', 'bca_idr', 'bca_usd'] as $slug) {
+                    if ($diffs[$slug] != 0) {
+                        Cash::where('company_id', $companyId)
+                            ->where('code', $slug)
+                            ->increment('amount', $diffs[$slug]);
+                    }
+                }
+
+                $history->update($validated);
+
+                $totalPaid = $billing->unitTransactionBillingHistories()->sum('bca_payment_amount') + 
+                             $billing->unitTransactionBillingHistories()->sum('cash_payment_amount');
+                
+                $remaining = $billing->grand_total - $totalPaid;
+
+                $billing->update([
+                    'total_paid' => $totalPaid,
+                    'remaining_payment' => $remaining,
+                    'is_paid' => $remaining <= 0,
+                ]);
+            });
+
+            return $this->responseSuccess($history->fresh(), 'History updated successfully', 200);
+
+        } catch (ValidationException $err) {
+            return $this->responseError($err->errors(), 'Validation failed', 422);
         } catch (Exception $err) {
+            Log::error($err->getMessage());
+
             return $this->responseError($err->getMessage(), 'Update failed', 500);
         }
     }
@@ -221,15 +287,45 @@ class UnitTransactionBillingHistoryController extends Controller
     public function destroy(string $id)
     {
         try {
-            $history = UnitTransactionBillingHistory::findOrFail($id);
+            $history = UnitTransactionBillingHistory::with('unitTransactionBilling.unitTransaction.warehouse')->findOrFail($id);
 
             DB::transaction(function () use ($history) {
+                $billing = $history->unitTransactionBilling;
+                $companyId = $billing->unitTransaction->warehouse->company_id;
+
+                $amountsToDeduct = [
+                    'cash_idr' => $history->cash_payment_amount,
+                    'bca_idr' => $history->bca_payment_amount,
+                    'bca_usd' => $history->bca_payment_usd_amount,
+                ];
+
+                foreach (['cash_idr', 'bca_idr', 'bca_usd'] as $slug) {
+                    if ($amountsToDeduct[$slug] > 0) {
+                        Cash::where('company_id', $companyId)
+                            ->where('code', $slug)
+                            ->decrement('amount', $amountsToDeduct[$slug]);
+                    }
+                }
+
                 $history->delete();
+
+                $totalPaid = $billing->unitTransactionBillingHistories()->sum('bca_payment_amount') + 
+                             $billing->unitTransactionBillingHistories()->sum('cash_payment_amount');
+                
+                $remaining = $billing->grand_total - $totalPaid;
+
+                $billing->update([
+                    'total_paid' => $totalPaid,
+                    'remaining_payment' => $remaining,
+                    'is_paid' => $remaining <= 0,
+                ]);
             });
 
             return $this->responseSuccess([], 'History deleted successfully', 200);
 
         } catch (Exception $err) {
+            Log::error($err->getMessage());
+
             return $this->responseError($err->getMessage(), 'Delete failed', 500);
         }
     }
