@@ -333,7 +333,17 @@ class UnitTransactionController extends Controller
     public function destroy(string $id)
     {
         try {
-            $data = UnitTransaction::findOrFail($id);
+            $data = UnitTransaction::with('unitTransactionBilling.financeBilling')->findOrFail($id);
+
+            if ($data->unitTransactionBilling) {
+                if ($data->unitTransactionBilling->financeBilling && $data->unitTransactionBilling->financeBilling->is_valid) {
+                    return $this->responseError(null, 'Cannot delete because finance billing is already valid', 422);
+                }
+
+                if ($data->unitTransactionBilling->is_paid) {
+                    return $this->responseError(null, 'Cannot delete because transaction is already paid', 422);
+                }
+            }
 
             DB::transaction(fn () => $data->delete());
 
@@ -666,10 +676,6 @@ class UnitTransactionController extends Controller
             ]);
 
             $unitTransaction = UnitTransaction::findOrFail($id);
-
-            if ($unitTransaction->is_refunded) {
-                return $this->responseError(null, 'Transaction has already been adjusted/refunded.', 422);
-            }
 
             if (!$unitTransaction->unitTransactionBilling || !$unitTransaction->unitTransactionBilling->is_paid) {
                 return $this->responseError(null, 'Transaction has not been paid or has no billing data.', 422);
