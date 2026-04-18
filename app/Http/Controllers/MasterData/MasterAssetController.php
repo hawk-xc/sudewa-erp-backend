@@ -126,6 +126,7 @@ class MasterAssetController extends Controller
     {
         $validated = $request->validate([
             'company_id' => 'required|integer|exists:companies,id',
+            'code' => 'required|string|unique:assets,code',
             'name' => 'required|string|max:255',
             'purchase_date' => 'nullable|date',
             'type' => 'required|in:inventory,vehicles,buildings,land',
@@ -134,8 +135,6 @@ class MasterAssetController extends Controller
 
         try {
             $asset = DB::transaction(function () use ($validated) {
-                $validated['code'] = $this->generateCode();
-
                 return Asset::create($validated);
             });
 

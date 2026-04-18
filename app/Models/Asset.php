@@ -22,6 +22,11 @@ class Asset extends Model
         'price'
     ];
 
+    protected $casts = [
+        'company_id' => 'integer',
+        'price' => 'integer'  
+    ];
+
     public function company()
     {
         return $this->belongsTo(Company::class);
