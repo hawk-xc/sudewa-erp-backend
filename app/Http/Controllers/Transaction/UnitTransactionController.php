@@ -150,7 +150,7 @@ class UnitTransactionController extends Controller
                 'unitTransactionItems',
                 'unitTransactionItems.unitTransactionItemDetails',
                 'unitTransactionItems.unitTypeSoldDetails',
-                'unitTransactionAdjustments'
+                'unitTransactionAdjustments.unitTransactionAdjustmentItems.unitTransactionItem.unitType',
             ])
                 ->select($this->unitTransactionTable)
                 ->findOrFail($id);
@@ -180,6 +180,25 @@ class UnitTransactionController extends Controller
             } else {
                 $data->billing_summary = null;
             }
+
+            $data->unitTransactionAdjustments->transform(function ($adjustment) {
+                $adjustment->details = $adjustment->unitTransactionAdjustmentItems
+                    ->groupBy(function ($item) {
+                        return $item->unitTransactionItem->unitType->name ?? 'Unknown';
+                    })
+                    ->map(function ($items, $unitTypeName) {
+                        return [
+                            'unit_type_name' => $unitTypeName,
+                            'qty' => $items->sum('qty'),
+                        ];
+                    })
+                    ->values();
+                
+                // Unset raw items to keep response clean
+                unset($adjustment->unitTransactionAdjustmentItems);
+                
+                return $adjustment;
+            });
 
             return $this->responseSuccess($data, 'Unit Transaction retrieved successfully', 200);
 
@@ -668,11 +687,19 @@ class UnitTransactionController extends Controller
 
     public function storeTransactionAdjustment(Request $request, string $id)
     {
+        if (is_string($request->unit_transaction_item_details_ids)) {
+            $request->merge([
+                'unit_transaction_item_details_ids' => json_decode($request->unit_transaction_item_details_ids, true),
+            ]);
+        }
+
         try {
             $validated = $request->validate([
                 'cash_id' => 'required|integer|exists:cashes,id',
-                'amount' => 'required|integer|min:0',
+                'amount' => 'required|numeric|min:0',
                 'description' => 'nullable|string',
+                'unit_transaction_item_details_ids' => 'sometimes|nullable|array',
+                'unit_transaction_item_details_ids.*' => 'required|integer|exists:unit_transaction_item_details,id',
             ]);
 
             $unitTransaction = UnitTransaction::findOrFail($id);
@@ -688,11 +715,38 @@ class UnitTransactionController extends Controller
             };
 
             $adjustment = DB::transaction(function () use ($validated, $unitTransaction, $adjustmentType) {
+                // Prepare primary adjustment data
+                $adjustmentData = [
+                    'cash_id' => $validated['cash_id'],
+                    'amount' => $validated['amount'],
+                    'description' => $validated['description'] ?? null,
+                    'type' => $adjustmentType,
+                ];
+
+                $adjustment = $unitTransaction->unitTransactionAdjustments()->create($adjustmentData);
+
+                // Create adjustment items if detail IDs are provided
+                if (!empty($validated['unit_transaction_item_details_ids'])) {
+                    $details = UnitTransactionItemDetail::whereIn('id', $validated['unit_transaction_item_details_ids'])->get();
+                    foreach ($details as $detail) {
+                        $adjustment->unitTransactionAdjustmentItems()->create([
+                            'unit_transaction_item_id' => $detail->unit_transaction_item_id,
+                            'unit_transaction_item_detail_id' => $detail->id,
+                            'qty' => 1,
+                        ]);
+
+                        // Trigger stock adjustment based on type
+                        if ($adjustmentType === 'refund') {
+                            $detail->refundStock();
+                        } else {
+                            $detail->returnStock();
+                        }
+                    }
+                }
+
                 $unitTransaction->update(['is_refunded' => true]);
 
-                $validated['type'] = $adjustmentType;
-
-                return $unitTransaction->unitTransactionAdjustments()->create($validated);
+                return $adjustment->load('unitTransactionAdjustmentItems.unitTransactionItem.unitType');
             });
 
             return $this->responseSuccess($adjustment, 'Unit Transaction Adjustment created successfully', 201);

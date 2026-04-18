@@ -62,6 +62,11 @@ class UnitTransactionItem extends Model
         return $this->hasMany(UnitTransactionItemSales::class);
     }
 
+    public function unitTransactionAdjustmentItems()
+    {
+        return $this->hasMany(UnitTransactionAdjustmentItems::class);
+    }
+
     public function unitTypeSoldDetails()
     {
         return $this->belongsToMany(
