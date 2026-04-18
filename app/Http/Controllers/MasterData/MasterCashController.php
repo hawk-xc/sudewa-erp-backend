@@ -22,7 +22,7 @@ class MasterCashController extends Controller
 {
     use ResponseTrait;
 
-    protected $cashTable = ['id', 'uuid', 'company_id', 'account_id', 'code', 'description', 'type', 'created_at'];
+    protected $cashTable = ['id', 'uuid', 'company_id', 'account_id', 'code', 'description', 'type', 'amount', 'created_at'];
 
     /**
      * List all cash and bank accounts.
