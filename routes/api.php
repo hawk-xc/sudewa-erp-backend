@@ -39,6 +39,9 @@ use App\Http\Controllers\Transaction\UnitTransactionController;
 use App\Http\Controllers\Transaction\UnitTransactionItemController;
 use App\Http\Controllers\Transaction\UnitTransactionItemDetailController;
 use App\Http\Controllers\Transaction\UnitTransactionItemSalesController;
+use App\Http\Controllers\Transaction\MaterialTransactionController;
+use App\Http\Controllers\Transaction\MaterialTransactionDetailController;
+use App\Http\Controllers\Transaction\MaterialTransactionBillingController;
 use App\Http\Controllers\UnitTypeDetailReportController;
 use App\Http\Controllers\User\UserController;
 use App\Http\Controllers\Warehouse\WarehouseActivityController;
@@ -203,6 +206,13 @@ Route::group(
                 Route::apiResource('unit-transaction-item-detail', UnitTransactionItemDetailController::class);
                 Route::apiResource('unit-transaction-billing', UnitTransactionBillingController::class);
                 Route::apiResource('unit-transaction-billing-history', UnitTransactionBillingHistoryController::class);
+            });
+
+            // Material Transaction API
+            Route::group(['prefix' => 'material-transaction', 'as' => 'material-transaction.'], function () {
+                Route::apiResource('material-transaction', MaterialTransactionController::class);
+                Route::apiResource('material-transaction-detail', MaterialTransactionDetailController::class);
+                Route::apiResource('material-transaction-billing', MaterialTransactionBillingController::class);
             });
         });
 
