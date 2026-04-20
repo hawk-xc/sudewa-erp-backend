@@ -27,8 +27,10 @@ use App\Http\Controllers\MasterData\MasterSupplierController;
 use App\Http\Controllers\MasterData\MasterUnitTypeController;
 use App\Http\Controllers\MasterData\MasterUnitTypePriceArchiveController;
 use App\Http\Controllers\MasterData\MasterVendorController;
-use App\Http\Controllers\MasterData\VehicleDataController;
+use App\Http\Controllers\Transaction\VehicleDataController;
+use App\Http\Controllers\Transaction\VehicleDocumentController;
 use App\Http\Controllers\MasterData\VehicleFleetController;
+
 use App\Http\Controllers\Permission\PermissionController;
 use App\Http\Controllers\Report\LiabilityController;
 use App\Http\Controllers\Role\RoleController;
@@ -39,6 +41,9 @@ use App\Http\Controllers\Transaction\UnitTransactionController;
 use App\Http\Controllers\Transaction\UnitTransactionItemController;
 use App\Http\Controllers\Transaction\UnitTransactionItemDetailController;
 use App\Http\Controllers\Transaction\UnitTransactionItemSalesController;
+use App\Http\Controllers\Transaction\MaterialTransactionController;
+use App\Http\Controllers\Transaction\MaterialTransactionDetailController;
+use App\Http\Controllers\Transaction\MaterialTransactionBillingController;
 use App\Http\Controllers\UnitTypeDetailReportController;
 use App\Http\Controllers\User\UserController;
 use App\Http\Controllers\Warehouse\WarehouseActivityController;
@@ -154,7 +159,6 @@ Route::group(
             Route::apiResource('vendor', MasterVendorController::class);
             Route::apiResource('tarif', MasterTarifController::class);
             Route::apiResource('vehicle-fleet', VehicleFleetController::class);
-            Route::apiResource('vehicle-data', VehicleDataController::class);
         });
 
         // Warehouse API
@@ -203,6 +207,19 @@ Route::group(
                 Route::apiResource('unit-transaction-item-detail', UnitTransactionItemDetailController::class);
                 Route::apiResource('unit-transaction-billing', UnitTransactionBillingController::class);
                 Route::apiResource('unit-transaction-billing-history', UnitTransactionBillingHistoryController::class);
+            });
+
+            // Vehicle Data
+            Route::post('vehicle-data/assign-registration', [VehicleDataController::class, 'assignRegistration']);
+            Route::apiResource('vehicle-data', VehicleDataController::class);
+            Route::apiResource('vehicle-document', VehicleDocumentController::class);
+
+
+            // Material Transaction API
+            Route::group(['prefix' => 'material-transaction', 'as' => 'material-transaction.'], function () {
+                Route::apiResource('material-transaction', MaterialTransactionController::class);
+                Route::apiResource('material-transaction-detail', MaterialTransactionDetailController::class);
+                Route::apiResource('material-transaction-billing', MaterialTransactionBillingController::class);
             });
         });
 

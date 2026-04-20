@@ -37,6 +37,11 @@ class UnitTransactionAdjustment extends Model
         return $this->belongsTo(Cash::class);
     }
 
+    public function unitTransactionAdjustmentItems()
+    {
+        return $this->hasMany(UnitTransactionAdjustmentItems::class, 'unit_transaction_adjustment_id');
+    }
+
     protected static function booted()
     {
         static::creating(function ($model) {

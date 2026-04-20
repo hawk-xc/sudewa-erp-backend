@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\VehicleRegistration;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
@@ -90,7 +91,7 @@ class VehicleData extends Model
         'color' => 'string',
         'price' => 'integer',
         'chassis_number' => 'string',
-        'engine_number' => 'string',
+        'machine_number' => 'string',
         'form_ab' => 'string',
         'pib' => 'string',
         'tpt_number' => 'string',
@@ -107,6 +108,11 @@ class VehicleData extends Model
     public function region()
     {
         return $this->belongsTo(Region::class);
+    }
+
+    public function vehicleRegistration()
+    {
+        return $this->hasOne(VehicleRegistration::class);
     }
 
     protected static function booted()

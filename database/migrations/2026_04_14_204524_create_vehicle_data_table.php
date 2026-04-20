@@ -19,7 +19,7 @@ return new class extends Migration
             $table->string('invoice_number')->nullable();
             $table->date('invoice_date')->nullable();
             $table->date('invoice_receive_date')->nullable();
-            $table->string('vehicle_type')->nullable();
+            $table->enum('vehicle_type', ["r2", "r3", "r4"])->nullable();
             
             // customer data
             $table->string('ktp_number')->nullable();
@@ -43,8 +43,8 @@ return new class extends Migration
             $table->integer('engine_capacity')->nullable();
             $table->string('color')->nullable();
             $table->bigInteger('price')->nullable();
-            $table->string('chassis_number')->nullable();
-            $table->string('engine_number')->nullable();
+            $table->string('chassis_number')->nullable(false)->unique();
+            $table->string('machine_number')->nullable(false)->unique();
             $table->string('form_ab')->nullable();
             $table->string('pib')->nullable();
             $table->string('tpt_number')->nullable();

@@ -46,6 +46,11 @@ class UnitTransactionItemDetail extends Model
         return $this->hasOne(WarehouseMovement::class, 'unit_transaction_item_detail_id', 'id');
     }
 
+    public function unitTransactionAdjustmentItems()
+    {
+        return $this->hasMany(UnitTransactionAdjustmentItems::class);
+    }
+
     public function receiptStock(?int $activityId = null)
     {
         $unitTransaction = $this->unitTransactionItem->unitTransaction;
