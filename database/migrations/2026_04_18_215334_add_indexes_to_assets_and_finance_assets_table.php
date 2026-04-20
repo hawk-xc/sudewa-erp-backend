@@ -18,7 +18,7 @@ return new class extends Migration
         });
 
         Schema::table('finance_assets', function (Blueprint $table) {
-            $table->index('serial_number');
+            $table->index('asset_id');
             $table->index('economic_age');
         });
     }
@@ -35,7 +35,7 @@ return new class extends Migration
         });
 
         Schema::table('finance_assets', function (Blueprint $table) {
-            $table->dropIndex(['serial_number']);
+            $table->dropIndex(['asset_id']);
             $table->dropIndex(['economic_age']);
         });
     }
