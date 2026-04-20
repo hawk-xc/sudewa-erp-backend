@@ -24,6 +24,7 @@ return [
         '*',
         'https://wajirapanel.hawk-dev.com',
         'https://dashboard-finances.wajiracorps.co.id',
+        'http://dashboard-finances.wajiracorps.co.id',
         'http://localhost:3000',
     ],
 

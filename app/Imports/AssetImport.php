@@ -44,12 +44,12 @@ class AssetImport implements ToCollection, WithHeadingRow
                 ];
 
                 $validator = Validator::make($rowData, [
-                    'name' => 'required|string|max:255',
-                    'code' => 'required|string|unique:assets,code',
-                    'serial_number' => 'required|string|unique:assets,serial_number',
-                    'purchase_date' => 'nullable|date',
-                    'type' => 'required|in:inventory,vehicles,buildings,land',
-                    'price' => 'nullable|numeric|min:0',
+                    'nama_asset' => 'required|string|max:255',
+                    'kode' => 'required|string|unique:assets,code',
+                    'nomor_serial' => 'required|string|unique:assets,serial_number',
+                    'tanggal_beli' => 'nullable|date',
+                    'tipe_asset' => 'required|in:inventory,vehicles,buildings,land',
+                    'harga' => 'nullable|numeric|min:0',
                 ]);
 
                 if ($validator->fails()) {
