@@ -40,7 +40,7 @@ class FinanceAssetController extends Controller
      */
     public function index(Request $request)
     {
-        $query = FinanceAsset::query()->with('asset:id,code,name,type');
+        $query = FinanceAsset::query()->with('asset:id,code,name,type,purchase_date');
         $query->select($this->financeAssetTable);
 
         try {
