@@ -108,14 +108,14 @@ class FinanceAssetController extends Controller
     public function update(Request $request, string $id)
     {
         $request->validate([
-            'serial_number' => 'nullable|string',
+            'serial_number' => 'nullable|string|unique:finance_assets,serial_number,'.$id,
             'economic_age' => 'nullable|integer|min:0',
             'depreciation' => 'nullable|numeric|min:0',
             'description' => 'nullable|string',
         ]);
 
         try {
-            $data = array_filter($request->only(['economic_age', 'depreciation', 'description']), fn ($value) => $value !== '' && $value !== null);
+            $data = array_filter($request->only(['serial_number', 'economic_age', 'depreciation', 'description']), fn ($value) => $value !== '' && $value !== null);
 
             $asset = DB::transaction(function () use ($id, $data) {
                 $asset = FinanceAsset::findOrFail($id);
