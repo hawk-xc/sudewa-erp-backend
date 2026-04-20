@@ -8,6 +8,8 @@ use Tests\TestCase;
 
 class LoginTest extends TestCase
 {
+    use \Illuminate\Foundation\Testing\RefreshDatabase;
+
     /**
      * A basic unit test example.
      *
@@ -15,9 +17,21 @@ class LoginTest extends TestCase
      */
     public function test_is_admin_login_working()
     {
-        Auth::login(User::where('email', 'admin@example.com')->first());
+        $user = User::create([
+            'name' => 'Admin Test',
+            'username' => 'admintest',
+            'firstname' => 'Admin',
+            'lastname' => 'Test',
+            'email' => 'admin@deraly.id',
+            'password' => bcrypt('password'),
+            'secure_password' => bcrypt('password'),
+            'is_active' => true,
+        ]);
+
+        Auth::login($user);
 
         // check if user is logged in
         $this->assertTrue(Auth::check());
     }
 }
+

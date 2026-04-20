@@ -157,7 +157,6 @@ Route::group(
             Route::apiResource('vendor', MasterVendorController::class);
             Route::apiResource('tarif', MasterTarifController::class);
             Route::apiResource('vehicle-fleet', VehicleFleetController::class);
-            Route::apiResource('vehicle-data', VehicleDataController::class);
         });
 
         // Warehouse API
@@ -207,6 +206,9 @@ Route::group(
                 Route::apiResource('unit-transaction-billing', UnitTransactionBillingController::class);
                 Route::apiResource('unit-transaction-billing-history', UnitTransactionBillingHistoryController::class);
             });
+
+            // Vehicle Data
+            Route::apiResource('vehicle-data', VehicleDataController::class);
 
             // Material Transaction API
             Route::group(['prefix' => 'material-transaction', 'as' => 'material-transaction.'], function () {
