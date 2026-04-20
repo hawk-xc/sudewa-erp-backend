@@ -23,6 +23,7 @@ return [
     'allowed_origins' => [
         '*',
         'https://wajirapanel.hawk-dev.com',
+        'https://dashboard-finances.wajiracorps.co.id',
         'http://localhost:3000',
     ],
 
