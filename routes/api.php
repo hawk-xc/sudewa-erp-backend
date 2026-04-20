@@ -27,8 +27,10 @@ use App\Http\Controllers\MasterData\MasterSupplierController;
 use App\Http\Controllers\MasterData\MasterUnitTypeController;
 use App\Http\Controllers\MasterData\MasterUnitTypePriceArchiveController;
 use App\Http\Controllers\MasterData\MasterVendorController;
-use App\Http\Controllers\MasterData\VehicleDataController;
+use App\Http\Controllers\Transaction\VehicleDataController;
+use App\Http\Controllers\Transaction\VehicleDocumentController;
 use App\Http\Controllers\MasterData\VehicleFleetController;
+
 use App\Http\Controllers\Permission\PermissionController;
 use App\Http\Controllers\Report\LiabilityController;
 use App\Http\Controllers\Role\RoleController;
@@ -208,7 +210,10 @@ Route::group(
             });
 
             // Vehicle Data
+            Route::post('vehicle-data/assign-registration', [VehicleDataController::class, 'assignRegistration']);
             Route::apiResource('vehicle-data', VehicleDataController::class);
+            Route::apiResource('vehicle-document', VehicleDocumentController::class);
+
 
             // Material Transaction API
             Route::group(['prefix' => 'material-transaction', 'as' => 'material-transaction.'], function () {
