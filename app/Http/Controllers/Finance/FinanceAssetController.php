@@ -108,6 +108,7 @@ class FinanceAssetController extends Controller
     public function update(Request $request, string $id)
     {
         $request->validate([
+            'serial_number' => 'nullable|string',
             'economic_age' => 'nullable|integer|min:0',
             'depreciation' => 'nullable|numeric|min:0',
             'description' => 'nullable|string',
