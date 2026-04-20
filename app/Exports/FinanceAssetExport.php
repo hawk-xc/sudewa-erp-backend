@@ -24,8 +24,11 @@ class FinanceAssetExport implements FromCollection, WithHeadings
             ->join('assets', 'finance_assets.asset_id', '=', 'assets.id')
             ->select([
                 'assets.code as asset_code',
+                'assets.serial_number as serial_number',
                 'finance_assets.economic_age',
                 'finance_assets.depreciation',
+                'finance_assets.residual_value',
+                'finance_assets.final_value',
                 'finance_assets.description',
             ]);
 
@@ -51,8 +54,11 @@ class FinanceAssetExport implements FromCollection, WithHeadings
     {
         return [
             'Kode Asset',
+            'Nomor Seri',
             'Umur Ekonomis',
             'Depresiasi',
+            'Nilai Residu',
+            'Nilai Akhir',
             'Deskripsi',
         ];
     }

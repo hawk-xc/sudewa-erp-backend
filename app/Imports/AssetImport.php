@@ -36,6 +36,7 @@ class AssetImport implements ToCollection, WithHeadingRow
             foreach ($rows as $index => $row) {
                 $rowData = [
                     'name' => isset($row['nama_asset']) ? trim($row['nama_asset']) : null,
+                    'serial_number' => isset($row['nomor_seri']) ? trim($row['nomor_seri']) : null,
                     'purchase_date' => isset($row['tanggal_pembelian']) ? trim($row['tanggal_pembelian']) : null,
                     'type' => isset($row['tipe']) ? strtolower(trim($row['tipe'])) : 'inventory',
                     'price' => isset($row['harga']) ? (float) $row['harga'] : 0,
@@ -43,6 +44,7 @@ class AssetImport implements ToCollection, WithHeadingRow
 
                 $validator = Validator::make($rowData, [
                     'name' => 'required|string|max:255',
+                    'serial_number' => 'required|string|unique:assets,serial_number',
                     'purchase_date' => 'nullable|date',
                     'type' => 'required|in:inventory,vehicles,buildings,land',
                     'price' => 'nullable|numeric|min:0',
@@ -58,6 +60,7 @@ class AssetImport implements ToCollection, WithHeadingRow
                     'company_id' => $this->companyId,
                     'code' => $this->generateCode(),
                     'name' => $rowData['name'],
+                    'serial_number' => $rowData['serial_number'],
                     'purchase_date' => $rowData['purchase_date'],
                     'type' => $rowData['type'],
                     'price' => $rowData['price'],

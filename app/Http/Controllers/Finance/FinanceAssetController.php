@@ -30,7 +30,7 @@ class FinanceAssetController extends Controller
         $this->middleware(['permission:finance:edit'])->only('update');
 
         $this->financeAssetTable = [
-            'id', 'uuid', 'asset_id', 'serial_number', 'economic_age', 'depreciation',
+            'id', 'uuid', 'asset_id', 'economic_age', 'depreciation',
             'residual_value', 'final_value', 'description', 'created_at', 'updated_at'
         ];
     }
@@ -40,7 +40,7 @@ class FinanceAssetController extends Controller
      */
     public function index(Request $request)
     {
-        $query = FinanceAsset::query()->with('asset:id,code,name,type,purchase_date');
+        $query = FinanceAsset::query()->with('asset:id,code,serial_number,name,type,purchase_date');
         $query->select($this->financeAssetTable);
 
         try {
@@ -50,11 +50,17 @@ class FinanceAssetController extends Controller
 
                 $query->where(function ($q) use ($search, $caseSensitive) {
                     if ($caseSensitive) {
-                        $q->where('serial_number', 'LIKE BINARY', "%$search%")
-                            ->orWhere('description', 'LIKE BINARY', "%$search%");
+                        $q->where('description', 'LIKE BINARY', "%$search%")
+                            ->orWhereHas('asset', function ($query) use ($search) {
+                                $query->where('serial_number', 'LIKE BINARY', "%$search%")
+                                    ->orWhere('code', 'LIKE BINARY', "%$search%");
+                            });
                     } else {
-                        $q->where('serial_number', 'like', "%$search%")
-                            ->orWhere('description', 'like', "%$search%");
+                        $q->where('description', 'like', "%$search%")
+                            ->orWhereHas('asset', function ($query) use ($search) {
+                                $query->where('serial_number', 'like', "%$search%")
+                                    ->orWhere('code', 'like', "%$search%");
+                            });
                     }
                 });
             }
@@ -108,14 +114,15 @@ class FinanceAssetController extends Controller
     public function update(Request $request, string $id)
     {
         $request->validate([
-            'serial_number' => 'nullable|string|unique:finance_assets,serial_number,'.$id,
             'economic_age' => 'nullable|integer|min:0',
             'depreciation' => 'nullable|numeric|min:0',
+            'residual_value' => 'nullable|numeric|min:0',
+            'final_value' => 'nullable|numeric|min:0',
             'description' => 'nullable|string',
         ]);
 
         try {
-            $data = array_filter($request->only(['serial_number', 'economic_age', 'depreciation', 'description']), fn ($value) => $value !== '' && $value !== null);
+            $data = array_filter($request->only(['economic_age', 'depreciation', 'residual_value', 'final_value', 'description']), fn ($value) => $value !== '' && $value !== null);
 
             $asset = DB::transaction(function () use ($id, $data) {
                 $asset = FinanceAsset::findOrFail($id);

@@ -15,7 +15,6 @@ return new class extends Migration
             $table->id();
             $table->uuid('uuid')->unique();
             $table->foreignId('asset_id')->constrained('assets')->onDelete('cascade');
-            $table->string('serial_number')->nullable();
             $table->integer('economic_age')->default(0); // year
             $table->decimal('depreciation', 15, 2)->default(0);
             $table->decimal('residual_value', 15, 2)->default(0);

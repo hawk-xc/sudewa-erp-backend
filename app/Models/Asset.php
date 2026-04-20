@@ -16,6 +16,7 @@ class Asset extends Model
         'uuid',
         'company_id',
         'code',
+        'serial_number',
         'purchase_date',
         'name',
         'type', // inventory, vehicles, buildings, land

@@ -31,7 +31,7 @@ class MasterAssetController extends Controller
         $this->middleware(['permission:master-data:edit'])->only('update');
         $this->middleware(['permission:master-data:delete'])->only(['destroy']);
 
-        $this->assetTable = ['id', 'uuid', 'company_id', 'code', 'purchase_date', 'name', 'type', 'price', 'created_at', 'updated_at'];
+        $this->assetTable = ['id', 'uuid', 'company_id', 'code', 'serial_number', 'purchase_date', 'name', 'type', 'price', 'created_at', 'updated_at'];
     }
 
     private function generateCode(): string
@@ -67,10 +67,12 @@ class MasterAssetController extends Controller
                     if ($caseSensitive) {
                         $q->where('name', 'LIKE BINARY', "%$search%")
                             ->orWhere('code', 'LIKE BINARY', "%$search%")
+                            ->orWhere('serial_number', 'LIKE BINARY', "%$search%")
                             ->orWhere('type', 'LIKE BINARY', "%$search%");
                     } else {
                         $q->where('name', 'like', "%$search%")
                             ->orWhere('code', 'like', "%$search%")
+                            ->orWhere('serial_number', 'like', "%$search%")
                             ->orWhere('type', 'like', "%$search%");
                     }
                 });
@@ -127,6 +129,7 @@ class MasterAssetController extends Controller
         $validated = $request->validate([
             'company_id' => 'required|integer|exists:companies,id',
             'code' => 'required|string|unique:assets,code',
+            'serial_number' => 'required|string|unique:assets,serial_number',
             'name' => 'required|string|max:255',
             'purchase_date' => 'nullable|date',
             'type' => 'required|in:inventory,vehicles,buildings,land',
@@ -154,13 +157,14 @@ class MasterAssetController extends Controller
         $request->validate([
             'company_id' => 'sometimes|integer|exists:companies,id',
             'name' => 'sometimes|string|max:255',
+            'serial_number' => 'sometimes|string|unique:assets,serial_number,'.$id,
             'purchase_date' => 'nullable|date',
             'type' => 'sometimes|in:inventory,vehicles,buildings,land',
             'price' => 'nullable|numeric|min:0',
         ]);
 
         try {
-            $data = array_filter($request->only(['company_id', 'name', 'purchase_date', 'type', 'price']), fn ($value) => $value !== '');
+            $data = array_filter($request->only(['company_id', 'name', 'serial_number', 'purchase_date', 'type', 'price']), fn ($value) => $value !== '');
 
             if (empty($data)) {
                 return $this->responseError(null, 'No data provided to update', 422);

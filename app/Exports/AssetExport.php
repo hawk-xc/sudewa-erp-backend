@@ -66,6 +66,7 @@ class AssetExport implements FromCollection, WithHeadings
             'UUID',
             'Company ID',
             'Kode',
+            'Nomor Seri',
             'Tanggal Pembelian',
             'Nama Asset',
             'Tipe',
