@@ -12,6 +12,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
 
 /**
  * @group Transaction
@@ -44,6 +45,16 @@ class VehicleDocumentController extends Controller
         $query = VehicleDocument::query();
 
         $query->with(['vendor:id,name,code']);
+        $query->withCount([
+            'vehicleRegistrations as processed_count' => function ($query) {
+                $query->where('is_already_processed', true)
+                      ->whereColumn('process_date', 'vehicle_documents.receipt_date');
+            },
+            'vehicleRegistrations as unprocessed_count' => function ($query) {
+                $query->where('is_already_processed', false)
+                      ->whereColumn('process_date', 'vehicle_documents.receipt_date');
+            }
+        ]);
 
         try {
             if ($request->filled('search')) {
@@ -83,15 +94,16 @@ class VehicleDocumentController extends Controller
 
         $validator = Validator::make($request->all(), [
             'vendor_id' => 'required|integer|exists:persons,id',
-            'receipt_date' => 'required|date',
+            'receipt_date' => [
+                'required',
+                'date',
+                Rule::unique('vehicle_documents')->where(function ($query) use ($request) {
+                    return $query->where('vendor_id', $request->vendor_id);
+                }),
+            ],
             'description' => 'nullable|string',
-            'items' => 'required|array|min:1',
-            'items.*.vehicle_data_id' => 'required|integer|exists:vehicle_datas,id',
-            'items.*.vendor_id' => 'required|integer|exists:persons,id',
-            // Optional item fields
-            'items.*.bpkb_number' => 'nullable|string',
-            'items.*.tnkb_number' => 'nullable|string',
-            // ... (many more fields could be validated here if needed)
+        ], [
+            'receipt_date.unique' => 'A vehicle document for this vendor on this receipt date already exists.',
         ]);
 
         if ($validator->fails()) {
@@ -107,11 +119,7 @@ class VehicleDocumentController extends Controller
                     'description' => $request->description,
                 ]);
 
-                foreach ($request->items as $itemData) {
-                    $document->vehicleDocumentItems()->create($itemData);
-                }
-
-                return $document->load('vehicleDocumentItems');
+                return $document;
             });
 
             return $this->responseSuccess($document, 'Vehicle Document created successfully', 201);
@@ -127,11 +135,20 @@ class VehicleDocumentController extends Controller
     public function show(string $id)
     {
         try {
-            $document = VehicleDocument::with(['vendor', 'vehicleDocumentItems.vehicleData'])->find($id);
+            $document = VehicleDocument::with([
+                'vendor',
+                'vehicleDocumentItems.vehicleData',
+            ])->find($id);
 
             if (!$document) {
                 return $this->responseError(null, 'Vehicle Document not found', 404);
             }
+
+            // Load registrations with date filter manually to avoid SQL errors during eager loading
+            $document->load(['vehicleRegistrations' => function ($query) use ($document) {
+                $query->where('process_date', $document->receipt_date)
+                      ->with('vehicleData');
+            }]);
 
             return $this->responseSuccess($document, 'Vehicle Document retrieved successfully', 200);
         } catch (Exception $err) {

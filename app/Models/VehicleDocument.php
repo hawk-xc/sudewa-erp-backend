@@ -31,6 +31,11 @@ class VehicleDocument extends Model
         return $this->hasMany(VehicleDocumentItem::class);
     }
 
+    public function vehicleRegistrations()
+    {
+        return $this->hasMany(VehicleRegistration::class, 'vendor_id', 'vendor_id');
+    }
+
     protected static function booted()
     {
         static::creating(function ($model) {

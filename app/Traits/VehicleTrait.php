@@ -2,7 +2,7 @@
 
 namespace App\Traits;
 
-use App\Models\VehicleRegistration;
+use App\Models\VehicleDocument;
 use Illuminate\Support\Facades\DB;
 
 trait VehicleTrait
@@ -16,14 +16,13 @@ trait VehicleTrait
             $date = now()->format('ymd');
             $prefix = "TRM-{$date}";
 
-            $last = VehicleRegistration::where('code', 'like', "{$prefix}%")
+            $last = VehicleDocument::where('code', 'like', "{$prefix}%")
                 ->lockForUpdate()
                 ->orderByDesc('id')
                 ->first();
 
             $lastNumber = 0;
             if ($last) {
-                // Get the last 3 digits
                 $lastNumber = (int) substr($last->code, -3);
             }
 

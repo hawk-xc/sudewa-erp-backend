@@ -45,7 +45,7 @@ class VehicleData extends Model
         'color',
         'price',
         'chassis_number',
-        'engine_number',
+        'machine_number',
         'form_ab',
         'pib',
         'tpt_number',

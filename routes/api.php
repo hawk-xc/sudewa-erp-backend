@@ -15,7 +15,6 @@ use App\Http\Controllers\MasterData\MasterAssetController;
 use App\Http\Controllers\MasterData\MasterBrandController;
 use App\Http\Controllers\MasterData\MasterCashController;
 use App\Http\Controllers\MasterData\MasterCustomerController;
-use App\Http\Controllers\MasterData\MasterTarifController;
 use App\Http\Controllers\MasterData\MasterDealerController;
 use App\Http\Controllers\MasterData\MasterDriverController;
 use App\Http\Controllers\MasterData\MasterMaterialController;
@@ -24,16 +23,17 @@ use App\Http\Controllers\MasterData\MasterRegionController;
 use App\Http\Controllers\MasterData\MasterSparepartCategoryController;
 use App\Http\Controllers\MasterData\MasterSparepartController;
 use App\Http\Controllers\MasterData\MasterSupplierController;
+use App\Http\Controllers\MasterData\MasterTarifController;
 use App\Http\Controllers\MasterData\MasterUnitTypeController;
 use App\Http\Controllers\MasterData\MasterUnitTypePriceArchiveController;
 use App\Http\Controllers\MasterData\MasterVendorController;
-use App\Http\Controllers\Transaction\VehicleDataController;
-use App\Http\Controllers\Transaction\VehicleDocumentController;
 use App\Http\Controllers\MasterData\VehicleFleetController;
-
 use App\Http\Controllers\Permission\PermissionController;
 use App\Http\Controllers\Report\LiabilityController;
 use App\Http\Controllers\Role\RoleController;
+use App\Http\Controllers\Transaction\MaterialTransactionBillingController;
+use App\Http\Controllers\Transaction\MaterialTransactionController;
+use App\Http\Controllers\Transaction\MaterialTransactionDetailController;
 use App\Http\Controllers\Transaction\TransactionFlowController;
 use App\Http\Controllers\Transaction\UnitTransactionBillingController;
 use App\Http\Controllers\Transaction\UnitTransactionBillingHistoryController;
@@ -41,9 +41,9 @@ use App\Http\Controllers\Transaction\UnitTransactionController;
 use App\Http\Controllers\Transaction\UnitTransactionItemController;
 use App\Http\Controllers\Transaction\UnitTransactionItemDetailController;
 use App\Http\Controllers\Transaction\UnitTransactionItemSalesController;
-use App\Http\Controllers\Transaction\MaterialTransactionController;
-use App\Http\Controllers\Transaction\MaterialTransactionDetailController;
-use App\Http\Controllers\Transaction\MaterialTransactionBillingController;
+use App\Http\Controllers\Transaction\VehicleDataController;
+use App\Http\Controllers\Transaction\VehicleDocumentController;
+use App\Http\Controllers\Transaction\VehicleRegistrationController;
 use App\Http\Controllers\UnitTypeDetailReportController;
 use App\Http\Controllers\User\UserController;
 use App\Http\Controllers\Warehouse\WarehouseActivityController;
@@ -213,6 +213,7 @@ Route::group(
             Route::post('vehicle-data/assign-registration', [VehicleDataController::class, 'assignRegistration']);
             Route::apiResource('vehicle-data', VehicleDataController::class);
             Route::apiResource('vehicle-document', VehicleDocumentController::class);
+            Route::apiResource('vehicle-registration', VehicleRegistrationController::class);
 
 
             // Material Transaction API
