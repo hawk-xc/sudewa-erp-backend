@@ -47,7 +47,7 @@ class VehicleDataController extends Controller
     {
         $query = VehicleData::query();
 
-        $query->with(['dealer:id,name,code', 'region:id,name']);
+        $query->with(['dealer:id,name,code', 'region:id,name', 'vehicleRegistration:id,vendor_id,vehicle_data_id,process_date,is_already_processed']);
 
         try {
             if ($request->filled('search')) {
@@ -174,6 +174,25 @@ class VehicleDataController extends Controller
             'vehicle_data_ids.*' => 'required|integer|exists:vehicle_datas,id',
         ]);
 
+        $validator->after(function ($validator) use ($request) {
+            $ids = $request->input('vehicle_data_ids');
+            if (empty($ids) || !is_array($ids)) return;
+
+            $alreadyProcessed = VehicleRegistration::whereIn('vehicle_data_id', $ids)
+                ->where(function($q) {
+                    $q->where('is_already_processed', true)
+                      ->orWhere('is_already_processed', 1)
+                      ->orWhere('is_already_processed', '1');
+                })
+                ->pluck('vehicle_data_id')
+                ->toArray();
+
+            if (!empty($alreadyProcessed)) {
+                foreach ($alreadyProcessed as $id) {
+                    $validator->errors()->add('vehicle_data_ids', "Vehicle with ID $id has already been processed and cannot be re-assigned.");
+                }
+            }
+        });
 
         if ($validator->fails()) {
             return $this->responseError($validator->errors(), 'Validation failed', 422);
@@ -183,9 +202,12 @@ class VehicleDataController extends Controller
             $registrations = DB::transaction(function () use ($request) {
                 $results = [];
                 foreach ($request->vehicle_data_ids as $id) {
-                    // Check if already assigned
-                    $exists = VehicleRegistration::where('vehicle_data_id', $id)->exists();
-                    if ($exists) {
+                    $existing = VehicleRegistration::where('vehicle_data_id', $id)->first();
+                    
+                    if ($existing) {
+                        if ($existing->is_already_processed) {
+                            continue;
+                        }
                         continue;
                     }
 
@@ -193,7 +215,7 @@ class VehicleDataController extends Controller
                         'vendor_id' => $request->vendor_id,
                         'vehicle_data_id' => $id,
                         'process_date' => $request->process_date,
-                        'is_already_processed' => false,
+                        'is_already_processed' => true,
                     ]);
                 }
                 return $results;
