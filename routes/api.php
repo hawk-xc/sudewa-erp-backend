@@ -215,13 +215,10 @@ Route::group(
             Route::apiResource('vehicle-document', VehicleDocumentController::class);
             Route::apiResource('vehicle-registration', VehicleRegistrationController::class);
 
-
             // Material Transaction API
-            Route::group(['prefix' => 'material-transaction', 'as' => 'material-transaction.'], function () {
-                Route::apiResource('material-transaction', MaterialTransactionController::class);
-                Route::apiResource('material-transaction-detail', MaterialTransactionDetailController::class);
-                Route::apiResource('material-transaction-billing', MaterialTransactionBillingController::class);
-            });
+            Route::apiResource('material-transaction', MaterialTransactionController::class);
+            Route::apiResource('material-transaction-detail', MaterialTransactionDetailController::class);
+            Route::apiResource('material-transaction-billing', MaterialTransactionBillingController::class);
         });
 
         // Finance

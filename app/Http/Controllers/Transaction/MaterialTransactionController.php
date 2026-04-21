@@ -46,11 +46,12 @@ class MaterialTransactionController extends Controller
                 'description' => 'nullable|string',
             ]);
 
-            $data = DB::transaction(function () use ($validated) {
+            $data = DB::transaction(function () use ($request, $validated) {
                 $validated['code'] = $this->generateMaterialCode($validated['type']);
+                $typeState = $request->type == "purchase" ? "pembelian" : "penjualan";
                 
                 if (empty($validated['description'])) {
-                    $validated['description'] = "Pembayaran pembelian material ke " . $validated['supplier_name'];
+                    $validated['description'] = "Pembayaran " . $typeState . " material ke " . $validated['supplier_name'];
                 }
 
                 return MaterialTransaction::create($validated);
@@ -77,7 +78,6 @@ class MaterialTransactionController extends Controller
     {
         try {
             $validated = $request->validate([
-                'type' => 'sometimes|required|in:purchase,sales',
                 'supplier_name' => 'sometimes|required|string|max:255',
                 'transaction_date' => 'sometimes|required|date',
                 'description' => 'nullable|string',

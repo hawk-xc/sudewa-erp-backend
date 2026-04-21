@@ -23,6 +23,15 @@ class MaterialTransactionDetail extends Model
         'description',
     ];
 
+    protected $appends = [
+        'total',
+    ];
+
+    public function getTotalAttribute()
+    {
+        return $this->price * $this->qty;
+    }
+
     public function materialTransaction()
     {
         return $this->belongsTo(MaterialTransaction::class);
