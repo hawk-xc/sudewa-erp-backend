@@ -88,6 +88,14 @@ class MaterialTransactionDetailController extends Controller
             ]);
 
             $data = DB::transaction(function () use ($validated) {
+                $exists = MaterialTransactionDetail::where('material_transaction_id', $validated['material_transaction_id'])
+                    ->where('material_id', $validated['material_id'])
+                    ->exists();
+
+                if ($exists) {
+                    throw new Exception('Material ini sudah ada dalam transaksi ini.');
+                }
+
                 if (empty($validated['description'])) {
                     $transaction = MaterialTransaction::findOrFail($validated['material_transaction_id']);
                     $typeState = $transaction->type == "purchase" ? "pembelian" : "penjualan";
@@ -127,6 +135,18 @@ class MaterialTransactionDetailController extends Controller
             $data = MaterialTransactionDetail::findOrFail($id);
             
             DB::transaction(function () use ($validated, $data) {
+                $materialTransactionId = $validated['material_transaction_id'] ?? $data->material_transaction_id;
+                $materialId = $validated['material_id'] ?? $data->material_id;
+
+                $exists = MaterialTransactionDetail::where('material_transaction_id', $materialTransactionId)
+                    ->where('material_id', $materialId)
+                    ->where('id', '!=', $data->id)
+                    ->exists();
+
+                if ($exists) {
+                    throw new Exception('This material already exists in this transaction.');
+                }
+
                 $data->update($validated);
             });
 
