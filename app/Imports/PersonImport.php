@@ -37,6 +37,15 @@ class PersonImport implements ToCollection, WithHeadingRow
                     'telp' => $row['telp'] ?? null,
                     'npwp' => $row['npwp'] ?? null,
                     'nama_pic' => $row['nama_pic'] ?? null,
+                    'identity_number' => $row['identity_number'] ?? $row['no_identitas'] ?? $row['nik'] ?? null,
+                    'drive_license_identity_number' => $row['drive_license_identity_number'] ?? $row['no_sim'] ?? $row['sim'] ?? null,
+                    'image' => $row['image'] ?? $row['foto'] ?? null,
+                    'map_link' => $row['map_link'] ?? null,
+                    'social_media_1_link' => $row['social_media_1_link'] ?? null,
+                    'social_media_2_link' => $row['social_media_2_link'] ?? null,
+                    'social_media_3_link' => $row['social_media_3_link'] ?? null,
+                    'social_media_4_link' => $row['social_media_4_link'] ?? null,
+                    'website_link' => $row['website_link'] ?? null,
                 ];
 
                 $validator = Validator::make($rowData, [
@@ -45,6 +54,15 @@ class PersonImport implements ToCollection, WithHeadingRow
                     'telp' => 'nullable|string|max:255',
                     'npwp' => 'nullable|string|max:255',
                     'nama_pic' => 'nullable|string|max:255',
+                    'identity_number' => 'nullable|string|max:255',
+                    'drive_license_identity_number' => 'nullable|string|max:255',
+                    'image' => 'nullable|string|max:255',
+                    'map_link' => 'nullable|string|max:255',
+                    'social_media_1_link' => 'nullable|string|max:255',
+                    'social_media_2_link' => 'nullable|string|max:255',
+                    'social_media_3_link' => 'nullable|string|max:255',
+                    'social_media_4_link' => 'nullable|string|max:255',
+                    'website_link' => 'nullable|string|max:255',
                 ]);
 
                 if ($validator->fails()) {
@@ -62,6 +80,15 @@ class PersonImport implements ToCollection, WithHeadingRow
                     'phone' => $rowData['telp'],
                     'npwp' => $rowData['npwp'],
                     'pic_name' => $rowData['nama_pic'],
+                    'identity_number' => $rowData['identity_number'],
+                    'drive_license_identity_number' => $rowData['drive_license_identity_number'],
+                    'image' => $rowData['image'],
+                    'map_link' => $rowData['map_link'],
+                    'social_media_1_link' => $rowData['social_media_1_link'],
+                    'social_media_2_link' => $rowData['social_media_2_link'],
+                    'social_media_3_link' => $rowData['social_media_3_link'],
+                    'social_media_4_link' => $rowData['social_media_4_link'],
+                    'website_link' => $rowData['website_link'],
                 ]);
             }
         });

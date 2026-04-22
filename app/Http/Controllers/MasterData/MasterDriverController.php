@@ -9,6 +9,7 @@ use App\Repositories\AuthRepository;
 use App\Exports\PersonExport;
 use App\Traits\PersonTrait;
 use App\Traits\ResponseTrait;
+use App\Traits\FileTrait;
 use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -22,7 +23,7 @@ use Maatwebsite\Excel\Facades\Excel;
  */
 class MasterDriverController extends Controller
 {
-    use PersonTrait, ResponseTrait;
+    use PersonTrait, ResponseTrait, FileTrait;
 
     protected AuthRepository $authRepository;
 
@@ -38,7 +39,7 @@ class MasterDriverController extends Controller
 
         $this->authRepository = $ar;
 
-        $this->personTable = ['id', 'uuid', 'pic_name', 'code', 'type', 'name', 'address', 'npwp', 'phone', 'identity_number', 'drive_license_identity_number', 'image', 'map_link', 'social_media_1_link', 'social_media_2_link', 'social_media_3_link', 'social_media_4_link', 'website_link', 'created_at'];
+        $this->personTable = ['id', 'uuid', 'pic_name', 'code', 'type', 'name', 'address', 'npwp', 'phone', 'identity_number', 'drive_license_identity_number', 'image', 'map_link', 'social_media_1_link', 'social_media_2_link', 'social_media_3_link', 'social_media_4_link', 'website_link', 'join_date', 'created_at'];
     }
 
     /**
@@ -133,8 +134,24 @@ class MasterDriverController extends Controller
             'phone' => 'sometimes|string|max:249',
             'npwp' => 'sometimes|string',
             'pic_name' => 'nullable|string',
+            'identity_number' => 'nullable|string|max:255',
+            'drive_license_identity_number' => 'nullable|string|max:255',
+            'image' => 'nullable|file|mimes:jpg,jpeg,png,webp|max:2048',
             'map_link' => 'nullable|string',
+            'social_media_1_link' => 'nullable|string',
+            'social_media_2_link' => 'nullable|string',
+            'social_media_3_link' => 'nullable|string',
+            'social_media_4_link' => 'nullable|string',
+            'website_link' => 'nullable|string',
+            'join_date' => 'nullable|date',
         ]);
+
+        if ($request->hasFile('image')) {
+            $validated['image'] = $this->storeFile(
+                $request->file('image'),
+                'person_images'
+            );
+        }
 
         try {
             $person = DB::transaction(function () use ($validated) {
@@ -164,19 +181,55 @@ class MasterDriverController extends Controller
             'phone' => 'sometimes|string|max:249',
             'npwp' => 'sometimes|string',
             'pic_name' => 'sometimes|string',
+            'identity_number' => 'nullable|string|max:255',
+            'drive_license_identity_number' => 'nullable|string|max:255',
+            'image' => 'nullable|file|mimes:jpg,jpeg,png,webp|max:2048',
             'map_link' => 'nullable|string',
+            'social_media_1_link' => 'nullable|string',
+            'social_media_2_link' => 'nullable|string',
+            'social_media_3_link' => 'nullable|string',
+            'social_media_4_link' => 'nullable|string',
+            'website_link' => 'nullable|string',
+            'join_date' => 'nullable|date',
         ]);
 
         try {
-            $data = array_filter($request->only(['company_id', 'pic_name', 'name', 'address', 'phone', 'npwp', 'map_link']), fn ($value) => ! is_null($value) && $value !== '');
+            $person = Person::findOrFail($id);
+
+            $data = array_filter($request->only([
+                'company_id',
+                'pic_name',
+                'name',
+                'address',
+                'phone',
+                'npwp',
+                'identity_number',
+                'drive_license_identity_number',
+                'map_link',
+                'social_media_1_link',
+                'social_media_2_link',
+                'social_media_3_link',
+                'social_media_4_link',
+                'website_link',
+                'join_date',
+            ]), fn ($value) => ! is_null($value) && $value !== '');
+
+            if ($request->hasFile('image')) {
+                if ($person->image) {
+                    $this->destroyFile($person->image);
+                }
+
+                $data['image'] = $this->storeFile(
+                    $request->file('image'),
+                    'person_images'
+                );
+            }
 
             if (empty($data)) {
                 return $this->responseError(null, 'No data provided to update', 422);
             }
 
-            $person = DB::transaction(function () use ($id, $data) {
-                $person = Person::findOrFail($id);
-
+            $person = DB::transaction(function () use ($person, $data) {
                 $person->update($data);
 
                 return $person->fresh();
@@ -197,6 +250,11 @@ class MasterDriverController extends Controller
     {
         try {
             $person = Person::where('type', 'driver')->findOrFail($id);
+            
+            if ($person->image) {
+                $this->destroyFile($person->image);
+            }
+
             $person->delete();
 
             return $this->responseSuccess([], 'driver Deleted Successfully', 200);
