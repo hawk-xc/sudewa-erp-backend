@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Transaction;
 use App\Http\Controllers\Controller;
 use App\Models\Cash;
 use App\Models\FinanceBilling;
+use App\Models\TransactionFlow;
 use App\Models\UnitTransactionBilling;
 use App\Models\UnitTransactionBillingHistory;
 use App\Models\UnitTypeDetailPpn;
@@ -159,14 +160,35 @@ class UnitTransactionBillingHistoryController extends Controller
                     }
                 }
 
+                $unitTransaction = $billing->unitTransaction;
+                $itemDetails = $unitTransaction->unitTransactionItems->map(function ($item) {
+                    $name = $item->unitType?->name ?? $item->sparepart?->name ?? 'Unknown';
+                    return "{$item->qty_total} {$name}";
+                })->implode(', ');
+
+                $itemCount = $unitTransaction->unitTransactionItems->count();
+                $transactionTypeLabel = $unitTransaction->type === 'sales' ? 'Penjualan' : 'Pembelian';
+                $prefixLabel = $unitTransaction->type === 'sales' ? 'diterima' : 'dibayar';
+
+                TransactionFlow::updateOrCreate(
+                    ['unit_transaction_id' => $unitTransaction->id],
+                    [
+                        'company_id' => $companyId,
+                        'code' => $unitTransaction->code,
+                        'transaction_date' => now(),
+                        'name' => $unitTransaction->person->name ?? null,
+                        'description' => "{$transactionTypeLabel} {$prefixLabel} dimuka ke-{$itemCount} unit spm: {$itemDetails}",
+                        'bank_idr_debit' => $unitTransaction->type === 'sales' ? $unitTransaction->getBrutoAmount() : 0,
+                        'bank_idr_credit' => $unitTransaction->type === 'purchase' ? $unitTransaction->getBrutoAmount() : 0,
+                    ]
+                );
+
                 if ($remaining <= 0) {
 
-                    // automate change stock state into inbound_incoming_goods
                     $billing->unitTransaction->update([
                         'stock_state' => 'inbound_incoming_goods',
                     ]);
 
-                    // Create Finance Billing Data
                     FinanceBilling::create([
                         'unit_transaction_billing_id' => $billing->id,
                         'grand_total' => $billing->grand_total,
