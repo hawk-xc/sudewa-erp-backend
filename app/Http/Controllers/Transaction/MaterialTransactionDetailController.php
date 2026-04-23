@@ -15,85 +15,118 @@ class MaterialTransactionDetailController extends Controller
 {
     use ResponseTrait;
 
+    // projection
+    protected $materialTransactionDetailTable;
+
+    public function __construct()
+    {
+        $this->middleware(['permission:transaction:list'])->only(['index', 'show']);
+        $this->middleware(['permission:transaction:create'])->only('store');
+        $this->middleware(['permission:transaction:edit'])->only('update');
+        $this->middleware(['permission:transaction:delete'])->only(['destroy']);
+
+        $this->materialTransactionDetailTable = [
+            'id',
+            'uuid',
+            'material_transaction_id',
+            'material_id',
+            'qty',
+            'price',
+            'in_stock',
+            'is_forecast',
+            'description',
+            'created_at',
+        ];
+    }
+
+    /**
+     * List all material transaction details.
+     */
     public function index(Request $request)
     {
+        $query = MaterialTransactionDetail::with(['materialTransaction', 'material']);
+
+        $query->select($this->materialTransactionDetailTable);
+
         try {
-            $query = MaterialTransactionDetail::with(['materialTransaction', 'material']);
-
-            if ($request->filled('material_transaction_id')) {
-                $query->where('material_transaction_id', $request->material_transaction_id);
-            }
-
-            if ($request->filled('material_id')) {
-                $query->where('material_id', $request->material_id);
-            }
-
-            if ($request->filled('in_stock')) {
-                $query->where('in_stock', $request->in_stock == 'true' || $request->in_stock == '1');
-            }
-
-            if ($request->filled('is_forecast')) {
-                $query->where('is_forecast', $request->is_forecast == 'true' || $request->is_forecast == '1');
-            }
-
-            if ($request->filled('type')) {
-                $query->whereHas('materialTransaction', function ($q) use ($request) {
-                    $q->where('type', $request->type);
-                });
-            }
-
             if ($request->filled('search')) {
                 $search = $request->search;
-                $query->where(function ($q) use ($search) {
-                    $q->where('description', 'like', "%$search%")
-                        ->orWhereHas('material', function ($mq) use ($search) {
-                            $mq->where('name', 'like', "%$search%")
-                                ->orWhere('code', 'like', "%$search%");
-                        })
-                        ->orWhereHas('materialTransaction', function ($tq) use ($search) {
-                            $tq->where('code', 'like', "%$search%")
-                                ->orWhere('supplier_name', 'like', "%$search%");
-                        });
+                $caseSensitive = $request->boolean('case_sensitive');
+
+                $query->where(function ($q) use ($search, $caseSensitive) {
+                    if ($caseSensitive) {
+                        $q->where('description', 'LIKE BINARY', "%$search%")
+                            ->orWhereHas('material', function ($mq) use ($search) {
+                                $mq->where('name', 'LIKE BINARY', "%$search%")
+                                    ->orWhere('code', 'LIKE BINARY', "%$search%");
+                            })
+                            ->orWhereHas('materialTransaction', function ($tq) use ($search) {
+                                $tq->where('code', 'LIKE BINARY', "%$search%")
+                                    ->orWhere('supplier_name', 'LIKE BINARY', "%$search%");
+                            });
+                    } else {
+                        $q->where('description', 'like', "%$search%")
+                            ->orWhereHas('material', function ($mq) use ($search) {
+                                $mq->where('name', 'like', "%$search%")
+                                    ->orWhere('code', 'like', "%$search%");
+                            })
+                            ->orWhereHas('materialTransaction', function ($tq) use ($search) {
+                                $tq->where('code', 'like', "%$search%")
+                                    ->orWhere('supplier_name', 'like', "%$search%");
+                            });
+                    }
                 });
             }
 
-            $sortBy = $request->input('sort_by', 'id');
-            $sortOrder = $request->input('sort_order', 'desc');
-            $allowedSort = ['id', 'qty', 'price', 'created_at', 'in_stock', 'is_forecast'];
-
-            if (in_array($sortBy, $allowedSort)) {
-                $query->orderBy($sortBy, $sortOrder === 'asc' ? 'asc' : 'desc');
-            } else {
-                $query->orderBy('id', 'desc');
+            foreach ($this->materialTransactionDetailTable as $field) {
+                if ($request->filled($field)) {
+                    $query->where($field, $request->$field);
+                }
             }
 
-            $data = $query->paginate($request->per_page ?? 10);
+            $allowedSort = $this->materialTransactionDetailTable;
 
-            return $this->responseSuccess($data, 'Material Transaction Detail list retrieved successfully');
-        } catch (Exception $e) {
-            Log::error('Error retrieved Material Transaction Detail list: ' . $e->getMessage());
-            return $this->responseError($e->getMessage(), 'Failed to retrieve Material Transaction Detail list', 500);
+            $sortBy = in_array($request->sort_by, $allowedSort)
+                ? $request->sort_by
+                : 'id';
+
+            $sortOrder = $request->sort_order === 'asc' ? 'asc' : 'desc';
+
+            $query->orderBy($sortBy, $sortOrder);
+
+            $perPage = $request->per_page ?? 10;
+
+            $data = $query->paginate($perPage);
+
+            return $this->responseSuccess($data, 'Material Transaction Detail list retrieved successfully', 200);
+        } catch (Exception $err) {
+            Log::error('Error While retrieved Material Transaction Detail data : '.$err->getMessage());
+
+            return $this->responseError($err->getMessage(), 'Material Transaction Detail list retrieved Failed', 500);
         }
     }
 
+    /**
+     * Store a new material transaction detail.
+     */
     public function store(Request $request)
     {
-        try {
-            $validated = $request->validate([
-                'material_transaction_id' => 'required|exists:material_transactions,id',
-                'material_id' => 'required|exists:materials,id',
-                'qty' => 'required|integer|min:1',
-                'price' => 'required|numeric|min:0',
-                'description' => 'nullable|string',
-            ]);
+        $validated = $request->validate([
+            'material_transaction_id' => 'required|exists:material_transactions,id',
+            'material_id' => 'required|exists:materials,id',
+            'qty' => 'required|integer|min:1',
+            'price' => 'required|numeric|min:0',
+            'description' => 'nullable|string',
+        ]);
 
+        try {
             $data = DB::transaction(function () use ($validated) {
                 $exists = MaterialTransactionDetail::where('material_transaction_id', $validated['material_transaction_id'])
                     ->where('material_id', $validated['material_id'])
                     ->exists();
 
                 if ($exists) {
-                    throw new Exception('Material ini sudah ada dalam transaksi ini.');
+                    throw new Exception('This material already exists in this transaction.');
                 }
 
                 if (empty($validated['description'])) {
@@ -101,73 +134,102 @@ class MaterialTransactionDetailController extends Controller
                     $typeState = $transaction->type == "purchase" ? "pembelian" : "penjualan";
                     $validated['description'] = "Pembayaran " . $typeState . " material ke " . $transaction->supplier_name;
                 }
+
                 return MaterialTransactionDetail::create($validated);
             });
 
             return $this->responseSuccess($data, 'Material Transaction Detail created successfully', 201);
-        } catch (Exception $e) {
-            Log::error('Error creating Material Transaction Detail: ' . $e->getMessage());
-            return $this->responseError($e->getMessage(), 'Failed to create Material Transaction Detail', 500);
+        } catch (Exception $err) {
+            Log::error('Error while trying create Material Transaction Detail Data : '.$err->getMessage());
+
+            return $this->responseError($err->getMessage(), 'Material Transaction Detail creation failed', 500);
         }
     }
 
+    /**
+     * Get material transaction detail.
+     */
     public function show($id)
     {
         try {
-            $data = MaterialTransactionDetail::with(['materialTransaction', 'material'])->findOrFail($id);
-            return $this->responseSuccess($data, 'Material Transaction Detail detail retrieved successfully');
-        } catch (Exception $e) {
-            return $this->responseError($e->getMessage(), 'Material Transaction Detail not found', 404);
+            $data = MaterialTransactionDetail::with(['materialTransaction', 'material'])
+                ->select($this->materialTransactionDetailTable)
+                ->findOrFail($id);
+
+            return $this->responseSuccess($data, 'Material Transaction Detail detail retrieved successfully', 200);
+        } catch (Exception $err) {
+            Log::error('Error While retrieved Material Transaction Detail data : '.$err->getMessage());
+
+            return $this->responseError($err->getMessage(), 'Material Transaction Detail not found', 404);
         }
     }
 
+    /**
+     * Update a material transaction detail.
+     */
     public function update(Request $request, $id)
     {
-        try {
-            $validated = $request->validate([
-                'material_transaction_id' => 'sometimes|required|exists:material_transactions,id',
-                'material_id' => 'sometimes|required|exists:materials,id',
-                'qty' => 'sometimes|required|integer|min:1',
-                'price' => 'sometimes|required|numeric|min:0',
-                'description' => 'nullable|string',
-            ]);
+        $request->validate([
+            'material_transaction_id' => 'sometimes|required|exists:material_transactions,id',
+            'material_id' => 'sometimes|required|exists:materials,id',
+            'qty' => 'sometimes|required|integer|min:1',
+            'price' => 'sometimes|required|numeric|min:0',
+            'description' => 'nullable|string',
+        ]);
 
-            $data = MaterialTransactionDetail::findOrFail($id);
+        try {
+            $detail = MaterialTransactionDetail::findOrFail($id);
             
-            DB::transaction(function () use ($validated, $data) {
-                $materialTransactionId = $validated['material_transaction_id'] ?? $data->material_transaction_id;
-                $materialId = $validated['material_id'] ?? $data->material_id;
+            $data = array_filter(
+                $request->only(['material_transaction_id', 'material_id', 'qty', 'price', 'description']),
+                fn ($val) => ! is_null($val) && $val !== ''
+            );
+
+            if (empty($data)) {
+                return $this->responseError(null, 'No data provided to update', 422);
+            }
+
+            DB::transaction(function () use ($data, $detail) {
+                $materialTransactionId = $data['material_transaction_id'] ?? $detail->material_transaction_id;
+                $materialId = $data['material_id'] ?? $detail->material_id;
 
                 $exists = MaterialTransactionDetail::where('material_transaction_id', $materialTransactionId)
                     ->where('material_id', $materialId)
-                    ->where('id', '!=', $data->id)
+                    ->where('id', '!=', $detail->id)
                     ->exists();
 
                 if ($exists) {
                     throw new Exception('This material already exists in this transaction.');
                 }
 
-                $data->update($validated);
+                $detail->update($data);
             });
 
-            return $this->responseSuccess($data, 'Material Transaction Detail updated successfully');
-        } catch (Exception $e) {
-            Log::error('Error updating Material Transaction Detail: ' . $e->getMessage());
-            return $this->responseError($e->getMessage(), 'Failed to update Material Transaction Detail', 500);
+            return $this->responseSuccess($detail->fresh(), 'Material Transaction Detail updated successfully', 200);
+        } catch (Exception $err) {
+            Log::error('Error while trying update Material Transaction Detail data : '.$err->getMessage());
+
+            return $this->responseError($err->getMessage(), 'Material Transaction Detail update failed', 500);
         }
     }
 
+    /**
+     * Delete a material transaction detail.
+     */
     public function destroy($id)
     {
         try {
             $data = MaterialTransactionDetail::findOrFail($id);
+
             DB::transaction(function () use ($data) {
                 $data->delete();
             });
-            return $this->responseSuccess(null, 'Material Transaction Detail deleted successfully');
-        } catch (Exception $e) {
-            Log::error('Error deleting Material Transaction Detail: ' . $e->getMessage());
-            return $this->responseError($e->getMessage(), 'Failed to delete Material Transaction Detail', 500);
+
+            return $this->responseSuccess(null, 'Material Transaction Detail deleted successfully', 200);
+        } catch (Exception $err) {
+            Log::error('Error while trying delete Material Transaction Detail data : '.$err->getMessage());
+
+            return $this->responseError($err->getMessage(), 'Material Transaction Detail deletion failed', 500);
         }
     }
 }

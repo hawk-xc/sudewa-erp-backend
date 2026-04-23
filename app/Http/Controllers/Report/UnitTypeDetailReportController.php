@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Report;
 
 use App\Exports\UnitTypeDetailReportExport;
 use App\Models\UnitTransactionItemDetail;
@@ -8,6 +8,7 @@ use App\Repositories\AuthRepository;
 use App\Traits\ResponseTrait;
 use Exception;
 use Illuminate\Http\Request;
+use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Log;
 use Maatwebsite\Excel\Facades\Excel;
 
@@ -50,6 +51,12 @@ class UnitTypeDetailReportController extends Controller
             if ($request->filled('type')) {
                 $query->whereHas('unitTransactionItem.unitTransaction', function ($q) use ($request) {
                     $q->where('type', $request->type);
+                });
+            }
+
+            if ($request->filled('warehouse_id')) {
+                $query->whereHas('unitTransactionItem.unitTransaction', function ($q) use ($request) {
+                    $q->where('warehouse_id', $request->warehouse_id);
                 });
             }
 

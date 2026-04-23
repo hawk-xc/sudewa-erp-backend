@@ -44,7 +44,8 @@ use App\Http\Controllers\Transaction\UnitTransactionItemSalesController;
 use App\Http\Controllers\Transaction\VehicleDataController;
 use App\Http\Controllers\Transaction\VehicleDocumentController;
 use App\Http\Controllers\Transaction\VehicleRegistrationController;
-use App\Http\Controllers\UnitTypeDetailReportController;
+use App\Http\Controllers\Report\UnitTypeDetailReportController;
+use App\Http\Controllers\Report\TransactionReportController;
 use App\Http\Controllers\User\UserController;
 use App\Http\Controllers\Warehouse\WarehouseActivityController;
 use App\Http\Controllers\Warehouse\WarehouseController;
@@ -237,6 +238,8 @@ Route::group(
 
         // Report Data
         Route::group(['prefix' => 'report', 'as' => 'report.'], function () {
+            Route::get('transaction-purchase-report', [TransactionReportController::class, 'purchaseTransactionReport']);
+            Route::get('transaction-sales-report', [TransactionReportController::class, 'salesTransactionReport']);
             Route::apiResource('liability-report', LiabilityController::class)->only(['index', 'show']);
             Route::get('unit-type-detail-report', [UnitTypeDetailReportController::class, 'index']);
             Route::get('unit-type-detail-stock', [UnitTransactionController::class, 'getStock']);

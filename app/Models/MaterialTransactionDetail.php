@@ -23,6 +23,14 @@ class MaterialTransactionDetail extends Model
         'description',
     ];
 
+    protected $casts = [
+        'material_transaction_id' => 'integer',
+        'material_id' => 'integer',
+        'qty' => 'integer',
+        'in_stock' => 'boolean',
+        'is_forecast' => 'boolean',
+    ];
+
     protected $appends = [
         'total',
     ];

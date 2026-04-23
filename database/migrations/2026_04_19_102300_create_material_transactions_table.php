@@ -19,6 +19,7 @@ return new class extends Migration
             $table->string('supplier_name');
             $table->date('transaction_date');
             $table->text('description')->nullable();
+            $table->boolean('is_paid')->default(false)->nullable(false);
             $table->timestamps();
         });
     }

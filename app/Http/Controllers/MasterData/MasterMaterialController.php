@@ -21,30 +21,49 @@ class MasterMaterialController extends Controller
 {
     use ResponseTrait;
 
-    protected $materialTable = [
-        'id',
-        'uuid',
-        'code',
-        'name',
-        'price',
-        'type',
-        'created_at',
-    ];
+    // projection
+    protected $materialTable;
+
+    public function __construct()
+    {
+        $this->middleware(['permission:master-data:list'])->only(['index', 'show']);
+        $this->middleware(['permission:master-data:create'])->only('store');
+        $this->middleware(['permission:master-data:edit'])->only('update');
+        $this->middleware(['permission:master-data:delete'])->only(['destroy']);
+
+        $this->materialTable = [
+            'id',
+            'uuid',
+            'code',
+            'name',
+            'price',
+            'type',
+            'created_at',
+        ];
+    }
 
     /**
      * List all materials.
      */
     public function index(Request $request)
     {
-        $query = Material::query()->select($this->materialTable);
+        $query = Material::query();
+
+        $query->select($this->materialTable);
 
         try {
             if ($request->filled('search')) {
                 $search = $request->search;
+                $caseSensitive = $request->boolean('case_sensitive');
 
-                $query->where(function ($q) use ($search) {
-                    $q->where('name', 'like', "%$search%")
-                        ->orWhere('code', 'like', "%$search%");
+                $query->where(function ($q) use ($search, $caseSensitive) {
+                    if ($caseSensitive) {
+                        $q->where('name', 'LIKE BINARY', "%$search%")
+                            ->orWhere('code', 'LIKE BINARY', "%$search%");
+                    } else {
+                        $q->where('name', 'like', "%$search%")
+                            ->orWhere('code', 'like', "%$search%");
+                    }
                 });
             }
 
@@ -54,7 +73,9 @@ class MasterMaterialController extends Controller
                 }
             }
 
-            $sortBy = in_array($request->sort_by, $this->materialTable)
+            $allowedSort = $this->materialTable;
+
+            $sortBy = in_array($request->sort_by, $allowedSort)
                 ? $request->sort_by
                 : 'id';
 
@@ -62,13 +83,15 @@ class MasterMaterialController extends Controller
 
             $query->orderBy($sortBy, $sortOrder);
 
-            $data = $query->paginate($request->per_page ?? 10);
+            $perPage = $request->per_page ?? 10;
+
+            $data = $query->paginate($perPage);
 
             return $this->responseSuccess($data, 'Material list retrieved successfully', 200);
         } catch (Exception $err) {
-            Log::error('Error get materials: '.$err->getMessage());
+            Log::error('Error While retrieved Material data : '.$err->getMessage());
 
-            return $this->responseError($err->getMessage(), 'Failed to retrieve materials', 500);
+            return $this->responseError($err->getMessage(), 'Material list retrieved Failed', 500);
         }
     }
 
@@ -86,9 +109,9 @@ class MasterMaterialController extends Controller
 
             return $this->responseSuccess($material, 'Material retrieved successfully', 200);
         } catch (Exception $err) {
-            Log::error('Error get material: '.$err->getMessage());
+            Log::error('Error While retrieved Material data : '.$err->getMessage());
 
-            return $this->responseError($err->getMessage(), 'Failed to retrieve material', 500);
+            return $this->responseError($err->getMessage(), 'Material retrieved Failed', 500);
         }
     }
 
@@ -117,9 +140,9 @@ class MasterMaterialController extends Controller
 
             return $this->responseSuccess($material, 'Material created successfully', 201);
         } catch (Exception $err) {
-            Log::error('Error create material: '.$err->getMessage());
+            Log::error('Error while trying create Material Data : '.$err->getMessage());
 
-            return $this->responseError($err->getMessage(), 'Failed to create material', 500);
+            return $this->responseError($err->getMessage(), 'Error while trying create Material Data', 500);
         }
     }
 
@@ -152,11 +175,11 @@ class MasterMaterialController extends Controller
                 return $material->fresh();
             });
 
-            return $this->responseSuccess($material, 'Material updated successfully', 200);
+            return $this->responseSuccess($material, 'Material Updated Successfully', 200);
         } catch (Exception $err) {
-            Log::error('Error update material: '.$err->getMessage());
+            Log::error('Error while trying update Material data : '.$err->getMessage());
 
-            return $this->responseError($err->getMessage(), 'Failed to update material', 500);
+            return $this->responseError($err->getMessage(), 'Error while trying update Material data', 500);
         }
     }
 
@@ -169,11 +192,11 @@ class MasterMaterialController extends Controller
             $material = Material::findOrFail($id);
             $material->delete();
 
-            return $this->responseSuccess([], 'Material deleted successfully', 200);
+            return $this->responseSuccess([], 'Material Deleted Successfully', 200);
         } catch (Exception $err) {
-            Log::error('Error delete material: '.$err->getMessage());
+            Log::error('Error while trying delete Material data : '.$err->getMessage());
 
-            return $this->responseError($err->getMessage(), 'Failed to delete material', 500);
+            return $this->responseError($err->getMessage(), 'Material Deleted Failed', 500);
         }
     }
 

@@ -21,6 +21,13 @@ class MaterialTransactionBilling extends Model
         'description',
     ];
 
+    protected $casts = [
+        'material_transaction_id' => 'integer',
+        'cash_id' => 'integer',
+        'is_paid' => 'boolean',
+        'amount' => 'decimal:2',
+    ];
+
     public function materialTransaction()
     {
         return $this->belongsTo(MaterialTransaction::class);
