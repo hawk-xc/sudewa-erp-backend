@@ -169,7 +169,6 @@ class AuthController extends Controller
         return [
             'access_token' => $token,
             'token_type'   => 'bearer',
-            // TTL asli dari jwt.php config (dalam menit), dikali 60 = detik
             'expires_in'   => $this->guard()->factory()->getTTL() * 60,
             'user'         => $this->guard()->user(),
         ];

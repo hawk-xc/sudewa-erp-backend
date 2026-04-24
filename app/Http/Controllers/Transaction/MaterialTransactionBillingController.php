@@ -121,10 +121,12 @@ class MaterialTransactionBillingController extends Controller
                 $transaction->update(['is_paid' => $isFullyPaid]);
 
                 if ($isFullyPaid) {
-                    $transaction->materialTransactionDetails()->update([
-                        'in_stock' => true,
-                        'is_forecast' => false
-                    ]);
+                    $detailStatus = [
+                        'is_forecast' => false,
+                        'in_stock' => $transaction->type === 'purchase'
+                    ];
+
+                    $transaction->materialTransactionDetails()->update($detailStatus);
                 }
 
                 return $data;

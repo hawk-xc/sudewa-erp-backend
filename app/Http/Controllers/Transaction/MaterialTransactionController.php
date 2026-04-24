@@ -44,6 +44,14 @@ class MaterialTransactionController extends Controller
     public function index(Request $request)
     {
         $query = MaterialTransaction::query();
+        
+        if ($request->filled('type')) {
+            if ($request->type == 'purchase') {
+                $query->where('type', 'purchase');
+            } else {
+                $query->where('type', 'sales');
+            }
+        } 
 
         $query->select($this->materialTransactionTable);
 

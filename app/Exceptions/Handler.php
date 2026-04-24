@@ -79,7 +79,15 @@ class Handler extends ExceptionHandler
     {
         if ($request->is('api/*') || $request->is('wapi/*') || $request->expectsJson()) {
 
-            if ($exception instanceof \Illuminate\Auth\AuthenticationException) {
+            if ($exception instanceof \Illuminate\Http\Exceptions\HttpResponseException) {
+                return $exception->getResponse();
+            }
+
+            if ($exception instanceof \Illuminate\Auth\AuthenticationException || 
+                $exception instanceof \Tymon\JWTAuth\Exceptions\TokenExpiredException || 
+                $exception instanceof \Tymon\JWTAuth\Exceptions\TokenInvalidException || 
+                $exception instanceof \Tymon\JWTAuth\Exceptions\JWTException ||
+                $exception instanceof \Symfony\Component\HttpKernel\Exception\UnauthorizedHttpException) {
                 return $this->responseError(null, 'Unauthenticated. Your session has expired or is invalid.', 401);
             }
 
