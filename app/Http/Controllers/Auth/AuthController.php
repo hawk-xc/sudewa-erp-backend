@@ -250,4 +250,9 @@ class AuthController extends Controller
             return $this->responseError([], __($status), 400);
         }
     }
+
+    public function checkToken(): JsonResponse
+    {
+        return $this->responseSuccess(null, 'Token is valid');
+    }
 }
