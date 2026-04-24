@@ -77,33 +77,39 @@ class Handler extends ExceptionHandler
 
     public function render($request, Throwable $exception)
     {
-        if ($request->is('api/*') || $request->expectsJson()) {
+        if ($request->is('api/*') || $request->is('wapi/*') || $request->expectsJson()) {
+
+            if ($exception instanceof \Illuminate\Auth\AuthenticationException) {
+                return $this->responseError(null, 'Unauthenticated. Your session has expired or is invalid.', 401);
+            }
 
             if ($exception instanceof NotFoundHttpException) {
-                return $this->responseError(null, 'API endpoint not found', 404);
+                return $this->responseError(null, 'The requested resource or endpoint was not found.', 404);
             }
 
             if ($exception instanceof MethodNotAllowedHttpException) {
-                return $this->responseError(null, 'Method not allowed for this endpoint', 405);
+                return $this->responseError(null, 'Method not allowed for this endpoint.', 405);
             }
 
-            if ($exception instanceof \Spatie\Permission\Exceptions\UnauthorizedException) {
-                return $this->responseError(null, 'You do not have the required role/permission', 403);
+            if ($exception instanceof \Spatie\Permission\Exceptions\UnauthorizedException || 
+                $exception instanceof \Illuminate\Auth\AccessDeniedException || 
+                $exception instanceof \Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException) {
+                return $this->responseError(null, 'You do not have the required permissions to access this resource.', 403);
             }
 
             if ($exception instanceof \TypeError) {
-                return $this->responseError((object) ['error' => $exception->getMessage()], 'A type error occurred', 500);
+                return $this->responseError((object) ['error' => $exception->getMessage()], 'A type error occurred.', 500);
             }
 
             if ($exception instanceof ValidationException) {
                 return $this->responseError(
                     (object) $exception->errors(), 
-                    'Validation failed', 
+                    'The given data was invalid.', 
                     422
                 );
             }
 
-            return $this->responseError((object) ['error' => $exception->getMessage()], 'Unexpected server error', 500);
+            return $this->responseError((object) ['error' => $exception->getMessage()], 'An unexpected server error occurred.', 500);
         }
 
         return parent::render($request, $exception);
