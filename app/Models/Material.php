@@ -30,4 +30,9 @@ class Material extends Model
             $model->uuid = (string) Str::uuid();
         });
     }
+
+    public function materialTransactionDetails()
+    {
+        return $this->hasMany(MaterialTransactionDetail::class);
+    }
 }

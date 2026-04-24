@@ -17,6 +17,7 @@ class MaterialTransactionBilling extends Model
         'material_transaction_id',
         'cash_id', 
         'amount', // decimal(15,2)
+        'is_paid',
         'payment_date',
         'description',
     ];

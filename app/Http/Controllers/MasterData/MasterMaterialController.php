@@ -51,6 +51,14 @@ class MasterMaterialController extends Controller
 
         $query->select($this->materialTable);
 
+        $query->withSum(['materialTransactionDetails as stock' => function ($q) {
+            $q->where('in_stock', true);
+        }], 'qty');
+
+        $query->withSum(['materialTransactionDetails as forecast_stock_qty' => function ($q) {
+            $q->where('is_forecast', true);
+        }], 'qty');
+
         try {
             if ($request->filled('search')) {
                 $search = $request->search;
@@ -101,7 +109,7 @@ class MasterMaterialController extends Controller
     public function show(string $id)
     {
         try {
-            $material = Material::select($this->materialTable)->find($id);
+            $material = Material::with('materialTransactionDetails')->find($id);
 
             if (! $material) {
                 return $this->responseError('The requested resource could not be found.', 'Resource Not Found', 404);

@@ -27,6 +27,7 @@ class MaterialTransactionDetail extends Model
         'material_transaction_id' => 'integer',
         'material_id' => 'integer',
         'qty' => 'integer',
+        'price' => 'integer',
         'in_stock' => 'boolean',
         'is_forecast' => 'boolean',
     ];

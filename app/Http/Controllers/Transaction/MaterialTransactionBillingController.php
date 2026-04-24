@@ -114,8 +114,19 @@ class MaterialTransactionBillingController extends Controller
             }
 
             $data = DB::transaction(function () use ($validated, $transaction, $newTotalPaid, $totalAmount) {
-                $data = MaterialTransactionBilling::create($validated);
-                $transaction->update(['is_paid' => $newTotalPaid >= $totalAmount]);
+                // Set is_paid to true for the billing record as it's a payment
+                $data = MaterialTransactionBilling::create(array_merge($validated, ['is_paid' => true]));
+                
+                $isFullyPaid = $newTotalPaid >= $totalAmount;
+                $transaction->update(['is_paid' => $isFullyPaid]);
+
+                if ($isFullyPaid) {
+                    $transaction->materialTransactionDetails()->update([
+                        'in_stock' => true,
+                        'is_forecast' => false
+                    ]);
+                }
+
                 return $data;
             });
 

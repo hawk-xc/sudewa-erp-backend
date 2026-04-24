@@ -66,6 +66,7 @@ Route::group(
             Route::post('logout', [AuthController::class, 'logout']);
             Route::post('refresh', [AuthController::class, 'refresh']);
             Route::get('me', [AuthController::class, 'me']);
+            Route::get('check-token', [AuthController::class, 'checkToken']);
             Route::put('me', [AuthController::class, 'update']);
             Route::put('new-password', [AuthController::class, 'newPassword'])->name('new-password');
             Route::post('forgot-password', [AuthController::class, 'sendResetLink'])->name('forgot-password');
