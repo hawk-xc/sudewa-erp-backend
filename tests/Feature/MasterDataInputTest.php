@@ -252,6 +252,7 @@ class MasterDataInputTest extends TestCase
         $response = $this->withHeaders($this->getHeaders())->postJson('/wapi/master-data/asset', [
             'company_id' => $this->company->id,
             'code' => 'AST-001',
+            'serial_number' => 'SN-'.rand(1000, 9999),
             'name' => 'Laptop Office',
             'type' => 'inventory',
             'price' => 15000000,
