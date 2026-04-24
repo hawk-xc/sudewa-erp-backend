@@ -104,14 +104,14 @@ class MasterMaterialController extends Controller
             $material = Material::select($this->materialTable)->find($id);
 
             if (! $material) {
-                return $this->responseError(null, 'Material not found', 404);
+                return $this->responseError('The requested resource could not be found.', 'Resource Not Found', 404);
             }
 
             return $this->responseSuccess($material, 'Material retrieved successfully', 200);
         } catch (Exception $err) {
             Log::error('Error While retrieved Material data : '.$err->getMessage());
 
-            return $this->responseError($err->getMessage(), 'Material retrieved Failed', 500);
+            return $this->responseError('The requested resource could not be found.', 'Resource Not Found', 404);
         }
     }
 

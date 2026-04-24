@@ -180,7 +180,7 @@ class MasterBrandController extends Controller
 
             return $this->responseSuccess($brand, 'Brand retrieved successfully', 200);
         } catch (\Exception $err) {
-            return $this->responseError($err->getMessage(), 'Brand not found', 404);
+            return $this->responseError('The requested resource could not be found.', 'Resource Not Found', 404);
         }
     }
 
@@ -250,7 +250,7 @@ class MasterBrandController extends Controller
 
             return $this->responseSuccess(null, 'Brand deleted successfully', 200);
         } catch (\Exception $err) {
-            return $this->responseError($err->getMessage(), 'Brand not found or cannot be deleted', 404);
+            return $this->responseError('The requested resource could not be found.', 'Resource Not Found', 404);
         }
     }
 }

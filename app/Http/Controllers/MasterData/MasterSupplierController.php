@@ -113,14 +113,14 @@ class MasterSupplierController extends Controller
             $person = Person::where('type', 'supplier')->where('id', $id)->select($this->personTable)->first();
 
             if (! $person) {
-                return $this->responseError(null, 'Supplier not found', 404);
+                return $this->responseError('The requested resource could not be found.', 'Resource Not Found', 404);
             }
 
             return $this->responseSuccess($person, 'Supplier retrieved successfully', 200);
         } catch (Exception $err) {
             Log::error('Error While retrieved Supplier data : '.$err->getMessage());
 
-            return $this->responseError($err->getMessage(), 'Supplier retrieved Failed', 500);
+            return $this->responseError('The requested resource could not be found.', 'Resource Not Found', 404);
         }
     }
 

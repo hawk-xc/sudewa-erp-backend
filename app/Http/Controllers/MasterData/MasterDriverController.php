@@ -111,14 +111,14 @@ class MasterDriverController extends Controller
             $person = Person::where('type', 'driver')->where('id', $id)->select($this->personTable)->first();
 
             if (! $person) {
-                return $this->responseError(null, 'driver not found', 404);
+                return $this->responseError('The requested resource could not be found.', 'Resource Not Found', 404);
             }
 
             return $this->responseSuccess($person, 'driver retrieved successfully', 200);
         } catch (Exception $err) {
             Log::error('Error While retrieved driver data : '.$err->getMessage());
 
-            return $this->responseError($err->getMessage(), 'driver retrieved Failed', 500);
+            return $this->responseError('The requested resource could not be found.', 'Resource Not Found', 404);
         }
     }
 

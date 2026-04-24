@@ -94,7 +94,7 @@ class MasterUnitTypePriceArchiveController extends Controller
         } catch (Exception $err) {
             Log::error('Error while trying get Unit Type Price Archive : ' . $err->getMessage());
 
-            return $this->responseError($err->getMessage(), 'Internal Server Error', 500);
+            return $this->responseError('The requested resource could not be found.', 'Resource Not Found', 404);
         }
     }
 

@@ -85,13 +85,13 @@ class VehicleFleetController extends Controller
             $fleet = VehicleFleet::with('vehicleFleetEquipment')->find($id);
 
             if (!$fleet) {
-                return $this->responseError(null, 'Vehicle Fleet not found', 404);
+                return $this->responseError('The requested resource could not be found.', 'Resource Not Found', 404);
             }
 
             return $this->responseSuccess($fleet, 'Vehicle Fleet retrieved successfully', 200);
         } catch (Exception $err) {
             Log::error('Error while retrieving Vehicle Fleet data: ' . $err->getMessage());
-            return $this->responseError($err->getMessage(), 'Vehicle Fleet retrieved Failed', 500);
+            return $this->responseError('The requested resource could not be found.', 'Resource Not Found', 404);
         }
     }
 

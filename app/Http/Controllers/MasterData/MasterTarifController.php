@@ -96,13 +96,13 @@ class MasterTarifController extends Controller
             $tarif = Tarif::with('customer:id,name,code')->find($id);
 
             if (!$tarif) {
-                return $this->responseError(null, 'Tarif not found', 404);
+                return $this->responseError('The requested resource could not be found.', 'Resource Not Found', 404);
             }
 
             return $this->responseSuccess($tarif, 'Tarif retrieved successfully', 200);
         } catch (Exception $err) {
             Log::error('Error while retrieving Tarif data: '.$err->getMessage());
-            return $this->responseError($err->getMessage(), 'Tarif retrieved Failed', 500);
+            return $this->responseError('The requested resource could not be found.', 'Resource Not Found', 404);
         }
     }
 

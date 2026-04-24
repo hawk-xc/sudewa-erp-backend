@@ -113,7 +113,7 @@ class MasterAccountController extends Controller
 
             return $this->responseSuccess($account, 'Account retrieved successfully', 200);
         } catch (Exception $err) {
-            return $this->responseError($err->getMessage(), 'Account Group not found', 404);
+            return $this->responseError('The requested resource could not be found.', 'Resource Not Found', 404);
         }
     }
 
@@ -168,7 +168,7 @@ class MasterAccountController extends Controller
 
                 return $this->responseSuccess($account->fresh(), 'Account updated successfully', 200);
             } else {
-                return $this->responseError(null, 'Account not found', 404);
+                return $this->responseError('The requested resource could not be found.', 'Resource Not Found', 404);
             }
         } catch (\Illuminate\Validation\ValidationException $e) {
             return $this->responseError($e->errors(), 'Validation failed', 422);

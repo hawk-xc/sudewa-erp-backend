@@ -117,7 +117,7 @@ class MasterAssetController extends Controller
         } catch (Exception $err) {
             Log::error('Error While retrieved Asset data : '.$err->getMessage());
 
-            return $this->responseError($err->getMessage(), 'Asset retrieved Failed', 404);
+            return $this->responseError('The requested resource could not be found.', 'Resource Not Found', 404);
         }
     }
 

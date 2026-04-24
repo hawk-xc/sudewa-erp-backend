@@ -110,14 +110,14 @@ class MasterCustomerController extends Controller
             $person = Person::where('type', 'customer')->where('id', $id)->select($this->personTable)->first();
 
             if (! $person) {
-                return $this->responseError(null, 'Customer not found', 404);
+                return $this->responseError('The requested resource could not be found.', 'Resource Not Found', 404);
             }
 
             return $this->responseSuccess($person, 'Customer retrieved successfully', 200);
         } catch (Exception $err) {
             Log::error('Error While retrieved Customer data : '.$err->getMessage());
 
-            return $this->responseError($err->getMessage(), 'Customer retrieved Failed', 500);
+            return $this->responseError('The requested resource could not be found.', 'Resource Not Found', 404);
         }
     }
 

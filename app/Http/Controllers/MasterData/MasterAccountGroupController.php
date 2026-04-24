@@ -114,11 +114,7 @@ class MasterAccountGroupController extends Controller
             );
 
         } catch (Exception $err) {
-            return $this->responseError(
-                $err->getMessage(),
-                'Account Group not found',
-                404
-            );
+            return $this->responseError('The requested resource could not be found.', 'Resource Not Found', 404);
         }
     }
 
@@ -201,7 +197,7 @@ class MasterAccountGroupController extends Controller
                 return $this->responseSuccess([], "Account Group sucessfully Deleted", 200);
             }
 
-            return $this->responseError([], "Account Group Not Found", 404);
+            return $this->responseError('The requested resource could not be found.', 'Resource Not Found', 404);
 
         } catch (Exception $err) {
             return $this->responseError($err->getMessage(), "Account Group Not Found or Failed Deleted", 500);

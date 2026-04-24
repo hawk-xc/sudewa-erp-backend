@@ -131,11 +131,7 @@ class MasterCashController extends Controller
             );
 
         } catch (\Exception $e) {
-            return $this->responseError(
-                $e->getMessage(),
-                'Cash not found',
-                404
-            );
+            return $this->responseError('The requested resource could not be found.', 'Resource Not Found', 404);
         }
     }
 
