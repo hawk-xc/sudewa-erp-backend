@@ -119,6 +119,7 @@ class MasterMaterialController extends Controller
                     
                     $item->total_purchased = (int) $item->total_purchase;
                     $item->total_sold = (int) $item->total_sales;
+                    $item->average_price = (float) $item->average_price;
 
                     unset($item->total_purchase, $item->total_sales, $item->total_purchase_forecast, $item->total_sales_forecast);
                     
@@ -169,6 +170,7 @@ class MasterMaterialController extends Controller
             
             $material->total_purchased = (int) $material->total_purchase;
             $material->total_sold = (int) $material->total_sales;
+            $material->average_price = (float) $material->average_price;
 
             unset($material->total_purchase, $material->total_sales, $material->total_purchase_forecast, $material->total_sales_forecast);
 
