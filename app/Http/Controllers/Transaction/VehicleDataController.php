@@ -49,6 +49,12 @@ class VehicleDataController extends Controller
 
         $query->with(['dealer:id,name,code', 'region:id,name', 'vehicleRegistration:id,vendor_id,vehicle_data_id,process_date,is_already_processed']);
 
+        if ($request->filled('is_already_processed') && $request->is_already_processed === 'true') {
+            $query->where('is_already_processed', false);
+        } else {
+            $query->where('is_already_processed', true);
+        }
+
         try {
             if ($request->filled('search')) {
                 $search = $request->search;
