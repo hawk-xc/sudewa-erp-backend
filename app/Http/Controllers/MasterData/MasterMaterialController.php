@@ -51,12 +51,22 @@ class MasterMaterialController extends Controller
 
         $query->select($this->materialTable);
 
-        $query->withSum(['materialTransactionDetails as stock' => function ($q) {
-            $q->where('in_stock', true);
+        // Actual Stock (Finalized)
+        $query->withSum(['materialTransactionDetails as total_purchase' => function ($q) {
+            $q->where('in_stock', true)->whereHas('materialTransaction', fn($t) => $t->where('type', 'purchase'));
         }], 'qty');
 
-        $query->withSum(['materialTransactionDetails as forecast_stock_qty' => function ($q) {
-            $q->where('is_forecast', true);
+        $query->withSum(['materialTransactionDetails as total_sales' => function ($q) {
+            $q->where('in_stock', true)->whereHas('materialTransaction', fn($t) => $t->where('type', 'sales'));
+        }], 'qty');
+
+        // Forecast Stock (Not yet finalized)
+        $query->withSum(['materialTransactionDetails as total_purchase_forecast' => function ($q) {
+            $q->where('is_forecast', true)->whereHas('materialTransaction', fn($t) => $t->where('type', 'purchase'));
+        }], 'qty');
+
+        $query->withSum(['materialTransactionDetails as total_sales_forecast' => function ($q) {
+            $q->where('is_forecast', true)->whereHas('materialTransaction', fn($t) => $t->where('type', 'sales'));
         }], 'qty');
 
         try {
@@ -93,7 +103,18 @@ class MasterMaterialController extends Controller
 
             $perPage = $request->per_page ?? 10;
 
-            $data = $query->paginate($perPage);
+            $data = $query->paginate($perPage)
+                ->through(function ($item) {
+                    $item->stock = (int) $item->total_purchase - (int) $item->total_sales;
+                    $item->forecast_stock = (int) $item->total_purchase_forecast - (int) $item->total_sales_forecast;
+                    
+                    $item->total_purchased = (int) $item->total_purchase;
+                    $item->total_sold = (int) $item->total_sales;
+
+                    unset($item->total_purchase, $item->total_sales, $item->total_purchase_forecast, $item->total_sales_forecast);
+                    
+                    return $item;
+                });
 
             return $this->responseSuccess($data, 'Material list retrieved successfully', 200);
         } catch (Exception $err) {
@@ -109,11 +130,33 @@ class MasterMaterialController extends Controller
     public function show(string $id)
     {
         try {
-            $material = Material::with('materialTransactionDetails')->find($id);
+            $query = Material::query();
+            
+            $query->withSum(['materialTransactionDetails as total_purchase' => function ($q) {
+                $q->where('in_stock', true)->whereHas('materialTransaction', fn($t) => $t->where('type', 'purchase'));
+            }], 'qty');
 
-            if (! $material) {
-                return $this->responseError('The requested resource could not be found.', 'Resource Not Found', 404);
-            }
+            $query->withSum(['materialTransactionDetails as total_sales' => function ($q) {
+                $q->where('in_stock', true)->whereHas('materialTransaction', fn($t) => $t->where('type', 'sales'));
+            }], 'qty');
+
+            $query->withSum(['materialTransactionDetails as total_purchase_forecast' => function ($q) {
+                $q->where('is_forecast', true)->whereHas('materialTransaction', fn($t) => $t->where('type', 'purchase'));
+            }], 'qty');
+
+            $query->withSum(['materialTransactionDetails as total_sales_forecast' => function ($q) {
+                $q->where('is_forecast', true)->whereHas('materialTransaction', fn($t) => $t->where('type', 'sales'));
+            }], 'qty');
+
+            $material = $query->with('materialTransactionDetails.materialTransaction')->findOrFail($id);
+
+            $material->stock = (int) $material->total_purchase - (int) $material->total_sales;
+            $material->forecast_stock = (int) $material->total_purchase_forecast - (int) $material->total_sales_forecast;
+            
+            $material->total_purchased = (int) $material->total_purchase;
+            $material->total_sold = (int) $material->total_sales;
+
+            unset($material->total_purchase, $material->total_sales, $material->total_purchase_forecast, $material->total_sales_forecast);
 
             return $this->responseSuccess($material, 'Material retrieved successfully', 200);
         } catch (Exception $err) {
@@ -191,13 +234,15 @@ class MasterMaterialController extends Controller
         }
     }
 
-    /**
-     * Delete a material.
-     */
     public function destroy(string $id)
     {
         try {
-            $material = Material::findOrFail($id);
+            $material = Material::withCount('materialTransactionDetails')->findOrFail($id);
+
+            if ($material->material_transaction_details_count > 0) {
+                return $this->responseError('Cannot delete material because it has associated transactions.', 'Deletion Restricted', 422);
+            }
+
             $material->delete();
 
             return $this->responseSuccess([], 'Material Deleted Successfully', 200);

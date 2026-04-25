@@ -229,13 +229,15 @@ class MasterUnitTypeController extends Controller
         }
     }
 
-    /**
-     * Delete a unit type.
-     */
     public function destroy($id)
     {
         try {
-            $unitType = UnitType::findOrFail($id);
+            $unitType = UnitType::withCount('unitTransactionItems')->findOrFail($id);
+
+            if ($unitType->unit_transaction_items_count > 0) {
+                return $this->responseError('Cannot delete unit type because it has associated transaction items.', 'Deletion Restricted', 422);
+            }
+
             $unitType->delete();
 
             return $this->responseSuccess(null, 'Unit Type deleted successfully', 200);
