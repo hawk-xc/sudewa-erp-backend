@@ -26,7 +26,7 @@ class MaterialTransactionBilling extends Model
         'material_transaction_id' => 'integer',
         'cash_id' => 'integer',
         'is_paid' => 'boolean',
-        'amount' => 'decimal:2',
+        'amount' => 'integer',
     ];
 
     public function materialTransaction()

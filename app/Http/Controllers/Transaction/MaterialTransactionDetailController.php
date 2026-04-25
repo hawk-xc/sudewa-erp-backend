@@ -43,12 +43,18 @@ class MaterialTransactionDetailController extends Controller
      * List all material transaction details.
      */
     public function index(Request $request)
-    {
+    {   
         $query = MaterialTransactionDetail::with(['materialTransaction', 'material']);
 
         $query->select($this->materialTransactionDetailTable);
 
         try {
+            if ($request->filled('type')) {
+                $query->whereHas('materialTransaction', function ($q) use ($request) {
+                    $q->where('type', $request->type);
+                });
+            }
+
             if ($request->filled('search')) {
                 $search = $request->search;
                 $caseSensitive = $request->boolean('case_sensitive');
@@ -116,11 +122,19 @@ class MaterialTransactionDetailController extends Controller
             'material_id' => 'required|exists:materials,id',
             'qty' => 'required|integer|min:1',
             'price' => 'required|numeric|min:0',
+            'in_stock' => 'nullable|boolean',
+            'is_forecast' => 'nullable|boolean',
             'description' => 'nullable|string',
         ]);
 
         try {
             $data = DB::transaction(function () use ($validated) {
+                $transaction = MaterialTransaction::findOrFail($validated['material_transaction_id']);
+
+                if ($transaction->materialTransactionBillings()->where('is_paid', true)->exists()) {
+                    throw new Exception('Cannot add items to a transaction that has already have payments.');
+                }
+
                 $exists = MaterialTransactionDetail::where('material_transaction_id', $validated['material_transaction_id'])
                     ->where('material_id', $validated['material_id'])
                     ->exists();
@@ -129,8 +143,15 @@ class MaterialTransactionDetailController extends Controller
                     throw new Exception('This material already exists in this transaction.');
                 }
 
+                // Validation for sales: check stock if in_stock is true
+                if ($transaction->type == 'sales' && ($validated['in_stock'] ?? false)) {
+                    $availableStock = $this->getAvailableStock($validated['material_id']);
+                    if ($validated['qty'] > $availableStock) {
+                        throw new Exception("Insufficient stock. Available: {$availableStock}");
+                    }
+                }
+
                 if (empty($validated['description'])) {
-                    $transaction = MaterialTransaction::findOrFail($validated['material_transaction_id']);
                     $typeState = $transaction->type == "purchase" ? "pembelian" : "penjualan";
                     $validated['description'] = "Pembayaran " . $typeState . " material ke " . $transaction->supplier_name;
                 }
@@ -174,6 +195,8 @@ class MaterialTransactionDetailController extends Controller
             'material_id' => 'sometimes|required|exists:materials,id',
             'qty' => 'sometimes|required|integer|min:1',
             'price' => 'sometimes|required|numeric|min:0',
+            'in_stock' => 'nullable|boolean',
+            'is_forecast' => 'nullable|boolean',
             'description' => 'nullable|string',
         ]);
 
@@ -181,7 +204,7 @@ class MaterialTransactionDetailController extends Controller
             $detail = MaterialTransactionDetail::findOrFail($id);
             
             $data = array_filter(
-                $request->only(['material_transaction_id', 'material_id', 'qty', 'price', 'description']),
+                $request->only(['material_transaction_id', 'material_id', 'qty', 'price', 'in_stock', 'is_forecast', 'description']),
                 fn ($val) => ! is_null($val) && $val !== ''
             );
 
@@ -192,6 +215,14 @@ class MaterialTransactionDetailController extends Controller
             DB::transaction(function () use ($data, $detail) {
                 $materialTransactionId = $data['material_transaction_id'] ?? $detail->material_transaction_id;
                 $materialId = $data['material_id'] ?? $detail->material_id;
+                $qty = $data['qty'] ?? $detail->qty;
+                $inStock = isset($data['in_stock']) ? $data['in_stock'] : $detail->in_stock;
+
+                $transaction = MaterialTransaction::findOrFail($materialTransactionId);
+
+                if ($transaction->materialTransactionBillings()->where('is_paid', true)->exists()) {
+                    throw new Exception('Cannot update items in a transaction that has already have payments.');
+                }
 
                 $exists = MaterialTransactionDetail::where('material_transaction_id', $materialTransactionId)
                     ->where('material_id', $materialId)
@@ -200,6 +231,14 @@ class MaterialTransactionDetailController extends Controller
 
                 if ($exists) {
                     throw new Exception('This material already exists in this transaction.');
+                }
+
+                // Validation for sales: check stock if in_stock is true
+                if ($transaction->type == 'sales' && $inStock) {
+                    $availableStock = $this->getAvailableStock($materialId, $detail->id);
+                    if ($qty > $availableStock) {
+                        throw new Exception("Insufficient stock. Available: {$availableStock}");
+                    }
                 }
 
                 $detail->update($data);
@@ -222,6 +261,10 @@ class MaterialTransactionDetailController extends Controller
             $data = MaterialTransactionDetail::findOrFail($id);
 
             DB::transaction(function () use ($data) {
+                if ($data->materialTransaction->materialTransactionBillings()->where('is_paid', true)->exists()) {
+                    throw new Exception('Cannot delete items from a transaction that has already have payments.');
+                }
+                
                 $data->delete();
             });
 
@@ -231,5 +274,32 @@ class MaterialTransactionDetailController extends Controller
 
             return $this->responseError($err->getMessage(), 'Material Transaction Detail deletion failed', 500);
         }
+    }
+
+    /**
+     * Calculate available stock for a material.
+     */
+    private function getAvailableStock($materialId, $excludeDetailId = null)
+    {
+        $purchased = MaterialTransactionDetail::where('material_id', $materialId)
+            ->where('in_stock', true)
+            ->whereHas('materialTransaction', function ($q) {
+                $q->where('type', 'purchase');
+            })
+            ->sum('qty');
+
+        $soldQuery = MaterialTransactionDetail::where('material_id', $materialId)
+            ->where('in_stock', true)
+            ->whereHas('materialTransaction', function ($q) {
+                $q->where('type', 'sales');
+            });
+
+        if ($excludeDetailId) {
+            $soldQuery->where('id', '!=', $excludeDetailId);
+        }
+
+        $sold = $soldQuery->sum('qty');
+
+        return $purchased - $sold;
     }
 }
