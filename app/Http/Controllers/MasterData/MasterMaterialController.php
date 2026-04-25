@@ -69,6 +69,11 @@ class MasterMaterialController extends Controller
             $q->where('is_forecast', true)->whereHas('materialTransaction', fn($t) => $t->where('type', 'sales'));
         }], 'qty');
 
+        // Average Purchase Price
+        $query->withAvg(['materialTransactionDetails as average_price' => function ($q) {
+            $q->whereHas('materialTransaction', fn($t) => $t->where('type', 'purchase'));
+        }], 'price');
+
         try {
             if ($request->filled('search')) {
                 $search = $request->search;
@@ -83,6 +88,10 @@ class MasterMaterialController extends Controller
                             ->orWhere('code', 'like', "%$search%");
                     }
                 });
+            }
+
+            if ($request->boolean('has_transaction')) {
+                $query->whereHas('materialTransactionDetails');
             }
 
             foreach ($this->materialTable as $field) {
@@ -147,6 +156,11 @@ class MasterMaterialController extends Controller
             $query->withSum(['materialTransactionDetails as total_sales_forecast' => function ($q) {
                 $q->where('is_forecast', true)->whereHas('materialTransaction', fn($t) => $t->where('type', 'sales'));
             }], 'qty');
+
+            // Average Purchase Price
+            $query->withAvg(['materialTransactionDetails as average_price' => function ($q) {
+                $q->whereHas('materialTransaction', fn($t) => $t->where('type', 'purchase'));
+            }], 'price');
 
             $material = $query->with('materialTransactionDetails.materialTransaction')->findOrFail($id);
 
