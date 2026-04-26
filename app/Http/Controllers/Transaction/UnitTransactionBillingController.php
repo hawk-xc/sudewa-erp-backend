@@ -180,11 +180,6 @@ class UnitTransactionBillingController extends Controller
                     'is_paid' => false,
                 ]);
 
-                // Finance Fractal
-                FinanceBilling::create([
-                    'unit_transaction_billing_id' => $billing->id,
-                ]);
-
                 return $billing;
             });
 

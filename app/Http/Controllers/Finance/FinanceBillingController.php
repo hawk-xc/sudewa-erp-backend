@@ -178,9 +178,23 @@ class FinanceBillingController extends Controller
                 );
             }
 
-                $item = DB::transaction(function () use ($validated, $unit_transaction_billing_id) {
-                $financeBilling = FinanceBilling::where('unit_transaction_billing_id', $unit_transaction_billing_id)->firstOrFail();
+            $financeBilling = FinanceBilling::findOrFail($unit_transaction_billing_id);
 
+            $grandTotal = $financeBilling->unitTransactionBilling->grand_total ?? 0;
+            $currentTotalPaid = $financeBilling->financeBillingItems->sum(function ($item) {
+                return ($item->cash_payment_amount ?? 0) + ($item->bca_payment_amount ?? 0);
+            });
+            $newPayment = ($validated['cash_payment_amount'] ?? 0) + ($validated['bca_payment_amount'] ?? 0);
+
+            if (($currentTotalPaid + $newPayment) > $grandTotal) {
+                return $this->responseError(
+                    "Total payment cannot exceed grand total (" . number_format($grandTotal) . "). Remaining balance: " . number_format($grandTotal - $currentTotalPaid),
+                    'Validation failed',
+                    422
+                );
+            }
+
+            $item = DB::transaction(function () use ($validated, $financeBilling) {
                 $itemData = $validated;
                 $itemData['finance_billing_id'] = $financeBilling->id;
 
@@ -191,11 +205,12 @@ class FinanceBillingController extends Controller
                         'last_payment_at' => $validated['payment_at']
                     ]);
                 }
-
                 $this->updateValidity($financeBilling);
 
                 return $item;
             });
+
+            $item->remaining_payment = $grandTotal - ($currentTotalPaid + $newPayment);
 
             return $this->responseSuccess($item, 'Finance Billing Item created successfully', 201);
         } catch (ValidationException $e) {
