@@ -10,6 +10,9 @@ use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Maatwebsite\Excel\Facades\Excel;
+use App\Imports\TarifImport;
+use App\Exports\TarifExport;
 
 /**
  * @group Master Data
@@ -150,6 +153,8 @@ class MasterTarifController extends Controller
      */
     public function update(Request $request, string $id)
     {
+        $request->merge(['is_active' => $request->is_active === 'true']);
+
         $request->validate([
             'customer_id' => 'sometimes|integer|exists:persons,id',
             'loading_in' => 'sometimes|string|max:249',
@@ -203,6 +208,47 @@ class MasterTarifController extends Controller
         } catch (Exception $err) {
             Log::error('Error while deleting Tarif: '.$err->getMessage());
             return $this->responseError($err->getMessage(), 'Tarif deletion failed', 500);
+        }
+    }
+
+    /**
+     * Import tariffs from Excel.
+     */
+    public function import(Request $request)
+    {
+        $request->validate([
+            'file' => 'required|file|mimes:xlsx,xls',
+        ]);
+
+        try {
+            Excel::import(new TarifImport(), $request->file('file'));
+
+            return $this->responseSuccess(null, 'Tarif imported successfully', 201);
+        } catch (Exception $err) {
+            Log::error('Tarif import error', [
+                'message' => $err->getMessage(),
+            ]);
+
+            return $this->responseError($err->getMessage(), 'Tarif import error', 500);
+        }
+    /**
+     * Export tariffs to Excel.
+     */
+    public function export(Request $request)
+    {
+        try {
+            return Excel::download(
+                new TarifExport($request, $this->tarifTable),
+                'wajira_tarif_data.xlsx'
+            );
+        } catch (Exception $err) {
+            Log::error('Error export tarif: '.$err->getMessage());
+
+            return $this->responseError(
+                $err->getMessage(),
+                'Tarif export failed',
+                500
+            );
         }
     }
 }
