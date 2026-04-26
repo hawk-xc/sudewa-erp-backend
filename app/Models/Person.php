@@ -26,6 +26,7 @@ class Person extends Model
         'drive_license_identity_number',
         'image',
         'map_link',
+        'join_date',
         'social_media_1_link',
         'social_media_2_link',
         'social_media_3_link',

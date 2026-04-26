@@ -127,6 +127,7 @@ Route::group(
             Route::post('unit-type-price-archive/import', [MasterUnitTypePriceArchiveController::class, 'import']);
             Route::post('sparepart/import', [MasterSparepartController::class, 'import']);
             Route::post('material/import', [MasterMaterialController::class, 'import']);
+            Route::post('tarif/import', [MasterTarifController::class, 'import']);
 
             // Export
             Route::get('customer/export', [MasterCustomerController::class, 'export']);
