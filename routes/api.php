@@ -140,6 +140,7 @@ Route::group(
             Route::get('region/export', [MasterRegionController::class, 'export']);
             Route::get('unit-type/export', [MasterUnitTypeController::class, 'export']);
             Route::get('sparepart/export', [MasterSparepartController::class, 'export']);
+            Route::get('tarif/export', [MasterTarifController::class, 'export']);
             // Route::get('material/export', [MasterMaterialController::class, 'export']);
     
             // Master Data

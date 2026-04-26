@@ -46,6 +46,7 @@ class PersonImport implements ToCollection, WithHeadingRow
                     'social_media_3_link' => $row['social_media_3_link'] ?? null,
                     'social_media_4_link' => $row['social_media_4_link'] ?? null,
                     'website_link' => $row['website_link'] ?? null,
+                    'join_date' => $row['join_date'] ?? $row['tanggal_bergabung'] ?? $row['tgl_gabung'] ?? null,
                 ];
 
                 $validator = Validator::make($rowData, [
@@ -63,6 +64,7 @@ class PersonImport implements ToCollection, WithHeadingRow
                     'social_media_3_link' => 'nullable|string|max:255',
                     'social_media_4_link' => 'nullable|string|max:255',
                     'website_link' => 'nullable|string|max:255',
+                    'join_date' => 'nullable|date',
                 ]);
 
                 if ($validator->fails()) {
@@ -89,6 +91,7 @@ class PersonImport implements ToCollection, WithHeadingRow
                     'social_media_3_link' => $rowData['social_media_3_link'],
                     'social_media_4_link' => $rowData['social_media_4_link'],
                     'website_link' => $rowData['website_link'],
+                    'join_date' => $rowData['join_date'],
                 ]);
             }
         });

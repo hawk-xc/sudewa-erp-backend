@@ -6,8 +6,9 @@ use App\Models\Person;
 use Illuminate\Http\Request;
 use Maatwebsite\Excel\Concerns\FromCollection;
 use Maatwebsite\Excel\Concerns\WithHeadings;
+use Maatwebsite\Excel\Concerns\WithMapping;
 
-class PersonExport implements FromCollection, WithHeadings
+class PersonExport implements FromCollection, WithHeadings, WithMapping
 {
     protected Request $request;
     protected array $columns;
@@ -75,7 +76,25 @@ class PersonExport implements FromCollection, WithHeadings
             'Alamat',
             'NPWP',
             'No Telp',
+            'Tanggal Bergabung',
             'Tanggal Dibuat',
+        ];
+    }
+
+    public function map($person): array
+    {
+        return [
+            $person->id,
+            $person->uuid,
+            $person->pic_name,
+            $person->code,
+            $person->type,
+            $person->name,
+            $person->address,
+            $person->npwp,
+            $person->phone,
+            $person->join_date,
+            $person->created_at,
         ];
     }
 }
