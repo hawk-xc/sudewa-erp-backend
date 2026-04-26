@@ -232,6 +232,7 @@ Route::group(
             Route::apiResource('cash-flow', DailyCashFlowController::class);
             Route::apiResource('adjustment', UnitTransactionAdjustmentController::class);
             Route::apiResource('finance-billing', FinanceBillingController::class);
+            Route::post('finance-billing-item', [FinanceBillingController::class, 'getBillingItem']);
             Route::post('finance-billing-item/{unit_transaction_billing_id}', [FinanceBillingController::class, 'addItem']);
             Route::put('finance-billing-item/{id}', [FinanceBillingController::class, 'updateItem']);
             Route::delete('finance-billing-item/{id}', [FinanceBillingController::class, 'destroyItem']);

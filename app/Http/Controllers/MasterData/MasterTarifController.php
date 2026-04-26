@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\MasterData;
 
 use App\Http\Controllers\Controller;
+use App\Models\Person;
 use App\Models\Tarif;
 use App\Traits\ResponseTrait;
 use Exception;
@@ -31,7 +32,7 @@ class MasterTarifController extends Controller
         $this->tarifTable = [
             'id', 
             'uuid', 
-            'customer_id', 
+            'person_id', 
             'loading_in', 
             'loading_out', 
             'distance', 
@@ -111,6 +112,8 @@ class MasterTarifController extends Controller
      */
     public function store(Request $request)
     {
+        $request->merge(['is_active' => $request->is_active === 'true']);
+
         $validated = $request->validate([
             'customer_id' => 'required|integer|exists:persons,id',
             'loading_in' => 'required|string|max:249',
@@ -123,6 +126,12 @@ class MasterTarifController extends Controller
             'inv_fuso' => 'nullable|integer',
             'is_active' => 'sometimes|boolean',
         ]);
+
+        $personType = Person::findOrFail((int) $request->customer_id)->type;
+
+        if ($personType !== 'customer') {
+            return $this->responseError('The customer_id selected is not a customer type.', 'Validation Error', 422);
+        }
 
         try {
             $tarif = DB::transaction(function () use ($validated) {
