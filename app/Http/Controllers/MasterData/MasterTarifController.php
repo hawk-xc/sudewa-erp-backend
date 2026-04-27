@@ -231,6 +231,8 @@ class MasterTarifController extends Controller
 
             return $this->responseError($err->getMessage(), 'Tarif import error', 500);
         }
+    }
+    
     /**
      * Export tariffs to Excel.
      */
