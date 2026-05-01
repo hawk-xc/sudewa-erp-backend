@@ -20,7 +20,7 @@ case "$response" in
         php artisan migrate:fresh --seed
         php artisan db:seed DummyDataSeeder
         php artisan db:seed MainCompanyWarehouseSeeder
-        php artisan db:seed PurchaseUnitTransactionDummySeeder
+        # php artisan db:seed PurchaseUnitTransactionDummySeeder
         ;;
     *)
         echo "Skipping seeding."

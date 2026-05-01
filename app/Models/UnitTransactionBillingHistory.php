@@ -35,6 +35,11 @@ class UnitTransactionBillingHistory extends Model
         return $this->belongsTo(UnitTransactionBilling::class, 'unit_transaction_billing_id', 'id');
     }
 
+    public function cashFlow()
+    {
+        return $this->hasOne(CashFlow::class, 'unit_transaction_billing_history_id');
+    }
+
     protected static function booted()
     {
         static::creating(function ($model) {

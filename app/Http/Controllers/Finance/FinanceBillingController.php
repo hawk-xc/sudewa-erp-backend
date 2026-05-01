@@ -178,41 +178,47 @@ class FinanceBillingController extends Controller
                 );
             }
 
-            $financeBilling = FinanceBilling::findOrFail($unit_transaction_billing_id);
-
-            $grandTotal = $financeBilling->unitTransactionBilling->grand_total ?? 0;
-            $currentTotalPaid = $financeBilling->financeBillingItems->sum(function ($item) {
+            $financeBilling = FinanceBilling::with('financeBillingItems')->findOrFail($unit_transaction_billing_id);
+            $newPayment = ($validated['cash_payment_amount'] ?? 0) + ($validated['bca_payment_amount'] ?? 0);
+            
+            $alreadyAllocated = $financeBilling->financeBillingItems->sum(function ($item) {
                 return ($item->cash_payment_amount ?? 0) + ($item->bca_payment_amount ?? 0);
             });
-            $newPayment = ($validated['cash_payment_amount'] ?? 0) + ($validated['bca_payment_amount'] ?? 0);
+            
+            $remainingAllowed = $financeBilling->grand_total - $alreadyAllocated;
 
-            if (($currentTotalPaid + $newPayment) > $grandTotal) {
+            if ($newPayment > $remainingAllowed) {
                 return $this->responseError(
-                    "Total payment cannot exceed grand total (" . number_format($grandTotal) . "). Remaining balance: " . number_format($grandTotal - $currentTotalPaid),
+                    "Payment amount exceeds remaining billing balance (" . number_format($remainingAllowed) . ").",
                     'Validation failed',
                     422
                 );
             }
 
-            $item = DB::transaction(function () use ($validated, $financeBilling) {
+            $item = DB::transaction(function () use ($validated, $financeBilling, $newPayment, $alreadyAllocated) {
+                // 1. Create the item
                 $itemData = $validated;
                 $itemData['finance_billing_id'] = $financeBilling->id;
-
                 $item = FinanceBillingItem::create($itemData);
-                
-                if (isset($validated['payment_at'])) {
-                    $financeBilling->update([
-                        'last_payment_at' => $validated['payment_at']
-                    ]);
+
+                // 2. Check if fully allocated
+                if (($alreadyAllocated + $newPayment) >= $financeBilling->grand_total) {
+                    $financeBilling->update(['is_valid' => true]);
                 }
-                $this->updateValidity($financeBilling);
 
                 return $item;
             });
 
-            $item->remaining_payment = $grandTotal - ($currentTotalPaid + $newPayment);
+            $financeBillingFresh = $financeBilling->fresh('financeBillingItems');
+            $totalAllocatedNow = $financeBillingFresh->financeBillingItems->sum(function ($item) {
+                return ($item->cash_payment_amount ?? 0) + ($item->bca_payment_amount ?? 0);
+            });
+            $remainingAmount = $financeBillingFresh->grand_total - $totalAllocatedNow;
 
-            return $this->responseSuccess($item, 'Finance Billing Item created successfully', 201);
+            $itemArray = $item->toArray();
+            $itemArray['remaining_amount'] = $remainingAmount;
+
+            return $this->responseSuccess($itemArray, 'Finance Billing Item created successfully', 201);
         } catch (ValidationException $e) {
             return $this->responseError($e->errors(), 'Validation failed', 422);
         } catch (Exception $err) {
@@ -249,14 +255,25 @@ class FinanceBillingController extends Controller
                 DB::transaction(function () use ($item, $validated) {
                 $item->update($validated);
                 
-                // Update last_payment_at in FinanceBilling if updated
-                if (isset($validated['payment_at'])) {
-                    FinanceBilling::where('id', $item->finance_billing_id)->update([
-                        'last_payment_at' => $validated['payment_at']
+                $financeBilling = $item->financeBilling;
+                $cashFlow = $financeBilling->cashFlow;
+
+                if ($cashFlow) {
+                    $newAmount = ($item->cash_payment_amount ?? 0) + ($item->bca_payment_amount ?? 0);
+                    $cashFlow->update([
+                        'debet' => $cashFlow->debet > 0 ? $newAmount : 0,
+                        'credit' => $cashFlow->credit > 0 ? $newAmount : 0,
+                        'note' => $item->note ?? $cashFlow->note,
+                        'date' => $item->payment_at ?? $cashFlow->date,
+                    ]);
+                    
+                    $financeBilling->update([
+                        'grand_total' => $newAmount,
+                        'last_payment_at' => $item->payment_at
                     ]);
                 }
 
-                $this->updateValidity($item->financeBilling);
+                $this->updateValidity($financeBilling);
             });
 
             return $this->responseSuccess($item->fresh(), 'Finance Billing Item updated successfully', 200);

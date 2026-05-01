@@ -1,14 +1,16 @@
 <?php
 
-namespace Tests\Unit;
+namespace Tests\Feature;
 
 use App\Models\User;
+use Spatie\Permission\Models\Role;
 use Illuminate\Support\Facades\Auth;
 use Tests\TestCase;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 
 class LoginTest extends TestCase
 {
-    use \Illuminate\Foundation\Testing\RefreshDatabase;
+    use RefreshDatabase;
 
     /**
      * A basic unit test example.
@@ -17,6 +19,10 @@ class LoginTest extends TestCase
      */
     public function test_is_admin_login_working()
     {
+        // 1. Setup: Create the admin role (required for Spatie)
+        Role::create(['name' => 'admin']);
+
+        // 2. Create the user
         $user = User::create([
             'name' => 'Admin Test',
             'username' => 'admintest',
@@ -28,10 +34,15 @@ class LoginTest extends TestCase
             'is_active' => true,
         ]);
 
-        Auth::login($user);
+        // 3. Assign role
+        $user->assignRole('admin');
 
-        // check if user is logged in
+        // 4. Act: Log the user in
+        $this->actingAs($user, 'api');
+
+        // 5. Assert: Check if user is logged in and is admin
         $this->assertTrue(Auth::check());
+        $this->assertTrue($user->isAdmin());
     }
 }
 

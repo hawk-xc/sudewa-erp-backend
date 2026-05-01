@@ -23,14 +23,14 @@ class DailyCashFlowController extends Controller
         $this->middleware(['permission:finance:edit'])->only('update');
         $this->middleware(['permission:finance:delete'])->only(['destroy']);
 
-        $this->cashFlowTable = ['id', 'uuid', 'company_id', 'code', 'cash_id', 'date', 'note', 'debet', 'credit', 'created_at'];
+        $this->cashFlowTable = ['id', 'uuid', 'company_id', 'code', 'account_id', 'date', 'note', 'debet', 'credit', 'created_at'];
     }
 
     public function index(Request $request)
     {
         $query = CashFlow::query();
 
-        $query->with(['cash:id,uuid,code,description,type', 'company:id,uuid,name']);
+        $query->with(['account:id,uuid,code,name', 'company:id,uuid,name', 'financeBilling:id,uuid,cash_flow_id,unit_transaction_billing_id,last_payment_at,is_valid']);
 
         try {
             if ($request->filled('search')) {
@@ -38,9 +38,9 @@ class DailyCashFlowController extends Controller
                 $query->where(function ($q) use ($search) {
                     $q->where('code', 'like', "%$search%")
                         ->orWhere('note', 'like', "%$search%")
-                        ->orWhereHas('cash', function ($qCash) use ($search) {
-                            $qCash->where('code', 'like', "%$search%")
-                                ->orWhere('description', 'like', "%$search%");
+                        ->orWhereHas('account', function ($qAccount) use ($search) {
+                            $qAccount->where('code', 'like', "%$search%")
+                                ->orWhere('name', 'like', "%$search%");
                         });
                 });
             }
@@ -71,7 +71,7 @@ class DailyCashFlowController extends Controller
     public function show(string $id)
     {
         try {
-            $cashFlow = CashFlow::with(['cash:id,uuid,code,description,type', 'company:id,uuid,name'])->find($id);
+            $cashFlow = CashFlow::with(['account:id,uuid,code,name', 'company:id,uuid,name', 'financeBilling', 'financeBilling.financeBillingItems'])->find($id);
 
             if (! $cashFlow) {
                 return $this->responseError(null, 'Cash Flow not found', 404);
@@ -89,7 +89,7 @@ class DailyCashFlowController extends Controller
     {
         $validated = $request->validate([
             'company_id' => 'required|integer|exists:companies,id',
-            'cash_id' => 'required|integer|exists:cashes,id',
+            'account_id' => 'required|integer|exists:accounts,id',
             'date' => 'required|date',
             'note' => 'nullable|string',
             'debet' => 'nullable|numeric|min:0',
@@ -113,7 +113,7 @@ class DailyCashFlowController extends Controller
     {
         $request->validate([
             'company_id' => 'sometimes|integer|exists:companies,id',
-            'cash_id' => 'sometimes|integer|exists:cashes,id',
+            'account_id' => 'sometimes|integer|exists:accounts,id',
             'date' => 'sometimes|date',
             'note' => 'nullable|string',
             'debet' => 'sometimes|numeric|min:0',
@@ -121,7 +121,7 @@ class DailyCashFlowController extends Controller
         ]);
 
         try {
-            $data = array_filter($request->only(['company_id', 'cash_id', 'date', 'note', 'debet', 'credit']), fn ($value) => ! is_null($value) && $value !== '');
+            $data = array_filter($request->only(['company_id', 'account_id', 'date', 'note', 'debet', 'credit']), fn ($value) => ! is_null($value) && $value !== '');
 
             if (empty($data)) {
                 return $this->responseError(null, 'No data provided to update', 422);

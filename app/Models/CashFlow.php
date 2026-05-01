@@ -17,7 +17,8 @@ class CashFlow extends Model
         'uuid',
         'code',
         'company_id',
-        'cash_id',
+        'account_id',
+        'unit_transaction_billing_history_id',
         'date',
         'note',
         'debet',
@@ -26,7 +27,8 @@ class CashFlow extends Model
 
     protected $casts = [
         'company_id' => 'integer',
-        'cash_id' => 'integer',
+        'account_id' => 'integer',
+        'unit_transaction_billing_history_id' => 'integer',
         'date' => 'date',
         'debet' => 'integer',
         'credit' => 'integer',
@@ -37,9 +39,19 @@ class CashFlow extends Model
         return $this->belongsTo(Company::class);
     }
 
-    public function cash()
+    public function account()
     {
-        return $this->belongsTo(Cash::class);
+        return $this->belongsTo(Account::class);
+    }
+
+    public function unitTransactionBillingHistory()
+    {
+        return $this->belongsTo(UnitTransactionBillingHistory::class);
+    }
+
+    public function financeBilling()
+    {
+        return $this->hasOne(FinanceBilling::class);
     }
 
     protected static function booted()

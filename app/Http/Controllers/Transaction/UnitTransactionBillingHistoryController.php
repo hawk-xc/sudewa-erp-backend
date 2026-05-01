@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Transaction;
 
 use App\Http\Controllers\Controller;
 use App\Models\Cash;
+use App\Models\CashFlow;
 use App\Models\FinanceBilling;
 use App\Models\TransactionFlow;
 use App\Models\UnitTransactionBilling;
@@ -124,7 +125,7 @@ class UnitTransactionBillingHistoryController extends Controller
             }
 
             DB::transaction(function () use ($billing, $validated, $newTotalPaid, $cashSlug) {
-                UnitTransactionBillingHistory::create([
+                $history = UnitTransactionBillingHistory::create([
                     'unit_transaction_billing_id' => $billing->id,
                     'bca_payment_amount' => $validated['bca_payment_amount'] ?? 0,
                     'bca_payment_usd_amount' => $validated['bca_payment_usd_amount'] ?? 0,
@@ -189,12 +190,47 @@ class UnitTransactionBillingHistoryController extends Controller
                         'stock_state' => 'inbound_incoming_goods',
                     ]);
 
-                    FinanceBilling::create([
-                        'unit_transaction_billing_id' => $billing->id,
-                        'grand_total' => $billing->grand_total,
-                        'last_payment_at' => now(),
-                        'is_valid' => false,
-                    ]);
+                    // Create a SINGLE CashFlow and FinanceBilling for the TOTAL BRUTO when fully paid
+                    $primaryCashCode = null;
+                    foreach ($cashSlug as $slug) {
+                        $amt = match ($slug) {
+                            'cash_idr' => $validated['cash_payment_amount'] ?? 0,
+                            'bca_idr' => $validated['bca_payment_amount'] ?? 0,
+                            'bca_usd' => $validated['bca_payment_usd_amount'] ?? 0,
+                            default => 0,
+                        };
+                        if ($amt > 0) {
+                            $primaryCashCode = $slug;
+                            break;
+                        }
+                    }
+
+                    // Fallback to first available if none in current payment (e.g. lunas by adjustment)
+                    if (!$primaryCashCode) $primaryCashCode = 'cash_idr';
+
+                    $cash = Cash::where('company_id', $companyId)
+                        ->where('code', $primaryCashCode)
+                        ->first();
+
+                    if ($cash) {
+                        $cashFlow = CashFlow::create([
+                            'company_id' => $companyId,
+                            'account_id' => $cash->account_id,
+                            'unit_transaction_billing_history_id' => $history->id,
+                            'date' => $validated['payment_at'] ?? now(),
+                            'note' => "Pelunasan Total " . $billing->unitTransaction->code,
+                            'debet' => $billing->unitTransaction->type === 'sales' ? $billing->grand_total : 0,
+                            'credit' => $billing->unitTransaction->type === 'purchase' ? $billing->grand_total : 0,
+                        ]);
+
+                        FinanceBilling::create([
+                            'unit_transaction_billing_id' => $billing->id,
+                            'cash_flow_id' => $cashFlow->id,
+                            'grand_total' => $billing->grand_total,
+                            'last_payment_at' => now(),
+                            'is_valid' => false,
+                        ]);
+                    }
 
                     foreach ($billing->unitTransaction->unitTransactionItems as $item) {
 
