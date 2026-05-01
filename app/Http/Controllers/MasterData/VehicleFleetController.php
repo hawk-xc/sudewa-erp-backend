@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\MasterData;
 
+use App\Exports\VehicleFleetExport;
+use App\Imports\VehicleFleetImport;
 use App\Http\Controllers\Controller;
 use App\Models\VehicleFleet;
 use App\Models\VehicleFleetEquipment;
@@ -10,6 +12,7 @@ use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Maatwebsite\Excel\Facades\Excel;
 
 /**
  * @group Master Data
@@ -103,8 +106,8 @@ class VehicleFleetController extends Controller
         $validated = $request->validate([
             'registration_number' => 'required|string|max:249',
             'type' => 'required|string|max:249',
-            'machine_number' => 'required|string|max:249',
-            'chassis_number' => 'required|string|max:249',
+            'machine_number' => 'required|string|max:249|unique:vehicle_fleets,machine_number',
+            'chassis_number' => 'required|string|max:249|unique:vehicle_fleets,chassis_number',
             'stnk_age' => 'nullable|date',
             'kir_age' => 'nullable|date',
             'stnk_number' => 'nullable|string|max:249',
@@ -136,29 +139,50 @@ class VehicleFleetController extends Controller
      */
     public function update(Request $request, string $id)
     {
-        $request->validate([
+        $validated = $request->validate([
             'registration_number' => 'sometimes|string|max:249',
             'type' => 'sometimes|string|max:249',
-            'machine_number' => 'sometimes|string|max:249',
-            'chassis_number' => 'sometimes|string|max:249',
+            'machine_number' => 'sometimes|string|max:249|unique:vehicle_fleets,machine_number,'.$id,
+            'chassis_number' => 'sometimes|string|max:249|unique:vehicle_fleets,chassis_number,'.$id,
             'stnk_age' => 'nullable|date',
             'kir_age' => 'nullable|date',
             'stnk_number' => 'nullable|string|max:249',
             'kir_book' => 'nullable|string|max:249',
-            'equipment' => 'sometimes|array',
+            
+            // Equipment data
+            'vehicle_fleet_id' => 'sometimes|integer',
+            'radio_tape' => 'sometimes|integer',
+            'jack' => 'sometimes|integer',
+            'spare_tire' => 'sometimes|integer',
+            'toolkit' => 'sometimes|integer',
+            'jack_handle' => 'sometimes|integer',
+            'pressure_pipe_1' => 'sometimes|integer',
+            'first_aid_kit' => 'sometimes|integer',
+            'cigarette_lighter' => 'sometimes|integer',
+            'pressure_pipe_2' => 'sometimes|integer',
+            'seat_saddle' => 'sometimes|integer',
+            'handlebar_hose' => 'sometimes|integer',
+            'fire_extinguisher' => 'sometimes|integer',
+            'large_tie_down_strap' => 'sometimes|integer',
+            'rearview_mirror' => 'sometimes|integer',
+            'ati_foam' => 'sometimes|integer',
+            'small_tie_down_strap' => 'sometimes|integer',
+            'toolbox_lock' => 'sometimes|integer',
+            'service_book' => 'sometimes|integer',
         ]);
 
         try {
-            $fleet = DB::transaction(function () use ($request, $id) {
+            $fleet = DB::transaction(function () use ($request, $validated, $id) {
                 $fleet = VehicleFleet::findOrFail($id);
                 
-                $fleetData = $request->only(['registration_number', 'type', 'machine_number', 'chassis_number', 'stnk_age', 'kir_age', 'stnk_number', 'kir_book']);
-                $fleet->update(array_filter($fleetData, fn($v) => !is_null($v)));
+                $fleet->update($validated);
 
-                if ($request->has('equipment')) {
-                    $equipmentData = $request->input('equipment');
-                    $filteredEquipment = array_intersect_key($equipmentData, array_flip($this->equipmentFields));
-                    $fleet->vehicleFleetEquipment()->updateOrCreate(['vehicle_fleet_id' => $fleet->id], $filteredEquipment);
+                $equipmentData = $request->only($this->equipmentFields);
+                if ($request->hasAny($this->equipmentFields)) {
+                    $fleet->vehicleFleetEquipment()->updateOrCreate(
+                        ['vehicle_fleet_id' => $fleet->id],
+                        $equipmentData
+                    );
                 }
 
                 return $fleet->fresh()->load('vehicleFleetEquipment');
@@ -184,6 +208,41 @@ class VehicleFleetController extends Controller
         } catch (Exception $err) {
             Log::error('Error while deleting Vehicle Fleet: ' . $err->getMessage());
             return $this->responseError($err->getMessage(), 'Vehicle Fleet deletion failed', 500);
+        }
+    }
+
+    /**
+     * Import vehicle fleets from Excel.
+     */
+    public function import(Request $request)
+    {
+        $request->validate([
+            'file' => 'required|file|mimes:xlsx,xls',
+        ]);
+
+        try {
+            Excel::import(new VehicleFleetImport(), $request->file('file'));
+
+            return $this->responseSuccess(null, 'Vehicle Fleet imported successfully', 201);
+        } catch (Exception $err) {
+            Log::error('Vehicle Fleet import error: ' . $err->getMessage());
+            return $this->responseError($err->getMessage(), 'Vehicle Fleet import error', 500);
+        }
+    }
+
+    /**
+     * Export vehicle fleets to Excel.
+     */
+    public function export(Request $request)
+    {
+        try {
+            return Excel::download(
+                new VehicleFleetExport($request, $this->vehicleFleetTable),
+                'wajira_vehicle_fleet_data.xlsx'
+            );
+        } catch (Exception $err) {
+            Log::error('Error export Vehicle Fleet: ' . $err->getMessage());
+            return $this->responseError($err->getMessage(), 'Vehicle Fleet export failed', 500);
         }
     }
 }
