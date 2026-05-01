@@ -16,6 +16,7 @@ return new class extends Migration
             $table->uuid();
             $table->foreignId('company_id')->constrained('companies')->cascadeOnDelete();
             $table->foreignId('account_id')->nullable(true)->constrained('accounts')->nullOnDelete();
+            $table->foreignId('cash_id')->nullable(true)->constrained('cashes')->nullOnDelete();
             $table->string('code')->unique()->nullable(false);
             $table->date('date')->nullable(false);
             $table->text('note')->nullable();

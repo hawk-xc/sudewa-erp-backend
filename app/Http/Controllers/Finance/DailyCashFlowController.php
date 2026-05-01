@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Finance;
 
 use App\Http\Controllers\Controller;
 use App\Models\CashFlow;
+use App\Traits\FileTrait;
 use App\Traits\ResponseTrait;
 use Exception;
 use Illuminate\Http\Request;
@@ -12,7 +13,7 @@ use Illuminate\Support\Facades\Log;
 
 class DailyCashFlowController extends Controller
 {
-    use ResponseTrait;
+    use FileTrait, ResponseTrait;
 
     protected $cashFlowTable;
 
@@ -23,14 +24,14 @@ class DailyCashFlowController extends Controller
         $this->middleware(['permission:finance:edit'])->only('update');
         $this->middleware(['permission:finance:delete'])->only(['destroy']);
 
-        $this->cashFlowTable = ['id', 'uuid', 'company_id', 'code', 'account_id', 'date', 'note', 'debet', 'credit', 'created_at'];
+        $this->cashFlowTable = ['id', 'uuid', 'company_id', 'code', 'account_id', 'cash_id', 'date', 'note', 'debet', 'credit', 'payment_proof', 'created_at'];
     }
 
     public function index(Request $request)
     {
         $query = CashFlow::query();
 
-        $query->with(['account:id,uuid,code,name', 'company:id,uuid,name', 'financeBilling:id,uuid,cash_flow_id,unit_transaction_billing_id,last_payment_at,is_valid']);
+        $query->with(['account:id,uuid,code,name', 'cash:id,uuid,code,description', 'company:id,uuid,name', 'financeBilling:id,uuid,cash_flow_id,unit_transaction_billing_id,last_payment_at,is_valid']);
 
         try {
             if ($request->filled('search')) {
@@ -71,7 +72,7 @@ class DailyCashFlowController extends Controller
     public function show(string $id)
     {
         try {
-            $cashFlow = CashFlow::with(['account:id,uuid,code,name', 'company:id,uuid,name', 'financeBilling', 'financeBilling.financeBillingItems'])->find($id);
+            $cashFlow = CashFlow::with(['account:id,uuid,code,name', 'cash:id,uuid,code,description', 'company:id,uuid,name', 'financeBilling', 'financeBilling.financeBillingItems'])->find($id);
 
             if (! $cashFlow) {
                 return $this->responseError(null, 'Cash Flow not found', 404);
@@ -90,13 +91,21 @@ class DailyCashFlowController extends Controller
         $validated = $request->validate([
             'company_id' => 'required|integer|exists:companies,id',
             'account_id' => 'required|integer|exists:accounts,id',
+            'cash_id' => 'nullable|integer|exists:cashes,id',
             'date' => 'required|date',
             'note' => 'nullable|string',
-            'debet' => 'nullable|numeric|min:0',
-            'credit' => 'nullable|numeric|min:0',
+            'debet' => 'nullable|numeric|min:0|prohibits:credit',
+            'credit' => 'nullable|numeric|min:0|prohibits:debet',
+            'payment_proof' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:2048',
         ]);
 
         try {
+            if ($request->hasFile('payment_proof')) {
+                $validated['payment_proof'] = $this->storeFile(
+                    $request->file('payment_proof'),
+                    'cash_flow_proof'
+                );
+            }
             $cashFlow = DB::transaction(function () use ($validated) {
                 return CashFlow::create($validated);
             });
@@ -114,21 +123,34 @@ class DailyCashFlowController extends Controller
         $request->validate([
             'company_id' => 'sometimes|integer|exists:companies,id',
             'account_id' => 'sometimes|integer|exists:accounts,id',
+            'cash_id' => 'sometimes|nullable|integer|exists:cashes,id',
             'date' => 'sometimes|date',
             'note' => 'nullable|string',
-            'debet' => 'sometimes|numeric|min:0',
-            'credit' => 'sometimes|numeric|min:0',
+            'debet' => 'sometimes|numeric|min:0|prohibits:credit',
+            'credit' => 'sometimes|numeric|min:0|prohibits:debet',
+            'payment_proof' => 'sometimes|nullable|file|mimes:jpg,jpeg,png,pdf|max:2048',
         ]);
 
         try {
-            $data = array_filter($request->only(['company_id', 'account_id', 'date', 'note', 'debet', 'credit']), fn ($value) => ! is_null($value) && $value !== '');
+            $cashFlow = CashFlow::findOrFail($id);
+            $data = array_filter($request->only(['company_id', 'account_id', 'cash_id', 'date', 'note', 'debet', 'credit']), fn ($value) => ! is_null($value) && $value !== '');
+
+            if ($request->hasFile('payment_proof')) {
+                if ($cashFlow->payment_proof) {
+                    $this->destroyFile('cash_flow_proof/' . $cashFlow->payment_proof);
+                }
+
+                $data['payment_proof'] = $this->storeFile(
+                    $request->file('payment_proof'),
+                    'cash_flow_proof'
+                );
+            }
 
             if (empty($data)) {
                 return $this->responseError(null, 'No data provided to update', 422);
             }
 
-            $cashFlow = DB::transaction(function () use ($id, $data) {
-                $cashFlow = CashFlow::findOrFail($id);
+            $cashFlow = DB::transaction(function () use ($cashFlow, $data) {
                 $cashFlow->update($data);
 
                 return $cashFlow->fresh();
@@ -146,6 +168,11 @@ class DailyCashFlowController extends Controller
     {
         try {
             $cashFlow = CashFlow::findOrFail($id);
+            
+            if ($cashFlow->payment_proof) {
+                $this->destroyFile('cash_flow_proof/' . $cashFlow->payment_proof);
+            }
+
             $cashFlow->delete();
 
             return $this->responseSuccess([], 'Cash Flow deleted successfully', 200);
