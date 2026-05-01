@@ -31,6 +31,8 @@ use App\Http\Controllers\MasterData\VehicleFleetController;
 use App\Http\Controllers\Permission\PermissionController;
 use App\Http\Controllers\Report\LiabilityController;
 use App\Http\Controllers\Role\RoleController;
+use App\Http\Controllers\Transaction\DOExpeditionController;
+use App\Http\Controllers\Transaction\DOExpeditionItemController;
 use App\Http\Controllers\Transaction\MaterialTransactionBillingController;
 use App\Http\Controllers\Transaction\MaterialTransactionController;
 use App\Http\Controllers\Transaction\MaterialTransactionDetailController;
@@ -225,6 +227,11 @@ Route::group(
             Route::apiResource('material-transaction', MaterialTransactionController::class);
             Route::apiResource('material-transaction-detail', MaterialTransactionDetailController::class);
             Route::apiResource('material-transaction-billing', MaterialTransactionBillingController::class);
+
+            // DO Expedition API
+            Route::get('do-expedition/export', [DOExpeditionController::class, 'export']);
+            Route::apiResource('do-expedition', DOExpeditionController::class);
+            Route::apiResource('do-expedition-item', DOExpeditionItemController::class);
         });
 
         // Finance
