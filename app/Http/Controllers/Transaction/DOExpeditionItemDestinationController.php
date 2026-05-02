@@ -40,6 +40,7 @@ class DOExpeditionItemDestinationController extends Controller
             'do_expedition_item_id' => 'required|exists:do_expedition_items,id',
             'destination' => 'required|string',
             'driver_note' => 'nullable|string',
+            'maps_url' => 'nullable|string',
             'order_number' => 'nullable|integer',
         ]);
 
@@ -63,6 +64,7 @@ class DOExpeditionItemDestinationController extends Controller
         $validated = $request->validate([
             'destination' => 'sometimes|required|string',
             'driver_note' => 'nullable|string',
+            'maps_url' => 'nullable|string',
             'order_number' => 'sometimes|required|integer',
         ]);
 

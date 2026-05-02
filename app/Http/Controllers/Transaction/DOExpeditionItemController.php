@@ -78,6 +78,7 @@ class DOExpeditionItemController extends Controller
             'loading_out' => 'required|string',
             'destination' => 'required|string',
             'driver_note' => 'nullable|string',
+            'maps_url' => 'nullable|string',
             'invoice_fee' => 'required|numeric|min:0',
             'additional_cost_fee' => 'nullable|numeric|min:0',
             'other_fee' => 'nullable|numeric|min:0',
@@ -91,6 +92,7 @@ class DOExpeditionItemController extends Controller
             $item->expeditionDestinations()->create([
                 'destination' => $validated['destination'],
                 'driver_note' => $validated['driver_note'] ?? null,
+                'maps_url' => $validated['maps_url'] ?? null,
                 'order_number' => 1,
             ]);
 
