@@ -7,6 +7,7 @@ use App\Models\DOExpeditionItem;
 use App\Traits\ResponseTrait;
 use Exception;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
 
@@ -24,7 +25,7 @@ class DOExpeditionItemController extends Controller
 
     public function index(Request $request)
     {
-        $query = DOExpeditionItem::with(['customer:id,uuid,name', 'expedition:id,uuid,do_code,date']);
+        $query = DOExpeditionItem::with(['customer:id,uuid,name', 'expedition:id,uuid,do_code,date', 'expeditionDestinations']);
 
         if ($request->filled('do_expedition_id')) {
             $query->where('do_expedition_id', $request->do_expedition_id);
@@ -43,7 +44,9 @@ class DOExpeditionItemController extends Controller
         }
 
         if ($request->filled('destination')) {
-            $query->where('destination', 'like', '%' . $request->destination . '%');
+            $query->whereHas('expeditionDestinations', function ($q) use ($request) {
+                $q->where('destination', 'like', '%' . $request->destination . '%');
+            });
         }
 
         if ($request->filled('search')) {
@@ -51,7 +54,9 @@ class DOExpeditionItemController extends Controller
             $query->where(function ($q) use ($search) {
                 $q->where('loading_in', 'like', "%$search%")
                     ->orWhere('loading_out', 'like', "%$search%")
-                    ->orWhere('destination', 'like', "%$search%");
+                    ->orWhereHas('expeditionDestinations', function ($sq) use ($search) {
+                        $sq->where('destination', 'like', "%$search%");
+                    });
             });
         }
 
@@ -72,16 +77,27 @@ class DOExpeditionItemController extends Controller
             'loading_in' => 'required|string',
             'loading_out' => 'required|string',
             'destination' => 'required|string',
+            'driver_note' => 'nullable|string',
             'invoice_fee' => 'required|numeric|min:0',
             'additional_cost_fee' => 'nullable|numeric|min:0',
             'other_fee' => 'nullable|numeric|min:0',
             'driver_fee' => 'nullable|numeric|min:0',
         ]);
 
+        DB::beginTransaction();
         try {
             $item = DOExpeditionItem::create($validated);
-            return $this->responseSuccess($item, 'DO Expedition Item created successfully', 201);
+            
+            $item->expeditionDestinations()->create([
+                'destination' => $validated['destination'],
+                'driver_note' => $validated['driver_note'] ?? null,
+                'order_number' => 1,
+            ]);
+
+            DB::commit();
+            return $this->responseSuccess($item->load('expeditionDestinations'), 'DO Expedition Item created successfully', 201);
         } catch (Exception $err) {
+            DB::rollBack();
             Log::error('Error creating DO Expedition Item: ' . $err->getMessage());
             return $this->responseError($err->getMessage(), 'Failed to create DO Expedition Item');
         }
@@ -90,7 +106,7 @@ class DOExpeditionItemController extends Controller
     public function show($id)
     {
         try {
-            $item = DOExpeditionItem::with(['customer', 'expedition.vehicle', 'expedition.driver'])->findOrFail($id);
+            $item = DOExpeditionItem::with(['customer', 'expedition.vehicle', 'expedition.driver', 'expeditionDestinations'])->findOrFail($id);
             return $this->responseSuccess($item, 'DO Expedition Item retrieved successfully');
         } catch (Exception $err) {
             return $this->responseError('DO Expedition Item not found', 'Not Found', 404);
@@ -109,7 +125,6 @@ class DOExpeditionItemController extends Controller
             ],
             'loading_in' => 'sometimes|required|string',
             'loading_out' => 'sometimes|required|string',
-            'destination' => 'sometimes|required|string',
             'invoice_fee' => 'sometimes|required|numeric|min:0',
             'additional_cost_fee' => 'nullable|numeric|min:0',
             'other_fee' => 'nullable|numeric|min:0',
@@ -119,7 +134,7 @@ class DOExpeditionItemController extends Controller
         try {
             $item = DOExpeditionItem::findOrFail($id);
             $item->update($validated);
-            return $this->responseSuccess($item->fresh(), 'DO Expedition Item updated successfully');
+            return $this->responseSuccess($item->load('expeditionDestinations')->fresh(), 'DO Expedition Item updated successfully');
         } catch (Exception $err) {
             Log::error('Error updating DO Expedition Item: ' . $err->getMessage());
             return $this->responseError($err->getMessage(), 'Failed to update DO Expedition Item');

@@ -33,6 +33,7 @@ use App\Http\Controllers\Report\LiabilityController;
 use App\Http\Controllers\Role\RoleController;
 use App\Http\Controllers\Transaction\DOExpeditionController;
 use App\Http\Controllers\Transaction\DOExpeditionItemController;
+use App\Http\Controllers\Transaction\DOExpeditionItemDestinationController;
 use App\Http\Controllers\Transaction\MaterialTransactionBillingController;
 use App\Http\Controllers\Transaction\MaterialTransactionController;
 use App\Http\Controllers\Transaction\MaterialTransactionDetailController;
@@ -232,6 +233,7 @@ Route::group(
             Route::get('do-expedition/export', [DOExpeditionController::class, 'export']);
             Route::apiResource('do-expedition', DOExpeditionController::class);
             Route::apiResource('do-expedition-item', DOExpeditionItemController::class);
+            Route::apiResource('do-expedition-item-destination', DOExpeditionItemDestinationController::class);
         });
 
         // Finance

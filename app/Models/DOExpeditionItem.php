@@ -18,7 +18,6 @@ class DOExpeditionItem extends Model
         'customer_id',
         'loading_in',
         'loading_out',
-        'destination',
         'invoice_fee',
         'additional_cost_fee',
         'other_fee',
@@ -48,6 +47,11 @@ class DOExpeditionItem extends Model
     public function customer()
     {
         return $this->belongsTo(Person::class, 'customer_id');
+    }
+
+    public function expeditionDestinations()
+    {
+        return $this->hasMany(DOExpeditionItemDestination::class, 'do_expedition_item_id');
     }
 
     protected static function booted()
