@@ -100,8 +100,6 @@ deploy-prod:
       echo "⏳ Wait container ready"
       sleep 5
 
-      echo "⚙️ Run install script"
-      docker exec wajira-finance-backend bash prod-install.sh
       EOF
 
     - echo "✅ Deploy Done"
