@@ -324,4 +324,47 @@ class VehicleDataController extends Controller
             return $this->responseError($err->getMessage(), 'Vehicle Data deletion failed', 500);
         }
     }
+
+    /**
+     * Update vehicle registration through vehicle data id.
+     */
+    public function updateVehicleRegistrationData(Request $request, $vehicle_data_id)
+    {
+        $validator = Validator::make($request->all(), [
+            'bbn_registration_fee' => 'sometimes|integer',
+            'garwil_fee' => 'sometimes|integer',
+            'nik_validation_fee' => 'sometimes|integer',
+            'acceleration_fee' => 'sometimes|integer',
+            'stamp_fee' => 'sometimes|integer',
+            'pnbp_bpkb' => 'sometimes|integer',
+            'skpd_fee' => 'sometimes|integer',
+        ]);
+
+        if ($validator->fails()) {
+            return $this->responseError($validator->errors(), 'Validation failed', 422);
+        }
+
+        try {
+            $registration = VehicleRegistration::where('vehicle_data_id', $vehicle_data_id)->first();
+
+            if (!$registration) {
+                return $this->responseError('Vehicle Registration not found for this vehicle data.', 'Not Found', 404);
+            }
+
+            $registration->update($request->only([
+                'bbn_registration_fee',
+                'garwil_fee',
+                'nik_validation_fee',
+                'acceleration_fee',
+                'stamp_fee',
+                'pnbp_bpkb',
+                'skpd_fee',
+            ]));
+
+            return $this->responseSuccess($registration->fresh(), 'Vehicle Registration updated successfully');
+        } catch (Exception $err) {
+            Log::error('Error while updating Vehicle Registration Data: ' . $err->getMessage());
+            return $this->responseError($err->getMessage(), 'Failed to update Vehicle Registration Data', 500);
+        }
+    }
 }

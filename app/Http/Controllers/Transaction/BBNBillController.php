@@ -83,12 +83,17 @@ class BBNBillController extends Controller
             ->where(function ($q) {
                 $q->whereDoesntHave('vehicleRegistration')
                   ->orWhereHas('vehicleRegistration', function ($query) {
-                      $query->where('is_already_processed', 0);
+                      $query->where('is_already_processed', false);
                   });
             })->exists();
 
         if ($unprocessedExists) {
             return $this->responseError('Cannot create BBN Bill. There are still unprocessed vehicle registrations for this dealer.', 'Unprocessed Data Found', 422);
+        }
+
+        $alreadyExists = BBNBill::where('dealer_id', $validated['dealer_id'])->exists();
+        if ($alreadyExists) {
+            return $this->responseError('BBN Bill for this dealer already exists.', 'Duplicate Data Found', 422);
         }
  
         try {
@@ -103,10 +108,26 @@ class BBNBillController extends Controller
     public function show($id)
     {
         try {
-            $data = BBNBill::with(['dealer', 'bbnBillBillings.bbnBillBillingItems.cash'])->findOrFail($id);
+            $data = BBNBill::find($id);
+
+            if (!$data) {
+                return $this->responseError('BBN Bill with ID ' . $id . ' not found.', 'BBN Bill not found', 404);
+            }
+
+            $data->load([
+                'dealer' => function ($query) {
+                    $query->select('id', 'uuid', 'name', 'type');
+                },
+                'dealer.vehicleDatas' => function ($query) {
+                    $query->select('id', 'uuid', 'dealer_id', 'invoice_number', 'stnk_name', 'ktp_number', 'chassis_number', 'machine_number');
+                },
+                'dealer.vehicleDatas.vehicleRegistration',
+                'bbnBillBillings.bbnBillBillingItems.cash'
+            ]);
             return $this->responseSuccess($data, 'BBN Bill retrieved successfully');
         } catch (Exception $err) {
-            return $this->responseError($err->getMessage(), 'BBN Bill not found', 404);
+            Log::error('Error retrieving BBN Bill: ' . $err->getMessage());
+            return $this->responseError($err->getMessage(), 'Internal Server Error', 500);
         }
     }
 
@@ -125,6 +146,25 @@ class BBNBillController extends Controller
                 $dealer = Person::findOrFail($validated['dealer_id']);
                 if ($dealer->type !== 'dealer') {
                     return $this->responseError('Selected person is not a dealer.', 'Invalid Person Type', 422);
+                }
+
+                $unprocessedExists = VehicleData::where('dealer_id', $validated['dealer_id'])
+                    ->where(function ($q) {
+                        $q->whereDoesntHave('vehicleRegistration')
+                          ->orWhereHas('vehicleRegistration', function ($query) {
+                              $query->where('is_already_processed', false);
+                          });
+                    })->exists();
+
+                if ($unprocessedExists) {
+                    return $this->responseError('Cannot update BBN Bill. There are still unprocessed vehicle registrations for this dealer.', 'Unprocessed Data Found', 422);
+                }
+
+                $alreadyExists = BBNBill::where('dealer_id', $validated['dealer_id'])
+                    ->where('id', '!=', $id)
+                    ->exists();
+                if ($alreadyExists) {
+                    return $this->responseError('BBN Bill for this dealer already exists.', 'Duplicate Data Found', 422);
                 }
             }
 

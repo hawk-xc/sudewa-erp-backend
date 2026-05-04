@@ -58,7 +58,11 @@ class VehicleRegistration extends Model
         'skpd_fee',
 
         // processed mark
-        'is_already_processed'
+        'is_already_processed',
+
+        // new column
+        'stamp_fee',
+        'pnbp_bpkb',
     ];
 
     protected $casts = [
@@ -69,6 +73,22 @@ class VehicleRegistration extends Model
         'stnk_physical_status' => 'boolean',
         'skpd_physical_status' => 'boolean',
         'tnkb_physical_status' => 'boolean',
+
+        // fee casts
+        'stck_fee' => 'integer',
+        'bbn_registration_fee' => 'integer',
+        'notice_fee' => 'integer',
+        'pmi_fee' => 'integer',
+        'physical_check_fee' => 'integer',
+        'nik_validation_fee' => 'integer',
+        'garwil_fee' => 'integer',
+        'built_up_fee' => 'integer',
+        'acceleration_fee' => 'integer',
+        'plate_recommendation_fee' => 'integer',
+        'service_fee' => 'integer',
+        'skpd_fee' => 'integer',
+        'stamp_fee' => 'integer',
+        'pnbp_bpkb' => 'integer',
     ];
 
     public function vendor()

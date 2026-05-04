@@ -57,6 +57,8 @@ class VehicleRegistrationController extends Controller
             'plate_recommendation_fee',
             'service_fee',
             'skpd_fee',
+            'stamp_fee',
+            'pnbp_bpkb',
         ];
     }
 
@@ -130,6 +132,8 @@ class VehicleRegistrationController extends Controller
             'plate_recommendation_fee' => 'sometimes|numeric',
             'service_fee' => 'sometimes|numeric',
             'skpd_fee' => 'sometimes|numeric',
+            'stamp_fee' => 'sometimes|numeric',
+            'pnbp_bpkb' => 'sometimes|numeric',
         ]);
 
         if ($validator->fails()) {

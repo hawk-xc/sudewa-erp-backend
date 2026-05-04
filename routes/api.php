@@ -246,6 +246,7 @@ Route::group(
             Route::apiResource('do-expedition-item-destination', DOExpeditionItemDestinationController::class);
 
             // BBN Bill
+            Route::put('bbn-bill-detail/{vehicle_data_id}', [VehicleDataController::class, 'updateVehicleRegistrationData']);
             Route::apiResource('bbn-bill', BBNBillController::class);
             Route::apiResource('bbn-bill-billing', BBNBillBillingController::class);
             Route::apiResource('bbn-bill-billing-item', BBNBillBillingItemController::class);
