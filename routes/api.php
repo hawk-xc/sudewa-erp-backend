@@ -30,7 +30,12 @@ use App\Http\Controllers\MasterData\MasterVendorController;
 use App\Http\Controllers\MasterData\VehicleFleetController;
 use App\Http\Controllers\Permission\PermissionController;
 use App\Http\Controllers\Report\LiabilityController;
+use App\Http\Controllers\Report\TransactionReportController;
+use App\Http\Controllers\Report\UnitTypeDetailReportController;
 use App\Http\Controllers\Role\RoleController;
+use App\Http\Controllers\Transaction\BBNBillBillingController;
+use App\Http\Controllers\Transaction\BBNBillBillingItemController;
+use App\Http\Controllers\Transaction\BBNBillController;
 use App\Http\Controllers\Transaction\DOExpeditionController;
 use App\Http\Controllers\Transaction\DOExpeditionItemController;
 use App\Http\Controllers\Transaction\DOExpeditionItemDestinationController;
@@ -47,8 +52,6 @@ use App\Http\Controllers\Transaction\UnitTransactionItemSalesController;
 use App\Http\Controllers\Transaction\VehicleDataController;
 use App\Http\Controllers\Transaction\VehicleDocumentController;
 use App\Http\Controllers\Transaction\VehicleRegistrationController;
-use App\Http\Controllers\Report\UnitTypeDetailReportController;
-use App\Http\Controllers\Report\TransactionReportController;
 use App\Http\Controllers\User\UserController;
 use App\Http\Controllers\Warehouse\WarehouseActivityController;
 use App\Http\Controllers\Warehouse\WarehouseController;
@@ -241,6 +244,11 @@ Route::group(
             Route::apiResource('do-expedition', DOExpeditionController::class);
             Route::apiResource('do-expedition-item', DOExpeditionItemController::class);
             Route::apiResource('do-expedition-item-destination', DOExpeditionItemDestinationController::class);
+
+            // BBN Bill
+            Route::apiResource('bbn-bill', BBNBillController::class);
+            Route::apiResource('bbn-bill-billing', BBNBillBillingController::class);
+            Route::apiResource('bbn-bill-billing-item', BBNBillBillingItemController::class);
         });
 
         // Finance

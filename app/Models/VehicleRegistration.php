@@ -17,7 +17,6 @@ class VehicleRegistration extends Model
         'vendor_id',
         'vehicle_data_id',
         'process_date',  // date
-        'is_already_processed', // bool -> default false
         
         // New Registration Column
         'customer_delivery_date',
@@ -57,6 +56,9 @@ class VehicleRegistration extends Model
         'plate_recommendation_fee',
         'service_fee',
         'skpd_fee',
+
+        // processed mark
+        'is_already_processed'
     ];
 
     protected $casts = [

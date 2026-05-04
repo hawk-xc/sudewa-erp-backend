@@ -1,0 +1,150 @@
+<?php
+
+namespace App\Http\Controllers\Transaction;
+
+use App\Http\Controllers\Controller;
+use App\Models\BBNBill;
+use App\Models\Person;
+use App\Models\VehicleData;
+use App\Traits\ResponseTrait;
+use Exception;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
+
+class BBNBillController extends Controller
+{
+    use ResponseTrait;
+
+    protected $bbnBillTable;
+
+    public function __construct()
+    {
+        $this->middleware(['permission:transaction:list'])->only(['index', 'show']);
+        $this->middleware(['permission:transaction:create'])->only('store');
+        $this->middleware(['permission:transaction:edit'])->only('update');
+        $this->middleware(['permission:transaction:delete'])->only(['destroy']);
+
+        $this->bbnBillTable = [
+            'id',
+            'uuid',
+            'dealer_id',
+            'bill_date',
+            'paid_date',
+            'created_at',
+        ];
+    }
+
+    public function index(Request $request)
+    {
+        $query = BBNBill::with(['dealer:id,name']);
+
+        try {
+            foreach ($this->bbnBillTable as $field) {
+                if ($request->filled($field)) {
+                    $query->where($field, $request->$field);
+                }
+            }
+
+            $sortBy = in_array($request->sort_by, $this->bbnBillTable) ? $request->sort_by : 'id';
+            $sortOrder = $request->sort_order === 'asc' ? 'asc' : 'desc';
+
+            $data = $query->orderBy($sortBy, $sortOrder)->paginate($request->per_page ?? 10);
+
+            return $this->responseSuccess($data, 'BBN Bill list retrieved successfully');
+        } catch (Exception $err) {
+            Log::error('Error retrieving BBN Bill: ' . $err->getMessage());
+            return $this->responseError($err->getMessage(), 'BBN Bill list retrieved Failed', 500);
+        }
+    }
+
+    public function store(Request $request)
+    {
+        $validated = $request->validate([
+            'dealer_id' => 'required|exists:persons,id',
+            'bill_date' => 'nullable|date',
+            'paid_date' => 'nullable|date',
+        ]);
+
+        $dealer = Person::findOrFail($validated['dealer_id']);
+        if ($dealer->type !== 'dealer') {
+            return $this->responseError('Selected person is not a dealer.', 'Invalid Person Type', 422);
+        }
+
+        if (!$request->filled('bill_date')) {
+            $validated['bill_date'] = now()->toDateTimeString();
+        }
+
+        $totalVehicleData = VehicleData::where('dealer_id', (int) $validated['dealer_id'])->count();
+        if ($totalVehicleData == 0) {
+            return $this->responseError('No vehicle data found for this dealer.', 'Data Not Found', 404);
+        }
+
+        $unprocessedExists = VehicleData::where('dealer_id', $validated['dealer_id'])
+            ->where(function ($q) {
+                $q->whereDoesntHave('vehicleRegistration')
+                  ->orWhereHas('vehicleRegistration', function ($query) {
+                      $query->where('is_already_processed', 0);
+                  });
+            })->exists();
+
+        if ($unprocessedExists) {
+            return $this->responseError('Cannot create BBN Bill. There are still unprocessed vehicle registrations for this dealer.', 'Unprocessed Data Found', 422);
+        }
+ 
+        try {
+            $data = BBNBill::create($validated);
+            return $this->responseSuccess($data, 'BBN Bill created successfully', 201);
+        } catch (Exception $err) {
+            Log::error('Error creating BBN Bill: ' . $err->getMessage());
+            return $this->responseError($err->getMessage(), 'BBN Bill creation failed', 500);
+        }
+    }
+
+    public function show($id)
+    {
+        try {
+            $data = BBNBill::with(['dealer', 'bbnBillBillings.bbnBillBillingItems.cash'])->findOrFail($id);
+            return $this->responseSuccess($data, 'BBN Bill retrieved successfully');
+        } catch (Exception $err) {
+            return $this->responseError($err->getMessage(), 'BBN Bill not found', 404);
+        }
+    }
+
+    public function update(Request $request, $id)
+    {
+        $validated = $request->validate([
+            'dealer_id' => 'sometimes|required|exists:persons,id',
+            'bill_date' => 'sometimes|required|date',
+            'paid_date' => 'nullable|date',
+        ]);
+
+        try {
+            $bbnBill = BBNBill::findOrFail($id);
+
+            if ($request->filled('dealer_id')) {
+                $dealer = Person::findOrFail($validated['dealer_id']);
+                if ($dealer->type !== 'dealer') {
+                    return $this->responseError('Selected person is not a dealer.', 'Invalid Person Type', 422);
+                }
+            }
+
+            $bbnBill->update($validated);
+            return $this->responseSuccess($bbnBill->fresh(), 'BBN Bill updated successfully');
+        } catch (Exception $err) {
+            Log::error('Error updating BBN Bill: ' . $err->getMessage());
+            return $this->responseError($err->getMessage(), 'BBN Bill update failed', 500);
+        }
+    }
+
+    public function destroy($id)
+    {
+        try {
+            $bbnBill = BBNBill::findOrFail($id);
+            $bbnBill->delete();
+            return $this->responseSuccess(null, 'BBN Bill deleted successfully');
+        } catch (Exception $err) {
+            Log::error('Error deleting BBN Bill: ' . $err->getMessage());
+            return $this->responseError($err->getMessage(), 'BBN Bill deletion failed', 500);
+        }
+    }
+}

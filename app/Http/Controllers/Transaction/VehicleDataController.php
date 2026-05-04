@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Transaction;
 
 use App\Http\Controllers\Controller;
+use App\Models\Person;
 use App\Models\VehicleData;
 use App\Models\VehicleRegistration;
 use App\Traits\ResponseTrait;
@@ -150,6 +151,11 @@ class VehicleDataController extends Controller
 
         $validated = $validator->validated();
 
+        $dealer = Person::findOrFail($validated['dealer_id']);
+        if ($dealer->type !== 'dealer') {
+            return $this->responseError('Selected person is not a dealer.', 'Invalid Person Type', 422);
+        }
+
         try {
             $vehicleData = DB::transaction(function () use ($validated) {
                 return VehicleData::create($validated);
@@ -278,6 +284,13 @@ class VehicleDataController extends Controller
 
         if ($validator->fails()) {
             return $this->responseError($validator->errors(), 'Validation failed', 422);
+        }
+
+        if ($request->filled('dealer_id')) {
+            $dealer = Person::findOrFail($request->dealer_id);
+            if ($dealer->type !== 'dealer') {
+                return $this->responseError('Selected person is not a dealer.', 'Invalid Person Type', 422);
+            }
         }
 
         try {

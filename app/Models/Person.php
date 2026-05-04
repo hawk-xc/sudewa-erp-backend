@@ -49,6 +49,23 @@ class Person extends Model
         return $this->hasMany(OwnershipTransferFee::class);
     }
 
+    public function vehicleDatas()
+    {
+        return $this->hasMany(VehicleData::class, 'dealer_id', 'id');
+    }
+
+    public function vehicleRegistrationProcessedCount()
+    {
+        if ($this->type == 'dealer') {
+            return $this->vehicleDatas()
+                ->whereHas('vehicleRegistration', function ($query) {
+                    $query->where('is_already_processed', true);
+                })->count();
+        }
+
+        return 0;
+    }
+
     protected static function booted()
     {
         static::creating(function ($model) {
