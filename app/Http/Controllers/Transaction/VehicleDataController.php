@@ -90,7 +90,7 @@ class VehicleDataController extends Controller
     public function show(string $id)
     {
         try {
-            $vehicleData = VehicleData::with(['dealer:id,name,code', 'region:id,name'])->find($id);
+            $vehicleData = VehicleData::with(['dealer', 'region', 'vehicleRegistration'])->find($id);
 
             if (!$vehicleData) {
                 return $this->responseError(null, 'Vehicle Data not found', 404);
