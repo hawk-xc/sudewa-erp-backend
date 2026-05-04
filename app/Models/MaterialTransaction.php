@@ -14,8 +14,12 @@ class MaterialTransaction extends Model
 
     protected $fillable = [
         'uuid',
+        'warehouse_id',
+        'person_id',
         'code',
         'type', // purchase,sales
+        'stock_state',
+        'is_refunded',
         'supplier_name',
         'is_paid',
         'transaction_date',
@@ -23,8 +27,19 @@ class MaterialTransaction extends Model
     ];
 
     protected $casts = [
-        'is_paid' => 'boolean'
+        'is_paid' => 'boolean',
+        'is_refunded' => 'boolean',
     ];
+
+    public function person()
+    {
+        return $this->belongsTo(Person::class);
+    }
+
+    public function warehouse()
+    {
+        return $this->belongsTo(Warehouse::class);
+    }
 
     public function materialTransactionBillings()
     {

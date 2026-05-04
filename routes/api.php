@@ -184,6 +184,12 @@ Route::group(
             Route::post('warehouse-activity/refund-stock', [WarehouseActivityController::class, 'refundStock']);
             Route::post('warehouse-activity/return-stock', [WarehouseActivityController::class, 'returnStock']);
 
+            // Receipt Material Stock
+            Route::put('warehouse-activity/{id}/receipt-material-stock', [WarehouseActivityController::class, 'receiptMaterialStock']);
+            Route::put('warehouse-activity/{id}/dispatch-material-stock', [WarehouseActivityController::class, 'dispatchMaterialStock']);
+            Route::post('warehouse-activity/refund-material-stock', [WarehouseActivityController::class, 'refundMaterialStock']);
+            Route::post('warehouse-activity/return-material-stock', [WarehouseActivityController::class, 'returnMaterialStock']);
+
             Route::apiResource('warehouse-activity', WarehouseActivityController::class);
             Route::apiResource('warehouse-data', WarehouseController::class);
         });
@@ -225,6 +231,7 @@ Route::group(
             Route::apiResource('vehicle-registration', VehicleRegistrationController::class);
 
             // Material Transaction API
+            Route::put('material-transaction/{id}/update-state', [MaterialTransactionController::class, 'updateState'])->name('material-transaction.update-state');
             Route::apiResource('material-transaction', MaterialTransactionController::class);
             Route::apiResource('material-transaction-detail', MaterialTransactionDetailController::class);
             Route::apiResource('material-transaction-billing', MaterialTransactionBillingController::class);

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Warehouse;
 use App\Http\Controllers\Controller;
 use App\Models\Person;
 use App\Models\UnitTransactionItemDetail;
+use App\Models\MaterialTransactionDetail;
 use App\Models\WarehouseActivity;
 use App\Repositories\AuthRepository;
 use App\Traits\ResponseTrait;
@@ -441,6 +442,268 @@ class WarehouseActivityController extends Controller
 
         } catch (Exception $e) {
             Log::error('WarehouseActivity returnStock error', [
+                'message' => $e->getMessage(),
+            ]);
+
+            return $this->responseError(null, $e->getMessage(), 500);
+        }
+    }
+    public function receiptMaterialStock(Request $request, string $activityId)
+    {
+        if (is_string($request->material_transaction_details)) {
+            $request->merge([
+                'material_transaction_details' => json_decode($request->material_transaction_details, true),
+            ]);
+        }
+
+        $validated = $request->validate([
+            'material_transaction_details' => 'required|array|min:1',
+            'material_transaction_details.*' => 'integer|exists:material_transaction_details,id',
+        ]);
+
+        try {
+            $activity = WarehouseActivity::findOrFail($activityId);
+
+            if ($activity->activity_type !== 'receipt') {
+                return $this->responseError(null, 'Invalid activity type for receipt', 422);
+            }
+
+            $person = Person::findOrFail($activity->person_id);
+
+            $allowedDetailIds = $person->materialTransactions()
+                ->with('materialTransactionDetails:id,material_transaction_id')
+                ->get()
+                ->flatMap(fn ($trx) => $trx->materialTransactionDetails)
+                ->pluck('id')
+                ->toArray();
+
+            $invalidIds = array_diff($validated['material_transaction_details'], $allowedDetailIds);
+
+            if (! empty($invalidIds)) {
+                return $this->responseError(
+                    $invalidIds,
+                    'Some material transaction details do not belong to this person',
+                    422
+                );
+            }
+
+            $materialTransactionDetailList = [];
+
+            DB::transaction(function () use ($validated, $activity, &$materialTransactionDetailList) {
+                $details = MaterialTransactionDetail::with([
+                    'materialTransaction.materialTransactionBillings',
+                ])->whereIn('id', $validated['material_transaction_details'])->get();
+
+                foreach ($details as $detail) {
+
+                    $transaction = $detail->materialTransaction;
+
+                    $stockState = $transaction->stock_state;
+                    $billing = $transaction->materialTransactionBillings->first(); // or handle differently if multiple billings
+
+                    if (! in_array($stockState, ['inbound_incoming_goods', 'inbound_receipt'])) {
+                        throw new Exception(
+                            "Invalid stock state '{$stockState}' for detail ID {$detail->id}"
+                        );
+                    }
+
+                    if (! $billing) {
+                        throw new Exception(
+                            "Transaction for detail ID {$detail->id} has no billing yet"
+                        );
+                    }
+
+                    // Check if it's paid - wait, is_paid is on MaterialTransaction or billing? 
+                    // Actually $transaction->is_paid exists. Or we check the transaction directly.
+                    if (! $transaction->is_paid) {
+                        throw new Exception(
+                            "Transaction for detail ID {$detail->id} has no paid billing yet"
+                        );
+                    }
+
+                    if ($detail->in_stock) {
+                        throw new Exception(
+                            "Detail ID {$detail->id} already in stock"
+                        );
+                    }
+
+                    $detail->update(['in_stock' => true, 'is_forecast' => false]);
+                    $detail->receiptStock((int) $activity->warehouse_id);
+
+                    $materialTransactionDetailList[] = $detail;
+                }
+            });
+
+            $responseData = [
+                'activity' => $activity,
+                'material_transaction_details' => $materialTransactionDetailList,
+            ];
+
+            return $this->responseSuccess(
+                (object) $responseData,
+                'Receipt material stock processed successfully'
+            );
+
+        } catch (Exception $e) {
+            Log::error('WarehouseActivity receiptMaterialStock error', [
+                'message' => $e->getMessage(),
+            ]);
+
+            return $this->responseError(null, $e->getMessage(), 500);
+        }
+    }
+
+    public function dispatchMaterialStock(Request $request, string $activityId)
+    {
+        if (is_string($request->material_transaction_details)) {
+            $request->merge([
+                'material_transaction_details' => json_decode($request->material_transaction_details, true),
+            ]);
+        }
+
+        $validated = $request->validate([
+            'material_transaction_details' => 'required|array|min:1',
+            'material_transaction_details.*' => 'integer|exists:material_transaction_details,id',
+        ]);
+
+        try {
+            $activity = WarehouseActivity::findOrFail($activityId);
+
+            if ($activity->activity_type !== 'issue') {
+                return $this->responseError(null, 'Invalid activity type for dispatch', 422);
+            }
+
+            $materialTransactionDetailList = [];
+
+            DB::transaction(function () use ($validated, &$materialTransactionDetailList) {
+
+                $details = MaterialTransactionDetail::with([
+                    'materialTransaction',
+                ])->whereIn('id', $validated['material_transaction_details'])->get();
+
+                foreach ($details as $detail) {
+                    $transaction = $detail->materialTransaction;
+
+                    if (! $transaction->is_paid) {
+                        throw new Exception(
+                            "Transaction for detail ID {$detail->id} has no paid billing yet"
+                        );
+                    }
+
+                    if (! $detail->in_stock) {
+                        throw new Exception(
+                            "Detail ID {$detail->id} is not available in stock"
+                        );
+                    }
+
+                    $detail->update(['in_stock' => false]);
+
+                    $detail->dispatchStock();
+
+                    $materialTransactionDetailList[] = $detail;
+                }
+            });
+
+            $responseData = [
+                'activity' => $activity,
+                'material_transaction_details' => $materialTransactionDetailList,
+            ];
+
+            return $this->responseSuccess(
+                (object) $responseData,
+                'Dispatch material stock processed successfully'
+            );
+
+        } catch (Exception $e) {
+            Log::error('WarehouseActivity dispatchMaterialStock error', [
+                'message' => $e->getMessage(),
+            ]);
+
+            return $this->responseError(null, $e->getMessage(), 500);
+        }
+    }
+
+    public function refundMaterialStock(Request $request)
+    {
+        if (is_string($request->material_transaction_details)) {
+            $request->merge([
+                'material_transaction_details' => json_decode($request->material_transaction_details, true),
+            ]);
+        }
+
+        $validated = $request->validate([
+            'material_transaction_details' => 'required|array|min:1',
+            'material_transaction_details.*' => 'integer|exists:material_transaction_details,id',
+        ]);
+
+        try {
+            $materialTransactionDetailList = [];
+
+            DB::transaction(function () use ($validated, &$materialTransactionDetailList) {
+                $details = MaterialTransactionDetail::with(['materialTransaction'])
+                    ->whereIn('id', $validated['material_transaction_details'])
+                    ->get();
+
+                foreach ($details as $detail) {
+                    if ($detail->materialTransaction->type !== 'sales') {
+                        throw new Exception("Detail ID {$detail->id} is not a sales transaction");
+                    }
+                    $detail->refundStock();
+                    $materialTransactionDetailList[] = $detail;
+                }
+            });
+
+            return $this->responseSuccess(
+                $materialTransactionDetailList,
+                'Refund material stock processed successfully'
+            );
+
+        } catch (Exception $e) {
+            Log::error('WarehouseActivity refundMaterialStock error', [
+                'message' => $e->getMessage(),
+            ]);
+
+            return $this->responseError(null, $e->getMessage(), 500);
+        }
+    }
+
+    public function returnMaterialStock(Request $request)
+    {
+        if (is_string($request->material_transaction_details)) {
+            $request->merge([
+                'material_transaction_details' => json_decode($request->material_transaction_details, true),
+            ]);
+        }
+
+        $validated = $request->validate([
+            'material_transaction_details' => 'required|array|min:1',
+            'material_transaction_details.*' => 'integer|exists:material_transaction_details,id',
+        ]);
+
+        try {
+            $materialTransactionDetailList = [];
+
+            DB::transaction(function () use ($validated, &$materialTransactionDetailList) {
+                $details = MaterialTransactionDetail::with(['materialTransaction'])
+                    ->whereIn('id', $validated['material_transaction_details'])
+                    ->get();
+
+                foreach ($details as $detail) {
+                    if ($detail->materialTransaction->type !== 'purchase') {
+                        throw new Exception("Detail ID {$detail->id} is not a purchase transaction");
+                    }
+                    $detail->returnStock();
+                    $materialTransactionDetailList[] = $detail;
+                }
+            });
+
+            return $this->responseSuccess(
+                $materialTransactionDetailList,
+                'Return material stock processed successfully'
+            );
+
+        } catch (Exception $e) {
+            Log::error('WarehouseActivity returnMaterialStock error', [
                 'message' => $e->getMessage(),
             ]);
 

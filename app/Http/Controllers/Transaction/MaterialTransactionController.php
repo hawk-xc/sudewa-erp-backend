@@ -22,7 +22,7 @@ class MaterialTransactionController extends Controller
     {
         $this->middleware(['permission:transaction:list'])->only(['index', 'show']);
         $this->middleware(['permission:transaction:create'])->only('store');
-        $this->middleware(['permission:transaction:edit'])->only('update');
+        $this->middleware(['permission:transaction:edit'])->only(['update', 'updateState']);
         $this->middleware(['permission:transaction:delete'])->only(['destroy']);
 
         $this->materialTransactionTable = [
@@ -30,6 +30,10 @@ class MaterialTransactionController extends Controller
             'uuid',
             'code',
             'type',
+            'warehouse_id',
+            'person_id',
+            'stock_state',
+            'is_refunded',
             'supplier_name',
             'is_paid',
             'transaction_date',
@@ -118,7 +122,10 @@ class MaterialTransactionController extends Controller
     {
         $validated = $request->validate([
             'type' => 'required|in:purchase,sales',
-            'supplier_name' => 'required|string|max:255',
+            'warehouse_id' => 'nullable|exists:warehouses,id',
+            'person_id' => 'nullable|exists:persons,id',
+            'stock_state' => 'nullable|string',
+            'supplier_name' => 'nullable|string|max:255',
             'transaction_date' => 'required|date',
             'description' => 'nullable|string',
         ]);
@@ -129,7 +136,8 @@ class MaterialTransactionController extends Controller
                 $typeState = $request->type == "purchase" ? "pembelian" : "penjualan";
                 
                 if (empty($validated['description'])) {
-                    $validated['description'] = "Pembayaran " . $typeState . " material ke " . $validated['supplier_name'];
+                    $name = $validated['supplier_name'] ?? 'supplier';
+                    $validated['description'] = "Pembayaran " . $typeState . " material ke " . $name;
                 }
 
                 return MaterialTransaction::create($validated);
@@ -171,7 +179,10 @@ class MaterialTransactionController extends Controller
     public function update(Request $request, $id)
     {
         $request->validate([
-            'supplier_name' => 'sometimes|required|string|max:255',
+            'warehouse_id' => 'sometimes|exists:warehouses,id',
+            'person_id' => 'sometimes|exists:persons,id',
+            'stock_state' => 'sometimes|string',
+            'supplier_name' => 'sometimes|nullable|string|max:255',
             'transaction_date' => 'sometimes|required|date',
             'description' => 'nullable|string',
         ]);
@@ -180,7 +191,7 @@ class MaterialTransactionController extends Controller
             $transaction = MaterialTransaction::findOrFail($id);
             
             $data = array_filter(
-                $request->only(['supplier_name', 'transaction_date', 'description']),
+                $request->only(['warehouse_id', 'person_id', 'stock_state', 'supplier_name', 'transaction_date', 'description']),
                 fn ($val) => ! is_null($val) && $val !== ''
             );
 
@@ -217,6 +228,89 @@ class MaterialTransactionController extends Controller
             Log::error('Error while trying delete Material Transaction data : '.$err->getMessage());
 
             return $this->responseError($err->getMessage(), 'Material Transaction deletion failed', 500);
+        }
+    }
+
+    /**
+     * Update material transaction stock state.
+     */
+    public function updateState(Request $request, string $id)
+    {
+        $purchaseStates = ['draft', 'cancel', 'rejected', 'prepare', 'inbound_purchase_order', 'inbound_incoming_goods', 'inbound_receipt'];
+        $salesStates = ['draft', 'cancel', 'prepare', 'outbound_reserved', 'outbound_in_transit', 'outbound_delivered'];
+
+        try {
+            $transaction = MaterialTransaction::with('materialTransactionDetails')->findOrFail((int) $id);
+
+            if (is_string($request->material_transaction_details)) {
+                $request->merge(['material_transaction_details' => json_decode($request->material_transaction_details, true)]);
+            }
+
+            $validated = $request->validate([
+                'stock_state' => 'required|string',
+                'material_transaction_details' => 'nullable|array',
+                'material_transaction_details.*' => 'integer|distinct|exists:material_transaction_details,id',
+            ]);
+
+            $allowedStates = $transaction->type === 'purchase' ? $purchaseStates : $salesStates;
+
+            if (! in_array($validated['stock_state'], $allowedStates)) {
+                return $this->responseError(null, 'Invalid stock state for this transaction type', 422);
+            }
+
+            if ($transaction->materialTransactionDetails->isEmpty()) {
+                return $this->responseError(null, 'No transaction items found', 422);
+            }
+
+            if (! empty($validated['material_transaction_details'])) {
+                $detailIds = array_unique($validated['material_transaction_details']);
+            } else {
+                $detailIds = $transaction->materialTransactionDetails->pluck('id')->toArray();
+            }
+
+            $validDetails = \App\Models\MaterialTransactionDetail::whereIn('id', $detailIds)
+                ->where('material_transaction_id', $transaction->id)
+                ->get();
+
+            if ($validDetails->isEmpty()) {
+                return $this->responseError(null, 'Selected details not found in this transaction', 422);
+            }
+
+            DB::transaction(function () use ($transaction, $validated, $validDetails) {
+
+                $transaction->update(['stock_state' => $validated['stock_state']]);
+
+                switch ($validated['stock_state']) {
+                    case 'inbound_incoming_goods':
+                        \App\Models\MaterialTransactionDetail::whereIn('id', $validDetails->pluck('id'))
+                            ->update([
+                                'is_forecast' => true,
+                            ]);
+                        break;
+
+                    case 'outbound_delivered':
+                        \App\Models\MaterialTransactionDetail::whereIn('id', $validDetails->pluck('id'))
+                            ->update([
+                                'is_forecast' => true,
+                            ]);
+                        break;
+                }
+            });
+
+            return $this->responseSuccess(
+                $transaction->fresh()->load([
+                    'materialTransactionDetails'
+                ]),
+                'Material Transaction state updated successfully',
+                200
+            );
+
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return $this->responseError($e->errors(), 'Validation failed', 422);
+        } catch (Exception $err) {
+            Log::error('Error updating Material Transaction state: '.$err->getMessage());
+
+            return $this->responseError($err->getMessage(), 'Material Transaction state update failed', 500);
         }
     }
 }

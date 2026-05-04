@@ -51,6 +51,77 @@ class MaterialTransactionDetail extends Model
         return $this->belongsTo(Material::class);
     }
 
+    public function warehouseMovement()
+    {
+        return $this->hasOne(WarehouseMovement::class, 'material_transaction_detail_id', 'id');
+    }
+
+    public function receiptStock(?int $activityId = null)
+    {
+        $materialTransaction = $this->materialTransaction;
+
+        return WarehouseMovement::firstOrCreate(
+            [
+                'material_transaction_detail_id' => $this->id,
+                'status' => 'in',
+            ],
+            [
+                'warehouse_activity_id' => $activityId,
+                'material_transaction_id' => $materialTransaction->id,
+                'status' => 'in',
+            ]
+        );
+    }
+
+    public function dispatchStock()
+    {
+        $movement = $this->warehouseMovement()->first();
+
+        if (! $movement) {
+            throw new \Exception('Material not found in warehouse');
+        }
+
+        $movement->update([
+            'status' => 'out',
+        ]);
+
+        $this->update([
+            'in_stock' => false,
+        ]);
+
+        return $movement;
+    }
+
+    public function refundStock()
+    {
+        $this->update([
+            'is_forecast' => false,
+            'in_stock' => false,
+        ]);
+
+        $movement = $this->warehouseMovement()->where('status', 'in')->first();
+        if ($movement) {
+            $movement->update(['status' => 'out']);
+        }
+
+        return $this;
+    }
+
+    public function returnStock()
+    {
+        $this->update([
+            'is_forecast' => false,
+            'in_stock' => false,
+        ]);
+
+        $movement = $this->warehouseMovement()->where('status', 'in')->first();
+        if ($movement) {
+            $movement->update(['status' => 'out']);
+        }
+
+        return $this;
+    }
+
     protected static function booted()
     {
         static::creating(function ($model) {
