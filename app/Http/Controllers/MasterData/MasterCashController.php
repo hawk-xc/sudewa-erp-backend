@@ -5,6 +5,7 @@ namespace App\Http\Controllers\MasterData;
 use App\Http\Controllers\Controller;
 // use App\Imports\CashImport;
 use App\Models\Cash;
+use App\Repositories\AuthRepository;
 use App\Traits\ResponseTrait;
 use Illuminate\Http\Request;
 use App\Exports\CashExport;
@@ -23,6 +24,18 @@ class MasterCashController extends Controller
     use ResponseTrait;
 
     protected $cashTable = ['id', 'uuid', 'company_id', 'account_id', 'code', 'description', 'type', 'amount', 'created_at'];
+
+    protected AuthRepository $authRepository;
+
+    public function __construct(AuthRepository $ar)
+    {
+        $this->middleware(['permission:master-data:list'])->only(['index', 'show', 'export']);
+        $this->middleware(['permission:master-data:create'])->only('store', 'import');
+        $this->middleware(['permission:master-data:edit'])->only('update');
+        $this->middleware(['permission:master-data:delete'])->only(['destroy']);
+
+        $this->authRepository = $ar;
+    }
 
     /**
      * List all cash and bank accounts.

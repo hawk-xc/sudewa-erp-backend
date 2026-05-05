@@ -27,8 +27,8 @@ class MasterTarifController extends Controller
 
     public function __construct()
     {
-        $this->middleware(['permission:master-data:list'])->only(['index', 'show']);
-        $this->middleware(['permission:master-data:create'])->only('store');
+        $this->middleware(['permission:master-data:list'])->only(['index', 'show', 'export']);
+        $this->middleware(['permission:master-data:create'])->only('store', 'import');
         $this->middleware(['permission:master-data:edit'])->only('update');
         $this->middleware(['permission:master-data:delete'])->only(['destroy']);
 
