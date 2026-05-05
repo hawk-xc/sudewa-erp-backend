@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Transaction;
 
 use App\Http\Controllers\Controller;
+use App\Models\Person;
 use App\Models\VehicleDocument;
 use App\Models\VehicleDocumentItem;
 use App\Traits\ResponseTrait;
@@ -92,20 +93,43 @@ class VehicleDocumentController extends Controller
 
         $validator = Validator::make($request->all(), [
             'vendor_id' => 'required|integer|exists:persons,id',
-            'receipt_date' => [
-                'required',
-                'date',
-                Rule::unique('vehicle_documents')->where(function ($query) use ($request) {
-                    return $query->where('vendor_id', $request->vendor_id);
-                }),
-            ],
+            'receipt_date' => 'required|date',
             'description' => 'nullable|string',
         ], [
             'receipt_date.unique' => 'A vehicle document for this vendor on this receipt date already exists.',
-        ]);
+        ], []);
 
         if ($validator->fails()) {
             return $this->responseError($validator->errors(), 'Validation failed', 422);
+        }
+
+        // Check if vendor is valid and has registrations
+        $vendor = Person::findOrFail($request->vendor_id);
+
+        if ($vendor->type !== 'vendor') {
+            return $this->responseError((object) ['message' => 'The selected person is not a vendor.'], 'Validation failed', 422);
+        }
+
+        if ($vendor->vehicleRegistrations()->count() == 0) {
+            return $this->responseError((object) ['message' => 'The selected vendor has no vehicle registrations data.'], 'Validation failed', 422);
+        }
+
+        // Check if there is already a document for this vendor and date
+        $duplicateExists = VehicleDocument::where('vendor_id', $request->vendor_id)
+            ->whereDate('receipt_date', $request->receipt_date)
+            ->exists();
+
+        if ($duplicateExists) {
+            $hasUnprocessed = VehicleDocument::where('vendor_id', $request->vendor_id)
+                ->whereDate('receipt_date', $request->receipt_date)
+                ->whereHas('vehicleRegistrations', function ($q) {
+                    $q->where('is_already_processed', false);
+                })
+                ->exists();
+
+            if ($hasUnprocessed) {
+                return $this->responseError((object) ['receipt_date' => ['A vehicle document with unprocessed registrations for this vendor on this receipt date already exists.']], 'Validation failed', 422);
+            }
         }
 
         try {
@@ -166,6 +190,34 @@ class VehicleDocumentController extends Controller
 
         if ($validator->fails()) {
             return $this->responseError($validator->errors(), 'Validation failed', 422);
+        }
+
+        // Check for duplicate document with unprocessed registrations
+        if ($request->has('vendor_id') || $request->has('receipt_date')) {
+            $document = VehicleDocument::findOrFail($id);
+            $vendorId = $request->vendor_id ?? $document->vendor_id;
+            $receiptDate = $request->receipt_date ?? $document->receipt_date;
+
+            // Check if there is already a document for this vendor and date
+            $duplicateExists = VehicleDocument::where('vendor_id', $vendorId)
+                ->whereDate('receipt_date', $receiptDate)
+                ->where('id', '!=', $id)
+                ->exists();
+
+            if ($duplicateExists) {
+                // If it exists, check if any such document has unprocessed registrations
+                $hasUnprocessed = VehicleDocument::where('vendor_id', $vendorId)
+                    ->whereDate('receipt_date', $receiptDate)
+                    ->where('id', '!=', $id)
+                    ->whereHas('vehicleRegistrations', function ($q) {
+                        $q->where('is_already_processed', false);
+                    })
+                    ->exists();
+
+                if ($hasUnprocessed) {
+                    return $this->responseError((object) ['receipt_date' => ['A vehicle document with unprocessed registrations for this vendor on this receipt date already exists.']], 'Validation failed', 422);
+                }
+            }
         }
 
         try {

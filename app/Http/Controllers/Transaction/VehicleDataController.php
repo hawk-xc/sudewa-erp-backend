@@ -50,10 +50,11 @@ class VehicleDataController extends Controller
 
         $query->with(['dealer:id,name,code', 'region:id,name', 'vehicleRegistration:id,vendor_id,vehicle_data_id,process_date,is_already_processed']);
 
-        if ($request->filled('is_already_processed') && $request->is_already_processed === 'true') {
-            $query->where('is_already_processed', false);
-        } else {
-            $query->where('is_already_processed', true);
+        if ($request->filled('is_already_processed')) {
+            $isProcessed = $request->is_already_processed === 'true';
+            $query->whereHas('vehicleRegistration', function ($q) use ($isProcessed) {
+                $q->where('is_already_processed', $isProcessed);
+            });
         }
 
         try {
@@ -231,8 +232,7 @@ class VehicleDataController extends Controller
                     $results[] = VehicleRegistration::create([
                         'vendor_id' => $request->vendor_id,
                         'vehicle_data_id' => $id,
-                        'process_date' => $request->process_date,
-                        'is_already_processed' => true,
+                        'process_date' => $request->process_date
                     ]);
                 }
                 return $results;

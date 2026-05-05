@@ -21,6 +21,10 @@ class VehicleDocument extends Model
         'description'
     ];
 
+    protected $casts = [
+        'receipt_date' => 'date',
+    ];
+
     public function vendor()
     {
         return $this->belongsTo(Person::class);
@@ -33,7 +37,14 @@ class VehicleDocument extends Model
 
     public function vehicleRegistrations()
     {
-        return $this->hasMany(VehicleRegistration::class, 'vendor_id', 'vendor_id');
+        return $this->hasManyThrough(
+            VehicleRegistration::class,
+            VehicleDocumentItem::class,
+            'vehicle_document_id',
+            'vehicle_data_id',
+            'id',
+            'vehicle_data_id'
+        );
     }
 
     protected static function booted()
