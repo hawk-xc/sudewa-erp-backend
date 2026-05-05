@@ -33,6 +33,54 @@ class BBNBill extends Model
         });
     }
 
+    protected $appends = [
+        'brutto_amount',
+        'paid_amount',
+        'is_paid',
+    ];
+
+    public function getBruttoAmountAttribute()
+    {
+        $dealer = $this->dealer;
+        if (!$dealer) return 0;
+
+        $vehicleDataIds = $dealer->vehicleDatas()->pluck('id');
+
+        $subTotal = (int) VehicleRegistration::whereIn('vehicle_data_id', $vehicleDataIds)
+            ->get()
+            ->sum(function ($reg) {
+                return $reg->stck_fee +
+                       $reg->bbn_registration_fee +
+                       $reg->notice_fee +
+                       $reg->pmi_fee +
+                       $reg->physical_check_fee +
+                       $reg->nik_validation_fee +
+                       $reg->garwil_fee +
+                       $reg->built_up_fee +
+                       $reg->acceleration_fee +
+                       $reg->plate_recommendation_fee +
+                       $reg->service_fee +
+                       $reg->skpd_fee +
+                       $reg->stamp_fee +
+                       $reg->pnbp_bpkb;
+            });
+
+        // Add PPh 23 (2%)
+        $pph23 = $subTotal * 0.02;
+        return (int) ($subTotal + $pph23);
+    }
+
+    public function getPaidAmountAttribute()
+    {
+        return (int) $this->bbnBillBillings()->sum('total_payment');
+    }
+
+    public function getIsPaidAttribute()
+    {
+        if ($this->brutto_amount <= 0) return false;
+        return $this->paid_amount >= $this->brutto_amount;
+    }
+
     public function dealer()
     {
         return $this->belongsTo(Person::class, 'dealer_id');

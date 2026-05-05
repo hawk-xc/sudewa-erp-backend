@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Transaction;
 
 use App\Http\Controllers\Controller;
+use App\Models\BBNBillBilling;
 use App\Models\BBNBillBillingItem;
 use App\Traits\ResponseTrait;
 use Exception;
@@ -62,11 +63,22 @@ class BBNBillBillingItemController extends Controller
             'bbn_bill_billing_id' => 'required|exists:bbn_bill_billings,id',
             'paid_date' => 'required|date',
             'cash_id' => 'required|exists:cashes,id',
-            'amount' => 'required|numeric',
+            'amount' => 'required|numeric|min:1',
         ]);
+
+        $billing = BBNBillBilling::findOrFail($validated['bbn_bill_billing_id']);
+        $remainingBefore = $billing->getRemainingAmount();
+
+        if ($validated['amount'] > $remainingBefore) {
+            return $this->responseError('Payment amount exceeds remaining balance of ' . number_format($remainingBefore), 'Overpayment Error', 422);
+        }
 
         try {
             $data = BBNBillBillingItem::create($validated);
+            
+            // Append remaining payment info to response
+            $data->remaining_payment = $billing->getRemainingAmount();
+            
             return $this->responseSuccess($data, 'BBN Bill Billing Item created successfully', 201);
         } catch (Exception $err) {
             Log::error('Error creating BBN Bill Billing Item: ' . $err->getMessage());

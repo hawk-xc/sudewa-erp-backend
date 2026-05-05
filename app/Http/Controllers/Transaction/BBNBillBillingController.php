@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Transaction;
 
 use App\Http\Controllers\Controller;
+use App\Models\BBNBill;
 use App\Models\BBNBillBilling;
 use App\Traits\ResponseTrait;
 use Exception;
@@ -58,8 +59,23 @@ class BBNBillBillingController extends Controller
     {
         $validated = $request->validate([
             'bbn_bill_id' => 'required|exists:bbn_bills,id',
-            'total_payment' => 'required|numeric',
         ]);
+
+        $bbnBill = BBNBill::findOrFail($request->bbn_bill_id);
+        if ($bbnBill->is_paid) {
+            return $this->responseError('BBN Bill is already paid', 'BBN Bill is already paid', 400);
+        }
+
+        $total_paid_amount = $bbnBill->paid_amount + (int) $request->total_payment;
+        if ($total_paid_amount > $bbnBill->brutto_amount) {
+            return $this->responseError('Total payment exceeds BBN Bill total amount', 'Total payment exceeds BBN Bill total amount', 400);
+        }
+
+        if ($bbnBill->bbnBillBillings->count() > 0) {
+            return $this->responseError('BBN Bill has billed data', 'BBN Bill has billed data', 400);
+        }
+
+        $validated['total_payment'] = (int) $bbnBill->brutto_amount;
 
         try {
             $data = BBNBillBilling::create($validated);

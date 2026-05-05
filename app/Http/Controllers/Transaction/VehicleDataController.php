@@ -210,6 +210,11 @@ class VehicleDataController extends Controller
             return $this->responseError($validator->errors(), 'Validation failed', 422);
         }
 
+        $vendor = Person::findOrFail($request->vendor_id);
+        if ($vendor->type !== 'vendor') {
+            return $this->responseError('Selected person is not a vendor.', 'Invalid Person Type', 422);
+        }
+
         try {
             $registrations = DB::transaction(function () use ($request) {
                 $results = [];

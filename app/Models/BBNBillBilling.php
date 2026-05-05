@@ -40,4 +40,14 @@ class BBNBillBilling extends Model
     {
         return $this->hasMany(BBNBillBillingItem::class, 'bbn_bill_billing_id');
     }
+
+    public function getPaidAmount()
+    {
+        return $this->bbnBillBillingItems()->sum('amount');
+    }
+
+    public function getRemainingAmount()
+    {
+        return (int) $this->total_payment - (int) $this->getPaidAmount();
+    }
 }

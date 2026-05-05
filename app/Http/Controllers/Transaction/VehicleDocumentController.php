@@ -47,12 +47,10 @@ class VehicleDocumentController extends Controller
         $query->with(['vendor:id,name,code']);
         $query->withCount([
             'vehicleRegistrations as processed_count' => function ($query) {
-                $query->where('is_already_processed', true)
-                      ->whereColumn('process_date', 'vehicle_documents.receipt_date');
+                $query->where('is_already_processed', true);
             },
             'vehicleRegistrations as unprocessed_count' => function ($query) {
-                $query->where('is_already_processed', false)
-                      ->whereColumn('process_date', 'vehicle_documents.receipt_date');
+                $query->where('is_already_processed', false);
             }
         ]);
 
@@ -136,19 +134,17 @@ class VehicleDocumentController extends Controller
     {
         try {
             $document = VehicleDocument::with([
-                'vendor',
+                'vendor:id,uuid,code,type,name',
+                'vendor.vehicleRegistrations',
+                'vendor.vehicleRegistrations.vehicleData:id,uuid,dealer_id,region_id,ktp_number,stnk_name,chassis_number,machine_number',
+                'vendor.vehicleRegistrations.vehicleData.dealer:id,uuid,company_id,code,name',
+                'vendor.vehicleRegistrations.vehicleData.region:id,uuid,code,name',
                 'vehicleDocumentItems.vehicleData',
             ])->find($id);
 
             if (!$document) {
                 return $this->responseError(null, 'Vehicle Document not found', 404);
             }
-
-            // Load registrations with date filter manually to avoid SQL errors during eager loading
-            $document->load(['vehicleRegistrations' => function ($query) use ($document) {
-                $query->where('process_date', $document->receipt_date)
-                      ->with('vehicleData');
-            }]);
 
             return $this->responseSuccess($document, 'Vehicle Document retrieved successfully', 200);
         } catch (Exception $err) {
