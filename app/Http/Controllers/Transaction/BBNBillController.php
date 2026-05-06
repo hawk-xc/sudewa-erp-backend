@@ -53,7 +53,7 @@ class BBNBillController extends Controller
             return $this->responseSuccess($data, 'BBN Bill list retrieved successfully');
         } catch (Exception $err) {
             Log::error('Error retrieving BBN Bill: ' . $err->getMessage());
-            return $this->responseError($err->getMessage(), 'BBN Bill list retrieved Failed', 500);
+            return $this->responseError($err->getMessage(), 'Failed to retrieve BBN Bill list', 500);
         }
     }
 
@@ -67,7 +67,7 @@ class BBNBillController extends Controller
 
         $dealer = Person::findOrFail($validated['dealer_id']);
         if ($dealer->type !== 'dealer') {
-            return $this->responseError('Selected person is not a dealer.', 'Invalid Person Type', 422);
+            return $this->responseError('The selected person is not a dealer', 'Validation failed', 422);
         }
 
         if (!$request->filled('bill_date')) {
@@ -76,7 +76,7 @@ class BBNBillController extends Controller
 
         $totalVehicleData = VehicleData::where('dealer_id', (int) $validated['dealer_id'])->count();
         if ($totalVehicleData == 0) {
-            return $this->responseError('No vehicle data found for this dealer.', 'Data Not Found', 404);
+            return $this->responseError('No vehicle data found for this dealer', 'Data not found', 404);
         }
 
         $unprocessedIds = VehicleData::where('dealer_id', $validated['dealer_id'])
@@ -97,12 +97,12 @@ class BBNBillController extends Controller
             })->exists();
 
         if ($notUpdatedExists) {
-            return $this->responseError('Vehicle registration data has no update yet', 'Validation Error', 422);
+            return $this->responseError('Vehicle registration data has not been updated yet', 'Validation failed', 422);
         }
 
         $alreadyExists = BBNBill::where('dealer_id', $validated['dealer_id'])->exists();
         if ($alreadyExists) {
-            return $this->responseError('BBN Bill for this dealer already exists.', 'Duplicate Data Found', 422);
+            return $this->responseError('A BBN Bill for this dealer already exists', 'Duplicate data found', 422);
         }
  
         try {
@@ -120,7 +120,7 @@ class BBNBillController extends Controller
             $data = BBNBill::find($id);
 
             if (!$data) {
-                return $this->responseError('BBN Bill with ID ' . $id . ' not found.', 'BBN Bill not found', 404);
+                return $this->responseError(null, 'BBN Bill not found', 404);
             }
 
             $data->load([
@@ -154,7 +154,7 @@ class BBNBillController extends Controller
             if ($request->filled('dealer_id')) {
                 $dealer = Person::findOrFail($validated['dealer_id']);
                 if ($dealer->type !== 'dealer') {
-                    return $this->responseError('Selected person is not a dealer.', 'Invalid Person Type', 422);
+                    return $this->responseError('The selected person is not a dealer', 'Validation failed', 422);
                 }
 
                 $unprocessedIds = VehicleData::where('dealer_id', $validated['dealer_id'])
@@ -173,7 +173,7 @@ class BBNBillController extends Controller
                     ->where('id', '!=', $id)
                     ->exists();
                 if ($alreadyExists) {
-                    return $this->responseError('BBN Bill for this dealer already exists.', 'Duplicate Data Found', 422);
+                    return $this->responseError('A BBN Bill for this dealer already exists', 'Duplicate data found', 422);
                 }
 
                 $notUpdatedExists = VehicleData::where('dealer_id', $validated['dealer_id'])
@@ -182,7 +182,7 @@ class BBNBillController extends Controller
                     })->exists();
 
                 if ($notUpdatedExists) {
-                    return $this->responseError('Data Registrasi kendaraan belum di update ulang', 'Validation Error', 422);
+                    return $this->responseError('Vehicle registration data has not been updated yet', 'Validation failed', 422);
                 }
             }
 
@@ -200,7 +200,7 @@ class BBNBillController extends Controller
             $bbnBill = BBNBill::findOrFail($id);
 
             if ($bbnBill->paid_date) {
-                return $this->responseError('BBN Bill has been paid. Cannot delete.', 'Validation Error', 422);
+                return $this->responseError('BBN Bill has already been paid and cannot be deleted', 'Validation failed', 422);
             }   
 
             $bbnBill->delete();

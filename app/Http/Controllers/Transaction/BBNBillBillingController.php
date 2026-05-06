@@ -50,7 +50,7 @@ class BBNBillBillingController extends Controller
             return $this->responseSuccess($data, 'BBN Bill Billing list retrieved successfully');
         } catch (Exception $err) {
             Log::error('Error retrieving BBN Bill Billing: ' . $err->getMessage());
-            return $this->responseError($err->getMessage(), 'BBN Bill Billing list retrieved Failed', 500);
+            return $this->responseError($err->getMessage(), 'Failed to retrieve BBN Bill Billing list', 500);
         }
     }
 
@@ -62,16 +62,16 @@ class BBNBillBillingController extends Controller
 
         $bbnBill = BBNBill::findOrFail($request->bbn_bill_id);
         if ($bbnBill->is_paid) {
-            return $this->responseError('BBN Bill is already paid', 'BBN Bill is already paid', 400);
+            return $this->responseError('The BBN Bill is already paid', 'Validation failed', 422);
         }
 
         $total_paid_amount = $bbnBill->paid_amount + (int) $request->total_payment;
         if ($total_paid_amount > $bbnBill->brutto_amount) {
-            return $this->responseError('Total payment exceeds BBN Bill total amount', 'Total payment exceeds BBN Bill total amount', 400);
+            return $this->responseError('Total payment exceeds the BBN Bill total amount', 'Validation failed', 422);
         }
 
         if ($bbnBill->bbnBillBillings->count() > 0) {
-            return $this->responseError('BBN Bill has billed data', 'BBN Bill has billed data', 400);
+            return $this->responseError('The BBN Bill already has associated billing data', 'Validation failed', 422);
         }
 
         $validated['total_payment'] = (int) $bbnBill->brutto_amount;
@@ -101,7 +101,7 @@ class BBNBillBillingController extends Controller
             $billing = BBNBillBilling::findOrFail($id);
             
             if ($billing->bbnBillBillingItems()->count() > 0) {
-                return $this->responseError('Cannot delete BBN Bill Billing with existing payments.', 'Deletion Error', 422);
+                return $this->responseError('Cannot delete BBN Bill Billing with existing payments', 'Validation failed', 422);
             }
 
             $billing->delete();

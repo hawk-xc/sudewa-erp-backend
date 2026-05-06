@@ -53,7 +53,7 @@ class BBNBillBillingItemController extends Controller
             return $this->responseSuccess($data, 'BBN Bill Billing Item list retrieved successfully');
         } catch (Exception $err) {
             Log::error('Error retrieving BBN Bill Billing Item: ' . $err->getMessage());
-            return $this->responseError($err->getMessage(), 'BBN Bill Billing Item list retrieved Failed', 500);
+            return $this->responseError($err->getMessage(), 'Failed to retrieve BBN Bill Billing Item list', 500);
         }
     }
 
@@ -70,7 +70,7 @@ class BBNBillBillingItemController extends Controller
         $remainingBefore = $billing->getRemainingAmount();
 
         if ($validated['amount'] > $remainingBefore) {
-            return $this->responseError('Payment amount exceeds remaining balance of ' . number_format($remainingBefore), 'Overpayment Error', 422);
+            return $this->responseError('Payment amount exceeds the remaining balance of ' . number_format($remainingBefore), 'Validation failed', 422);
         }
 
         try {
@@ -115,7 +115,7 @@ class BBNBillBillingItemController extends Controller
                 $remaining = $billing->total_payment - $otherPayments;
 
                 if ($validated['amount'] > $remaining) {
-                    return $this->responseError('Updated amount exceeds remaining balance of ' . number_format($remaining), 'Overpayment Error', 422);
+                    return $this->responseError('Updated amount exceeds the remaining balance of ' . number_format($remaining), 'Validation failed', 422);
                 }
             }
 
@@ -133,7 +133,7 @@ class BBNBillBillingItemController extends Controller
             $item = BBNBillBillingItem::with('bbnBillBilling.bbnBill')->findOrFail($id);
 
             if ($item->bbnBillBilling->bbnBill->is_paid) {
-                return $this->responseError('Cannot delete payment item for a paid BBN Bill.', 'Deletion Error', 422);
+                return $this->responseError('Cannot delete a payment item for a BBN Bill that has already been paid', 'Validation failed', 422);
             }
 
             $item->delete();
