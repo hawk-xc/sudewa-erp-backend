@@ -91,6 +91,15 @@ class BBNBillController extends Controller
             return $this->responseError('Cannot create BBN Bill. There are still unprocessed vehicle registrations for this dealer.', 'Unprocessed Data Found', 422);
         }
 
+        $notUpdatedExists = VehicleData::where('dealer_id', $validated['dealer_id'])
+            ->whereHas('vehicleRegistration', function ($query) {
+                $query->where('is_update_additional_data', false);
+            })->exists();
+
+        if ($notUpdatedExists) {
+            return $this->responseError('Data Registrasi kendaraan belum di update ulang', 'Validation Error', 422);
+        }
+
         $alreadyExists = BBNBill::where('dealer_id', $validated['dealer_id'])->exists();
         if ($alreadyExists) {
             return $this->responseError('BBN Bill for this dealer already exists.', 'Duplicate Data Found', 422);
@@ -165,6 +174,15 @@ class BBNBillController extends Controller
                     ->exists();
                 if ($alreadyExists) {
                     return $this->responseError('BBN Bill for this dealer already exists.', 'Duplicate Data Found', 422);
+                }
+
+                $notUpdatedExists = VehicleData::where('dealer_id', $validated['dealer_id'])
+                    ->whereHas('vehicleRegistration', function ($query) {
+                        $query->where('is_update_additional_data', false);
+                    })->exists();
+
+                if ($notUpdatedExists) {
+                    return $this->responseError('Data Registrasi kendaraan belum di update ulang', 'Validation Error', 422);
                 }
             }
 

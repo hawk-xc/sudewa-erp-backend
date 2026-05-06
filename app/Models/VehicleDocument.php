@@ -37,14 +37,7 @@ class VehicleDocument extends Model
 
     public function vehicleRegistrations()
     {
-        return $this->hasManyThrough(
-            VehicleRegistration::class,
-            VehicleDocumentItem::class,
-            'vehicle_document_id',
-            'vehicle_data_id',
-            'id',
-            'vehicle_data_id'
-        );
+        return $this->hasMany(VehicleRegistration::class, 'vendor_id', 'vendor_id');
     }
 
     protected static function booted()

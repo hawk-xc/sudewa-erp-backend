@@ -114,22 +114,25 @@ class VehicleDocumentController extends Controller
             return $this->responseError((object) ['message' => 'The selected vendor has no vehicle registrations data.'], 'Validation failed', 422);
         }
 
-        // Check if there is already a document for this vendor and date
-        $duplicateExists = VehicleDocument::where('vendor_id', $request->vendor_id)
-            ->whereDate('receipt_date', $request->receipt_date)
+        // Check if there are any unprocessed vehicle registrations for this vendor
+        $unprocessedExists = $vendor->vehicleRegistrations()
+            ->where('is_already_processed', false)
             ->exists();
 
-        if ($duplicateExists) {
-            $hasUnprocessed = VehicleDocument::where('vendor_id', $request->vendor_id)
-                ->whereDate('receipt_date', $request->receipt_date)
-                ->whereHas('vehicleRegistrations', function ($q) {
-                    $q->where('is_already_processed', false);
-                })
-                ->exists();
+        if (!$unprocessedExists) {
+            return $this->responseError((object) ['message' => 'This vendor has no unprocessed vehicle registrations.'], 'Validation failed', 422);
+        }
 
-            if ($hasUnprocessed) {
-                return $this->responseError((object) ['receipt_date' => ['A vehicle document with unprocessed registrations for this vendor on this receipt date already exists.']], 'Validation failed', 422);
-            }
+        // Check if there is already a document for this vendor and date that still has unprocessed registrations
+        $duplicateWithUnprocessedExists = VehicleDocument::where('vendor_id', $request->vendor_id)
+            ->whereDate('receipt_date', $request->receipt_date)
+            ->whereHas('vehicleRegistrations', function ($q) {
+                $q->where('is_already_processed', false);
+            })
+            ->exists();
+
+        if ($duplicateWithUnprocessedExists) {
+            return $this->responseError((object) ['receipt_date' => ['A vehicle document with unprocessed registrations for this vendor on this receipt date already exists.']], 'Validation failed', 422);
         }
 
         try {
@@ -192,31 +195,32 @@ class VehicleDocumentController extends Controller
             return $this->responseError($validator->errors(), 'Validation failed', 422);
         }
 
-        // Check for duplicate document with unprocessed registrations
+        // Check for duplicate document and unprocessed registrations
         if ($request->has('vendor_id') || $request->has('receipt_date')) {
             $document = VehicleDocument::findOrFail($id);
             $vendorId = $request->vendor_id ?? $document->vendor_id;
             $receiptDate = $request->receipt_date ?? $document->receipt_date;
 
-            // Check if there is already a document for this vendor and date
-            $duplicateExists = VehicleDocument::where('vendor_id', $vendorId)
-                ->whereDate('receipt_date', $receiptDate)
-                ->where('id', '!=', $id)
+            $vendor = Person::findOrFail($vendorId);
+            $unprocessedExists = $vendor->vehicleRegistrations()
+                ->where('is_already_processed', false)
                 ->exists();
 
-            if ($duplicateExists) {
-                // If it exists, check if any such document has unprocessed registrations
-                $hasUnprocessed = VehicleDocument::where('vendor_id', $vendorId)
-                    ->whereDate('receipt_date', $receiptDate)
-                    ->where('id', '!=', $id)
-                    ->whereHas('vehicleRegistrations', function ($q) {
-                        $q->where('is_already_processed', false);
-                    })
-                    ->exists();
+            if (!$unprocessedExists) {
+                return $this->responseError((object) ['message' => 'This vendor has no unprocessed vehicle registrations.'], 'Validation failed', 422);
+            }
 
-                if ($hasUnprocessed) {
-                    return $this->responseError((object) ['receipt_date' => ['A vehicle document with unprocessed registrations for this vendor on this receipt date already exists.']], 'Validation failed', 422);
-                }
+            // Check if there is already another document for this vendor and date that still has unprocessed registrations
+            $duplicateWithUnprocessedExists = VehicleDocument::where('vendor_id', $vendorId)
+                ->whereDate('receipt_date', $receiptDate)
+                ->where('id', '!=', $id)
+                ->whereHas('vehicleRegistrations', function ($q) {
+                    $q->where('is_already_processed', false);
+                })
+                ->exists();
+
+            if ($duplicateWithUnprocessedExists) {
+                return $this->responseError((object) ['receipt_date' => ['A vehicle document with unprocessed registrations for this vendor on this receipt date already exists.']], 'Validation failed', 422);
             }
         }
 

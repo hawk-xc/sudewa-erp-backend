@@ -144,7 +144,7 @@ class VehicleRegistrationController extends Controller
             $registration = DB::transaction(function () use ($request, $id) {
                 $registration = VehicleRegistration::findOrFail($id);
 
-                if ($registration->where('is_already_processed', true)) {
+                if ($registration->is_already_processed == true) {
                     return $this->responseError((object) ['message' => 'The selected vehicle registration has already been processed.'], 'Validation failed', 422);
                 }
 

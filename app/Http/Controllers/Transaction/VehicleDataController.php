@@ -356,6 +356,8 @@ class VehicleDataController extends Controller
                 return $this->responseError('Vehicle Registration not found for this vehicle data.', 'Not Found', 404);
             }
 
+            $request->merge(['is_update_additional_data' => true]);
+
             $registration->update($request->only([
                 'bbn_registration_fee',
                 'garwil_fee',
@@ -364,6 +366,7 @@ class VehicleDataController extends Controller
                 'stamp_fee',
                 'pnbp_bpkb',
                 'skpd_fee',
+                'is_update_additional_data'
             ]));
 
             return $this->responseSuccess($registration->fresh(), 'Vehicle Registration updated successfully');

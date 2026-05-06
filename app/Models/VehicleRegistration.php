@@ -59,6 +59,7 @@ class VehicleRegistration extends Model
 
         // processed mark
         'is_already_processed',
+        'is_update_additional_data',
 
         // new column
         'stamp_fee',
@@ -69,6 +70,7 @@ class VehicleRegistration extends Model
         'vendor_id' => 'integer',
         'vehicle_data_id' => 'integer',
         'is_already_processed' => 'boolean',
+        'is_update_additional_data' => 'boolean',
         'bpkb_physical_status' => 'boolean',
         'stnk_physical_status' => 'boolean',
         'skpd_physical_status' => 'boolean',
