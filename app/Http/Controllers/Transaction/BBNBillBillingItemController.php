@@ -107,6 +107,18 @@ class BBNBillBillingItemController extends Controller
 
         try {
             $item = BBNBillBillingItem::findOrFail($id);
+            $billing = $item->bbnBillBilling;
+
+            if ($request->has('amount')) {
+                // Calculate remaining balance excluding current item
+                $otherPayments = $billing->bbnBillBillingItems()->where('id', '!=', $id)->sum('amount');
+                $remaining = $billing->total_payment - $otherPayments;
+
+                if ($validated['amount'] > $remaining) {
+                    return $this->responseError('Updated amount exceeds remaining balance of ' . number_format($remaining), 'Overpayment Error', 422);
+                }
+            }
+
             $item->update($validated);
             return $this->responseSuccess($item->fresh(), 'BBN Bill Billing Item updated successfully');
         } catch (Exception $err) {
@@ -118,7 +130,12 @@ class BBNBillBillingItemController extends Controller
     public function destroy($id)
     {
         try {
-            $item = BBNBillBillingItem::findOrFail($id);
+            $item = BBNBillBillingItem::with('bbnBillBilling.bbnBill')->findOrFail($id);
+
+            if ($item->bbnBillBilling->bbnBill->is_paid) {
+                return $this->responseError('Cannot delete payment item for a paid BBN Bill.', 'Deletion Error', 422);
+            }
+
             $item->delete();
             return $this->responseSuccess(null, 'BBN Bill Billing Item deleted successfully');
         } catch (Exception $err) {

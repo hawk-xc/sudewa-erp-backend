@@ -20,7 +20,6 @@ class BBNBillBillingController extends Controller
     {
         $this->middleware(['permission:transaction:list'])->only(['index', 'show']);
         $this->middleware(['permission:transaction:create'])->only('store');
-        $this->middleware(['permission:transaction:edit'])->only('update');
         $this->middleware(['permission:transaction:delete'])->only(['destroy']);
 
         $this->bbnBillBillingTable = [
@@ -96,27 +95,15 @@ class BBNBillBillingController extends Controller
         }
     }
 
-    public function update(Request $request, $id)
-    {
-        $validated = $request->validate([
-            'bbn_bill_id' => 'sometimes|required|exists:bbn_bills,id',
-            'total_payment' => 'sometimes|required|numeric',
-        ]);
-
-        try {
-            $billing = BBNBillBilling::findOrFail($id);
-            $billing->update($validated);
-            return $this->responseSuccess($billing->fresh(), 'BBN Bill Billing updated successfully');
-        } catch (Exception $err) {
-            Log::error('Error updating BBN Bill Billing: ' . $err->getMessage());
-            return $this->responseError($err->getMessage(), 'BBN Bill Billing update failed', 500);
-        }
-    }
-
     public function destroy($id)
     {
         try {
             $billing = BBNBillBilling::findOrFail($id);
+            
+            if ($billing->bbnBillBillingItems()->count() > 0) {
+                return $this->responseError('Cannot delete BBN Bill Billing with existing payments.', 'Deletion Error', 422);
+            }
+
             $billing->delete();
             return $this->responseSuccess(null, 'BBN Bill Billing deleted successfully');
         } catch (Exception $err) {
