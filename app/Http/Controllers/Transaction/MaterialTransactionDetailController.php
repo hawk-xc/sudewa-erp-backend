@@ -28,6 +28,7 @@ class MaterialTransactionDetailController extends Controller
         $this->materialTransactionDetailTable = [
             'id',
             'uuid',
+            'order_code',
             'material_transaction_id',
             'material_id',
             'qty',

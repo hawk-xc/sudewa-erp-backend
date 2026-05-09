@@ -31,7 +31,6 @@ class MaterialTransactionController extends Controller
             'code',
             'type',
             'warehouse_id',
-            'person_id',
             'stock_state',
             'is_refunded',
             'supplier_name',
@@ -123,8 +122,6 @@ class MaterialTransactionController extends Controller
         $validated = $request->validate([
             'type' => 'required|in:purchase,sales',
             'warehouse_id' => 'nullable|exists:warehouses,id',
-            'person_id' => 'nullable|exists:persons,id',
-            'stock_state' => 'nullable|string',
             'supplier_name' => 'nullable|string|max:255',
             'transaction_date' => 'required|date',
             'description' => 'nullable|string',
