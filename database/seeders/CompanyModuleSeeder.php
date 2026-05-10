@@ -21,7 +21,7 @@ class CompanyModuleSeeder extends Seeder
             ],
             [
                 'companies' => ['wajira-transindo', 'adhiyas-agradasta'],
-                'modules' => [$modules[0], $modules[1], $modules[4]],
+                'modules' => [$modules[0], $modules[1], $modules[3], $modules[4]],
             ],
         ];
 
