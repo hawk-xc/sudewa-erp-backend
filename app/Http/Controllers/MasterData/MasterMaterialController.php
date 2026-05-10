@@ -4,7 +4,9 @@ namespace App\Http\Controllers\MasterData;
 
 use App\Http\Controllers\Controller;
 use App\Imports\MaterialImport;
+use App\Models\Company;
 use App\Models\Material;
+use App\Models\MaterialTransactionDetail;
 use App\Traits\ResponseTrait;
 use Exception;
 use Illuminate\Http\Request;
@@ -160,13 +162,12 @@ class MasterMaterialController extends Controller
                 ->avg('price');
 
             if ($request->filled('company_id')) {
-                $company = \App\Models\Company::with('warehouse')->findOrFail($request->company_id);
+                $company = Company::with('warehouse')->findOrFail($request->company_id);
                 $warehouseId = $company->warehouse->id;
 
                 $material['available_stock_warehouse'] = $material->getRealStock($warehouseId);
-                $material['forecasted_stock_warehouse'] = $material->getForecastStock($warehouseId);
 
-                $detailsQuery = \App\Models\MaterialTransactionDetail::with('materialTransaction')
+                $detailsQuery = MaterialTransactionDetail::with('materialTransaction')
                     ->where('material_id', $material->id)
                     ->whereHas('materialTransaction', function ($q) use ($warehouseId) {
                         $q->where('warehouse_id', $warehouseId);

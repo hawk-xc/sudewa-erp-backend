@@ -3,14 +3,15 @@
 namespace App\Http\Controllers\Transaction;
 
 use App\Http\Controllers\Controller;
+use App\Models\Material;
 use App\Models\MaterialTransaction;
 use App\Models\MaterialTransactionDetail;
 use App\Traits\ResponseTrait;
 use Exception;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\Rule;
 
 class MaterialTransactionDetailController extends Controller
 {
@@ -137,13 +138,21 @@ class MaterialTransactionDetailController extends Controller
         ]);
 
         try {
-            $data = DB::transaction(function () use ($validated) {
-                $transaction = MaterialTransaction::findOrFail($validated['material_transaction_id']);
+            $transaction = MaterialTransaction::findOrFail($validated['material_transaction_id']);
 
-                if ($transaction->materialTransactionBillings()->where('is_paid', true)->exists()) {
-                    throw new Exception('Cannot add items to a transaction that has already have payments.');
+            if ($transaction->type == 'sales') {
+                $availableStock = $this->getAvailableStock($request->material_id);
+
+                if ($request->qty > $availableStock) {
+                    return $this->responseError(null, 'Material stock qty not enough of capacity!', 422);
                 }
+            }
 
+            if ($transaction->materialTransactionBillings()->where('is_paid', true)->exists()) {
+                return $this->responseError(null, 'Cannot add items to a transaction that has already have payments!', 422);
+            }
+
+            $data = DB::transaction(function () use ($request, $validated, $transaction) {
                 if (empty($validated['description'])) {
                     $typeState = $transaction->type == "purchase" ? "pembelian" : "penjualan";
                     $validated['description'] = "Pembayaran " . $typeState . " material ke " . $transaction->supplier_name;
@@ -215,26 +224,25 @@ class MaterialTransactionDetailController extends Controller
                 return $this->responseError(null, 'No data provided to update', 422);
             }
 
+            $materialTransactionId = $data['material_transaction_id'] ?? $detail->material_transaction_id;
+            $materialId = $data['material_id'] ?? $detail->material_id;
+            $qty = $data['qty'] ?? $detail->qty;
+
+            $transaction = MaterialTransaction::findOrFail($materialTransactionId);
+
+            if ($transaction->materialTransactionBillings()->where('is_paid', true)->exists()) {
+                return $this->responseError(null, 'Cannot update items in a transaction that has already have payments.', 422);
+            }
+
+            // Validation for sales: check stock
+            if ($transaction->type == 'sales') {
+                $availableStock = $this->getAvailableStock($materialId, $detail->id);
+                if ($qty > $availableStock) {
+                    return $this->responseError(null, "Insufficient stock. Available: {$availableStock}", 422);
+                }
+            }
+
             DB::transaction(function () use ($data, $detail) {
-                $materialTransactionId = $data['material_transaction_id'] ?? $detail->material_transaction_id;
-                $materialId = $data['material_id'] ?? $detail->material_id;
-                $qty = $data['qty'] ?? $detail->qty;
-                $inStock = isset($data['in_stock']) ? $data['in_stock'] : $detail->in_stock;
-
-                $transaction = MaterialTransaction::findOrFail($materialTransactionId);
-
-                if ($transaction->materialTransactionBillings()->where('is_paid', true)->exists()) {
-                    throw new Exception('Cannot update items in a transaction that has already have payments.');
-                }
-
-                // Validation for sales: check stock if in_stock is true
-                if ($transaction->type == 'sales' && $inStock) {
-                    $availableStock = $this->getAvailableStock($materialId, $detail->id);
-                    if ($qty > $availableStock) {
-                        throw new Exception("Insufficient stock. Available: {$availableStock}");
-                    }
-                }
-
                 $detail->update($data);
             });
 
@@ -254,11 +262,11 @@ class MaterialTransactionDetailController extends Controller
         try {
             $data = MaterialTransactionDetail::findOrFail($id);
 
+            if ($data->materialTransaction->materialTransactionBillings()->where('is_paid', true)->exists()) {
+                return $this->responseError(null, 'Cannot delete items from a transaction that has already have payments.', 422);
+            }
+
             DB::transaction(function () use ($data) {
-                if ($data->materialTransaction->materialTransactionBillings()->where('is_paid', true)->exists()) {
-                    throw new Exception('Cannot delete items from a transaction that has already have payments.');
-                }
-                
                 $data->delete();
             });
 
@@ -276,14 +284,12 @@ class MaterialTransactionDetailController extends Controller
     private function getAvailableStock($materialId, $excludeDetailId = null)
     {
         $purchased = MaterialTransactionDetail::where('material_id', $materialId)
-            ->where('in_stock', true)
             ->whereHas('materialTransaction', function ($q) {
                 $q->where('type', 'purchase');
             })
             ->sum('qty');
 
         $soldQuery = MaterialTransactionDetail::where('material_id', $materialId)
-            ->where('in_stock', true)
             ->whereHas('materialTransaction', function ($q) {
                 $q->where('type', 'sales');
             });
