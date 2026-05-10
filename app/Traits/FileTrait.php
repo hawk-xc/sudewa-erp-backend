@@ -42,7 +42,7 @@ trait FileTrait
         }
 
         if ($oldPath) {
-            $this->deleteFile($oldPath);
+            $this->destroyFile($oldPath);
         }
 
         return $this->storeFile($newFile, $folder);

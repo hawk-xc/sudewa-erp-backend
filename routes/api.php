@@ -235,6 +235,7 @@ Route::group(
 
             // Material Transaction API
             Route::put('material-transaction/{id}/update-state', [MaterialTransactionController::class, 'updateState'])->name('material-transaction.update-state');
+            Route::post('material-transaction/{id}/upload-invoice', [MaterialTransactionController::class, 'uploadInvoice'])->name('material-transaction.upload-invoice');
             Route::apiResource('material-transaction', MaterialTransactionController::class);
             Route::apiResource('material-transaction-detail', MaterialTransactionDetailController::class);
             Route::apiResource('material-transaction-billing', MaterialTransactionBillingController::class);

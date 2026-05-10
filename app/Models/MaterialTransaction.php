@@ -23,6 +23,7 @@ class MaterialTransaction extends Model
         'supplier_name',
         'is_paid',
         'transaction_date',
+        'invoice_file',
         'description',
     ];
 

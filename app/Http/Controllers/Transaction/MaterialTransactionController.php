@@ -4,16 +4,18 @@ namespace App\Http\Controllers\Transaction;
 
 use App\Http\Controllers\Controller;
 use App\Models\MaterialTransaction;
+use App\Traits\FileTrait;
 use App\Traits\ResponseTrait;
 use App\Traits\MaterialTransactionTrait;
 use Exception;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class MaterialTransactionController extends Controller
 {
-    use ResponseTrait, MaterialTransactionTrait;
+    use ResponseTrait, MaterialTransactionTrait, FileTrait;
 
     // projection
     protected $materialTransactionTable;
@@ -22,7 +24,7 @@ class MaterialTransactionController extends Controller
     {
         $this->middleware(['permission:transaction:list'])->only(['index', 'show']);
         $this->middleware(['permission:transaction:create'])->only('store');
-        $this->middleware(['permission:transaction:edit'])->only(['update', 'updateState']);
+        $this->middleware(['permission:transaction:edit'])->only(['update', 'updateState', 'uploadInvoice']);
         $this->middleware(['permission:transaction:delete'])->only(['destroy']);
 
         $this->materialTransactionTable = [
@@ -36,6 +38,7 @@ class MaterialTransactionController extends Controller
             'supplier_name',
             'is_paid',
             'transaction_date',
+            'invoice_file',
             'description',
             'created_at',
         ];
@@ -149,7 +152,7 @@ class MaterialTransactionController extends Controller
     /**
      * Get material transaction details.
      */
-    public function show($id)
+    public function show(int $id): JsonResponse
     {
         try {
             $data = MaterialTransaction::with(['materialTransactionDetails.material', 'materialTransactionBillings.cash'])
@@ -310,6 +313,33 @@ class MaterialTransactionController extends Controller
             Log::error('Error updating Material Transaction state: '.$err->getMessage());
 
             return $this->responseError($err->getMessage(), 'Material Transaction state update failed', 500);
+        }
+    }
+
+    public function uploadInvoice(Request $request, string $id): JsonResponse
+    {
+        $validated = $request->validate([
+            'invoice_file' => 'required|file|mimes:pdf,doc,docx|max:2048',
+        ]);
+
+        try {
+            $transaction = MaterialTransaction::findOrFail((int) $id);
+
+            $path = $this->updateFile(
+                $request->file('invoice_file'),
+                $transaction->invoice_file,
+                'invoices'
+            );
+
+            $transaction->update(['invoice_file' => $path]);
+
+            return $this->responseSuccess(null, 'Invoice uploaded successfully', 200);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $err) {
+            return $this->responseError(null, 'Material Transaction not found', 404);
+        } catch (Exception $err) {
+            Log::error('Error while uploading invoice: '.$err->getMessage());
+
+            return $this->responseError($err->getMessage(), 'Invoice upload failed', 500);
         }
     }
 }
