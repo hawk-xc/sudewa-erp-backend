@@ -105,6 +105,11 @@ class MaterialTransactionBillingController extends Controller
 
         try {
             $transaction = MaterialTransaction::findOrFail($validated['material_transaction_id']);
+
+            if ($transaction->is_paid) {
+                return $this->responseError('Transaction is already fully paid.', 'Access Denied', 403);
+            }
+
             $totalAmount = $transaction->getTotalAmount();
             $totalPaidExisting = (int) $transaction->materialTransactionBillings()->sum('amount');
             $newTotalPaid = $totalPaidExisting + (int) $validated['amount'];
@@ -132,7 +137,12 @@ class MaterialTransactionBillingController extends Controller
                 return $data;
             });
 
-            return $this->responseSuccess($data, 'Material Transaction Billing created successfully', 201);
+            $responseData = array_merge($data->toArray(), [
+                'remaining_payment' => $totalAmount - $newTotalPaid,
+                'total' => $totalAmount - (int) $validated['amount']
+            ]);
+
+            return $this->responseSuccess($responseData, 'Material Transaction Billing created successfully', 201);
         } catch (Exception $err) {
             Log::error('Error while trying create Material Transaction Billing Data : '.$err->getMessage());
 
@@ -176,6 +186,10 @@ class MaterialTransactionBillingController extends Controller
             $transactionId = $request->material_transaction_id ?? $billing->material_transaction_id;
             $transaction = MaterialTransaction::findOrFail($transactionId);
 
+            if ($transaction->is_paid) {
+                return $this->responseError('Transaction is already fully paid.', 'Access Denied', 403);
+            }
+
             $totalAmount = $transaction->getTotalAmount();
             $amountToApply = $request->amount ?? $billing->amount;
 
@@ -199,7 +213,12 @@ class MaterialTransactionBillingController extends Controller
                 $transaction->update(['is_paid' => $newTotalPaid >= $totalAmount]);
             });
 
-            return $this->responseSuccess($billing->fresh(), 'Material Transaction Billing updated successfully', 200);
+            $responseData = array_merge($billing->fresh()->toArray(), [
+                'remaining_payment' => $totalAmount - $newTotalPaid,
+                'total' => $totalAmount - (int) $amountToApply
+            ]);
+
+            return $this->responseSuccess($responseData, 'Material Transaction Billing updated successfully', 200);
         } catch (Exception $err) {
             Log::error('Error while trying update Material Transaction Billing data : '.$err->getMessage());
 
@@ -219,9 +238,14 @@ class MaterialTransactionBillingController extends Controller
                 $transaction = $data->materialTransaction;
                 $data->delete();
                 
-                $totalAmount = $transaction->getTotalAmount();
-                $totalPaid = (int) $transaction->materialTransactionBillings()->sum('amount');
-                $transaction->update(['is_paid' => $totalPaid >= $totalAmount]);
+                $transaction->update(['is_paid' => false]);
+
+                $detailStatus = [
+                    'is_forecast' => true,
+                    'in_stock' => false
+                ];
+
+                $transaction->materialTransactionDetails()->update($detailStatus);
             });
 
             return $this->responseSuccess(null, 'Material Transaction Billing deleted successfully', 200);

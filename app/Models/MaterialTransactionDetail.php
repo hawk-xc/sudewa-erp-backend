@@ -14,6 +14,7 @@ class MaterialTransactionDetail extends Model
 
     protected $fillable = [
         'uuid',
+        'order_code',
         'material_transaction_id',
         'material_id',
         'in_stock', // bool -> default false

@@ -96,9 +96,7 @@ class MaterialTransactionController extends Controller
 
             $data = $query->paginate($perPage)
                 ->through(function ($item) {
-                    $item->total_amount = $item->getTotalAmount();
-                    $item->total_paid = $item->getTotalPaidAmount();
-                    $item->total_unpaid = $item->getRemainingAmount();
+                    $item->makeHidden('total_brutto');
 
                     $item->unsetRelation('materialTransactionDetails');
                     $item->unsetRelation('materialTransactionBillings');
@@ -158,15 +156,15 @@ class MaterialTransactionController extends Controller
                 ->select($this->materialTransactionTable)
                 ->findOrFail($id);
 
-            $data['total_amount'] = $data->getTotalAmount();
-            $data['total_paid'] = $data->getTotalPaidAmount();
-            $data['total_unpaid'] = $data->getRemainingAmount();
+            $data->makeHidden('total_brutto');
             
             return $this->responseSuccess($data, 'Material Transaction detail retrieved successfully', 200);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $err) {
+            return $this->responseError(null, 'Material Transaction not found', 404);
         } catch (Exception $err) {
-            Log::error('Error While retrieved Material Transaction data : '.$err->getMessage());
+            Log::error('Error while retrieving Material Transaction data: '.$err->getMessage());
 
-            return $this->responseError($err->getMessage(), 'Material Transaction not found', 404);
+            return $this->responseError($err->getMessage(), 'An unexpected error occurred', 500);
         }
     }
 
@@ -201,8 +199,10 @@ class MaterialTransactionController extends Controller
             });
 
             return $this->responseSuccess($transaction->fresh(), 'Material Transaction updated successfully', 200);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $err) {
+            return $this->responseError(null, 'Material Transaction not found', 404);
         } catch (Exception $err) {
-            Log::error('Error while trying update Material Transaction data : '.$err->getMessage());
+            Log::error('Error while updating Material Transaction data: '.$err->getMessage());
 
             return $this->responseError($err->getMessage(), 'Material Transaction update failed', 500);
         }
@@ -221,8 +221,10 @@ class MaterialTransactionController extends Controller
             });
 
             return $this->responseSuccess(null, 'Material Transaction deleted successfully', 200);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $err) {
+            return $this->responseError(null, 'Material Transaction not found', 404);
         } catch (Exception $err) {
-            Log::error('Error while trying delete Material Transaction data : '.$err->getMessage());
+            Log::error('Error while deleting Material Transaction data: '.$err->getMessage());
 
             return $this->responseError($err->getMessage(), 'Material Transaction deletion failed', 500);
         }

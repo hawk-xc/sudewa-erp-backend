@@ -8,6 +8,7 @@ use App\Models\MaterialTransactionDetail;
 use App\Traits\ResponseTrait;
 use Exception;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -120,12 +121,19 @@ class MaterialTransactionDetailController extends Controller
     {
         $validated = $request->validate([
             'material_transaction_id' => 'required|exists:material_transactions,id',
-            'material_id' => 'required|exists:materials,id',
+            'order_code' => 'required|unique:material_transaction_details,order_code',
+            'material_id' => [
+                'required',
+                'exists:materials,id',
+                Rule::unique('material_transaction_details')->where(function ($query) use ($request) {
+                    return $query->where('material_transaction_id', $request->material_transaction_id);
+                }),
+            ],
             'qty' => 'required|integer|min:1',
             'price' => 'required|numeric|min:0',
-            'in_stock' => 'nullable|boolean',
-            'is_forecast' => 'nullable|boolean',
             'description' => 'nullable|string',
+        ], [
+            'material_id.unique' => 'This material already exists in this transaction.',
         ]);
 
         try {
@@ -134,22 +142,6 @@ class MaterialTransactionDetailController extends Controller
 
                 if ($transaction->materialTransactionBillings()->where('is_paid', true)->exists()) {
                     throw new Exception('Cannot add items to a transaction that has already have payments.');
-                }
-
-                $exists = MaterialTransactionDetail::where('material_transaction_id', $validated['material_transaction_id'])
-                    ->where('material_id', $validated['material_id'])
-                    ->exists();
-
-                if ($exists) {
-                    throw new Exception('This material already exists in this transaction.');
-                }
-
-                // Validation for sales: check stock if in_stock is true
-                if ($transaction->type == 'sales' && ($validated['in_stock'] ?? false)) {
-                    $availableStock = $this->getAvailableStock($validated['material_id']);
-                    if ($validated['qty'] > $availableStock) {
-                        throw new Exception("Insufficient stock. Available: {$availableStock}");
-                    }
                 }
 
                 if (empty($validated['description'])) {
@@ -191,19 +183,29 @@ class MaterialTransactionDetailController extends Controller
      */
     public function update(Request $request, $id)
     {
+        $detail = MaterialTransactionDetail::findOrFail($id);
+
         $request->validate([
-            'material_transaction_id' => 'sometimes|required|exists:material_transactions,id',
-            'material_id' => 'sometimes|required|exists:materials,id',
+            'material_id' => [
+                'sometimes',
+                'required',
+                'exists:materials,id',
+                Rule::unique('material_transaction_details')->where(function ($query) use ($request, $detail) {
+                    $materialTransactionId = $request->material_transaction_id ?? $detail->material_transaction_id;
+                    return $query->where('material_transaction_id', $materialTransactionId);
+                })->ignore($id),
+            ],
+            'order_code' => 'sometimes|unique:material_transaction_details,order_code,' . $id,
             'qty' => 'sometimes|required|integer|min:1',
             'price' => 'sometimes|required|numeric|min:0',
             'in_stock' => 'nullable|boolean',
             'is_forecast' => 'nullable|boolean',
             'description' => 'nullable|string',
+        ], [
+            'material_id.unique' => 'This material already exists in this transaction.',
         ]);
 
         try {
-            $detail = MaterialTransactionDetail::findOrFail($id);
-            
             $data = array_filter(
                 $request->only(['material_transaction_id', 'material_id', 'qty', 'price', 'in_stock', 'is_forecast', 'description']),
                 fn ($val) => ! is_null($val) && $val !== ''
@@ -223,15 +225,6 @@ class MaterialTransactionDetailController extends Controller
 
                 if ($transaction->materialTransactionBillings()->where('is_paid', true)->exists()) {
                     throw new Exception('Cannot update items in a transaction that has already have payments.');
-                }
-
-                $exists = MaterialTransactionDetail::where('material_transaction_id', $materialTransactionId)
-                    ->where('material_id', $materialId)
-                    ->where('id', '!=', $detail->id)
-                    ->exists();
-
-                if ($exists) {
-                    throw new Exception('This material already exists in this transaction.');
                 }
 
                 // Validation for sales: check stock if in_stock is true

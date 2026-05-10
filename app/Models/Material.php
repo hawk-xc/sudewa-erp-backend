@@ -42,14 +42,12 @@ class Material extends Model
     public function getRealStock(int $warehouseId)
     {
         $purchased = $this->materialTransactionDetails()
-            ->where('in_stock', true)
             ->whereHas('materialTransaction', function ($q) use ($warehouseId) {
                 $q->where('type', 'purchase')->where('warehouse_id', $warehouseId);
             })
             ->sum('qty');
 
         $sold = $this->materialTransactionDetails()
-            ->where('in_stock', true)
             ->whereHas('materialTransaction', function ($q) use ($warehouseId) {
                 $q->where('type', 'sales')->where('warehouse_id', $warehouseId);
             })
@@ -63,24 +61,6 @@ class Material extends Model
      */
     public function getForecastStock(int $warehouseId)
     {
-        $purchased = $this->materialTransactionDetails()
-            ->where(function ($q) {
-                $q->where('in_stock', true)->orWhere('is_forecast', true);
-            })
-            ->whereHas('materialTransaction', function ($q) use ($warehouseId) {
-                $q->where('type', 'purchase')->where('warehouse_id', $warehouseId);
-            })
-            ->sum('qty');
-
-        $sold = $this->materialTransactionDetails()
-            ->where(function ($q) {
-                $q->where('in_stock', true)->orWhere('is_forecast', true);
-            })
-            ->whereHas('materialTransaction', function ($q) use ($warehouseId) {
-                $q->where('type', 'sales')->where('warehouse_id', $warehouseId);
-            })
-            ->sum('qty');
-
-        return $purchased - $sold;
+        return $this->getRealStock($warehouseId);
     }
 }

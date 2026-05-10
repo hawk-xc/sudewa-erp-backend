@@ -13,7 +13,7 @@ class MainCompanyWarehouseSeeder extends Seeder
      */
     public function run(): void
     {
-        $main_company = [1, 2, 5];
+        $main_company = [1, 2, 3, 4, 5];
 
         $companies = Company::whereIn('id', $main_company)->get();
 

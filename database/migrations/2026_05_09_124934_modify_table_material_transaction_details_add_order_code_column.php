@@ -12,7 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('material_transaction_details', function (Blueprint $table) {
-            //
+            $table->string('order_code')->after('uuid')->unique()->nullable();
         });
     }
 
@@ -22,7 +22,7 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('material_transaction_details', function (Blueprint $table) {
-            //
+            $table->dropColumn('order_code');
         });
     }
 };

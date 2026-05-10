@@ -56,37 +56,20 @@ class MasterMaterialController extends Controller
                 $warehouseId = $request->warehouse_id;
                 
                 $query->withSum(['materialTransactionDetails as total_purchase' => function ($q) use ($warehouseId) {
-                    $q->where('in_stock', true)->whereHas('materialTransaction', fn($t) => $t->where('type', 'purchase')->where('warehouse_id', $warehouseId));
+                    $q->whereHas('materialTransaction', fn($t) => $t->where('type', 'purchase')->where('warehouse_id', $warehouseId));
                 }], 'qty');
 
                 $query->withSum(['materialTransactionDetails as total_sales' => function ($q) use ($warehouseId) {
-                    $q->where('in_stock', true)->whereHas('materialTransaction', fn($t) => $t->where('type', 'sales')->where('warehouse_id', $warehouseId));
-                }], 'qty');
-
-                $query->withSum(['materialTransactionDetails as total_purchase_forecast' => function ($q) use ($warehouseId) {
-                    $q->where('is_forecast', true)->whereHas('materialTransaction', fn($t) => $t->where('type', 'purchase')->where('warehouse_id', $warehouseId));
-                }], 'qty');
-
-                $query->withSum(['materialTransactionDetails as total_sales_forecast' => function ($q) use ($warehouseId) {
-                    $q->where('is_forecast', true)->whereHas('materialTransaction', fn($t) => $t->where('type', 'sales')->where('warehouse_id', $warehouseId));
+                    $q->whereHas('materialTransaction', fn($t) => $t->where('type', 'sales')->where('warehouse_id', $warehouseId));
                 }], 'qty');
             } else {
-                // Actual Stock (Finalized)
+                // Actual Stock
                 $query->withSum(['materialTransactionDetails as total_purchase' => function ($q) {
-                    $q->where('in_stock', true)->whereHas('materialTransaction', fn($t) => $t->where('type', 'purchase'));
+                    $q->whereHas('materialTransaction', fn($t) => $t->where('type', 'purchase'));
                 }], 'qty');
 
                 $query->withSum(['materialTransactionDetails as total_sales' => function ($q) {
-                    $q->where('in_stock', true)->whereHas('materialTransaction', fn($t) => $t->where('type', 'sales'));
-                }], 'qty');
-
-                // Forecast Stock (Not yet finalized)
-                $query->withSum(['materialTransactionDetails as total_purchase_forecast' => function ($q) {
-                    $q->where('is_forecast', true)->whereHas('materialTransaction', fn($t) => $t->where('type', 'purchase'));
-                }], 'qty');
-
-                $query->withSum(['materialTransactionDetails as total_sales_forecast' => function ($q) {
-                    $q->where('is_forecast', true)->whereHas('materialTransaction', fn($t) => $t->where('type', 'sales'));
+                    $q->whereHas('materialTransaction', fn($t) => $t->where('type', 'sales'));
                 }], 'qty');
             }
 
@@ -135,13 +118,12 @@ class MasterMaterialController extends Controller
             $data = $query->paginate($perPage)
                 ->through(function ($item) {
                     $item->stock = (int) $item->total_purchase - (int) $item->total_sales;
-                    $item->forecast_stock = (int) $item->total_purchase_forecast - (int) $item->total_sales_forecast;
                     
                     $item->total_purchased = (int) $item->total_purchase;
                     $item->total_sold = (int) $item->total_sales;
                     $item->average_price = (float) $item->average_price;
 
-                    unset($item->total_purchase, $item->total_sales, $item->total_purchase_forecast, $item->total_sales_forecast);
+                    unset($item->total_purchase, $item->total_sales);
                     
                     return $item;
                 });
@@ -164,27 +146,14 @@ class MasterMaterialController extends Controller
 
             // Global stock info
             $material->total_purchase = (int) $material->materialTransactionDetails()
-                ->where('in_stock', true)
                 ->whereHas('materialTransaction', fn($t) => $t->where('type', 'purchase'))
                 ->sum('qty');
                 
             $material->total_sales = (int) $material->materialTransactionDetails()
-                ->where('in_stock', true)
-                ->whereHas('materialTransaction', fn($t) => $t->where('type', 'sales'))
-                ->sum('qty');
-
-            $material->total_purchase_forecast = (int) $material->materialTransactionDetails()
-                ->where('is_forecast', true)
-                ->whereHas('materialTransaction', fn($t) => $t->where('type', 'purchase'))
-                ->sum('qty');
-
-            $material->total_sales_forecast = (int) $material->materialTransactionDetails()
-                ->where('is_forecast', true)
                 ->whereHas('materialTransaction', fn($t) => $t->where('type', 'sales'))
                 ->sum('qty');
 
             $material->stock = $material->total_purchase - $material->total_sales;
-            $material->forecast_stock = ($material->total_purchase + $material->total_purchase_forecast) - ($material->total_sales + $material->total_sales_forecast);
 
             $material->average_price = (float) $material->materialTransactionDetails()
                 ->whereHas('materialTransaction', fn($t) => $t->where('type', 'purchase'))

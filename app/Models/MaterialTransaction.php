@@ -26,7 +26,18 @@ class MaterialTransaction extends Model
         'description',
     ];
 
+    protected $appends = [
+        'total_brutto',
+    ];
+
+    public function getTotalBruttoAttribute()
+    {
+        return $this->getTotalAmount();
+    }
+
     protected $casts = [
+        'warehouse_id' => 'integer',
+        'person_id' => 'integer',
         'is_paid' => 'boolean',
         'is_refunded' => 'boolean',
     ];
