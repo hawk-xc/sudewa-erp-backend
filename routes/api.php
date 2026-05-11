@@ -37,6 +37,7 @@ use App\Http\Controllers\Transaction\BBNBillBillingController;
 use App\Http\Controllers\Transaction\BBNBillBillingItemController;
 use App\Http\Controllers\Transaction\BBNBillController;
 use App\Http\Controllers\Transaction\DOExpeditionController;
+use App\Http\Controllers\Transaction\DOExpeditionInvoiceController;
 use App\Http\Controllers\Transaction\DOExpeditionItemController;
 use App\Http\Controllers\Transaction\DOExpeditionItemDestinationController;
 use App\Http\Controllers\Transaction\MaterialTransactionBillingController;
@@ -245,6 +246,8 @@ Route::group(
             Route::apiResource('do-expedition', DOExpeditionController::class);
             Route::apiResource('do-expedition-item', DOExpeditionItemController::class);
             Route::apiResource('do-expedition-item-destination', DOExpeditionItemDestinationController::class);
+            Route::post('do-expedition-invoice/process-invoice', [DOExpeditionInvoiceController::class, 'processInvoice']);
+            Route::apiResource('do-expedition-invoice', DOExpeditionInvoiceController::class);
 
             // BBN Bill
             Route::put('bbn-bill-detail/{vehicle_data_id}', [VehicleDataController::class, 'updateVehicleRegistrationData']);
