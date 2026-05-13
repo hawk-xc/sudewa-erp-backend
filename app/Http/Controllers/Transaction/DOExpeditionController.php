@@ -81,7 +81,7 @@ class DOExpeditionController extends Controller
     public function show($id)
     {
         try {
-            $doExpedition = DOExpedition::with(['vehicle', 'driver', 'items.customer'])
+            $doExpedition = DOExpedition::with(['vehicle', 'driver', 'items.customer', 'items.expeditionDestinations'])
                 ->withCount('items')
                 ->withSum('items as brutto_value', 'invoice_fee')
                 ->withSum('items as total_ppn', 'ppn_fee')
