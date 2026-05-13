@@ -120,7 +120,16 @@ class BBNBillBillingItemController extends Controller
             }
 
             $item->update($validated);
-            return $this->responseSuccess($item->fresh(), 'BBN Bill Billing Item updated successfully');
+            
+            $updatedItem = $item->fresh();
+            $updatedItem->remaining_payment = $billing->getRemainingAmount();
+
+            // Sync BBNBill status: if not fully paid, clear paid_date
+            if ($billing->getRemainingAmount() > 0) {
+                $billing->bbnBill->update(['paid_date' => null]);
+            }
+
+            return $this->responseSuccess($updatedItem, 'BBN Bill Billing Item updated successfully');
         } catch (Exception $err) {
             Log::error('Error updating BBN Bill Billing Item: ' . $err->getMessage());
             return $this->responseError($err->getMessage(), 'BBN Bill Billing Item update failed', 500);
@@ -136,7 +145,14 @@ class BBNBillBillingItemController extends Controller
                 return $this->responseError('Cannot delete a payment item for a BBN Bill that has already been paid', 'Validation failed', 422);
             }
 
+            $billing = $item->bbnBillBilling;
             $item->delete();
+
+            // Sync BBNBill status: if not fully paid, clear paid_date
+            if ($billing->getRemainingAmount() > 0) {
+                $billing->bbnBill->update(['paid_date' => null]);
+            }
+
             return $this->responseSuccess(null, 'BBN Bill Billing Item deleted successfully');
         } catch (Exception $err) {
             Log::error('Error deleting BBN Bill Billing Item: ' . $err->getMessage());

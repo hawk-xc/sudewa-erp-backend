@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\BBNBill;
 use App\Models\Person;
 use App\Models\VehicleData;
+use App\Traits\BBNBillTrait;
 use App\Traits\ResponseTrait;
 use Exception;
 use Illuminate\Http\Request;
@@ -13,7 +14,7 @@ use Illuminate\Support\Facades\Log;
 
 class BBNBillController extends Controller
 {
-    use ResponseTrait;
+    use ResponseTrait, BBNBillTrait;
 
     protected $bbnBillTable;
 
@@ -27,6 +28,7 @@ class BBNBillController extends Controller
         $this->bbnBillTable = [
             'id',
             'uuid',
+            'code',
             'dealer_id',
             'bill_date',
             'paid_date',
@@ -91,13 +93,13 @@ class BBNBillController extends Controller
             return $this->responseError('Cannot create BBN Bill. Unprocessed vehicle registrations found for IDs: ' . $unprocessedIds->implode(', '), 'Unprocessed Data Found', 422);
         }
 
-        $notUpdatedExists = VehicleData::where('dealer_id', $validated['dealer_id'])
+        $notUpdatedIds = VehicleData::where('dealer_id', $validated['dealer_id'])
             ->whereHas('vehicleRegistration', function ($query) {
                 $query->where('is_update_additional_data', false);
-            })->exists();
+            })->pluck('id');
 
-        if ($notUpdatedExists) {
-            return $this->responseError('Vehicle registration data has not been updated yet', 'Validation failed', 422);
+        if ($notUpdatedIds->isNotEmpty()) {
+            return $this->responseError('Vehicle registration data has not been updated yet for IDs: ' . $notUpdatedIds->implode(', '), 'Validation failed', 422);
         }
 
         $alreadyExists = BBNBill::where('dealer_id', $validated['dealer_id'])->exists();
@@ -106,6 +108,8 @@ class BBNBillController extends Controller
         }
  
         try {
+            $validated['code'] = $this->generateBBNBillCode();
+            
             $data = BBNBill::create($validated);
             return $this->responseSuccess($data, 'BBN Bill created successfully', 201);
         } catch (Exception $err) {
@@ -199,8 +203,8 @@ class BBNBillController extends Controller
         try {
             $bbnBill = BBNBill::findOrFail($id);
 
-            if ($bbnBill->paid_date) {
-                return $this->responseError('BBN Bill has already been paid and cannot be deleted', 'Validation failed', 422);
+            if ($bbnBill->is_paid || $bbnBill->bbnBillBillings()->exists()) {
+                return $this->responseError('BBN Bill has existing payments or is fully paid and cannot be deleted', 'Validation failed', 422);
             }   
 
             $bbnBill->delete();

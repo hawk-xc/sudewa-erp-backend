@@ -15,6 +15,7 @@ class BBNBill extends Model
 
     protected $fillable = [
         'uuid',
+        'code',
         'dealer_id',
         'bill_date',
         'paid_date',
@@ -38,6 +39,7 @@ class BBNBill extends Model
         'paid_amount',
         'is_paid',
         'pph23_amount',
+        'remaining_amount',
     ];
 
     public function getBruttoAmountAttribute()
@@ -111,6 +113,11 @@ class BBNBill extends Model
     {
         if ($this->brutto_amount <= 0) return false;
         return $this->paid_amount >= $this->brutto_amount;
+    }
+
+    public function getRemainingAmountAttribute()
+    {
+        return (int) ($this->brutto_amount - $this->paid_amount);
     }
 
     public function dealer()
