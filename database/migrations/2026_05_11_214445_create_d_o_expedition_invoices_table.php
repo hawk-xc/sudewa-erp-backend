@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('do_expedition_invoices', function (Blueprint $table) {
             $table->id();
             $table->uuid('uuid')->unique();
-            $table->foreignId('do_expedition_id')->constrained('do_expeditions')->onDelete('cascade');
+            $table->foreignId('do_expedition_id')->unique()->constrained('do_expeditions')->onDelete('cascade');
             $table->integer('qty')->default(0)->nullable(true);
             $table->string('do_letter_code')->nullable(true);
             $table->string('do_assignment_code')->nullable(true);

@@ -28,21 +28,37 @@ class DOExpeditionInvoiceController extends Controller
      */
     public function index(Request $request)
     {
-        $query = DOExpeditionInvoice::with('doExpedition', 'doExpedition.items:id,uuid,do_expedition_id,loading_in,loading_out,invoice_fee,driver_fee,other_fee,additional_cost_fee,ppn_fee,service_fee,pph_fee', 'doExpedition.items.expeditionDestinations:id,uuid,do_expedition_item_id,destination');
+        $query = DOExpeditionInvoice::with([
+            'doExpedition', 
+            'doExpedition.items:id,uuid,do_expedition_id,customer_id,loading_in,loading_out,invoice_fee,driver_fee,other_fee,additional_cost_fee,ppn_fee,service_fee,pph_fee', 
+            'doExpedition.items.customer:id,uuid,name',
+            'doExpedition.items.expeditionDestinations:id,uuid,do_expedition_item_id,destination'
+        ]);
 
         if ($request->filled('search')) {
             $search = $request->search;
             $query->where(function ($q) use ($search) {
                 $q->where('do_letter_code', 'like', "%$search%")
                     ->orWhere('do_assignment_code', 'like', "%$search%")
+                    ->orWhere('description', 'like', "%$search%")
                     ->orWhereHas('doExpedition', function ($dq) use ($search) {
                         $dq->where('do_code', 'like', "%$search%");
                     });
             });
         }
 
+        if ($request->filled('is_already_print')) {
+            $query->where('is_already_print', $request->boolean('is_already_print'));
+        }
+
+        if ($request->filled('date')) {
+            $query->whereHas('doExpedition', function ($dq) use ($request) {
+                $dq->whereDate('date', $request->date);
+            });
+        }
+
         $perPage = $request->per_page ?? 10;
-        $data = $query->paginate($perPage);
+        $data = $query->latest()->paginate($perPage);
 
         return $this->responseSuccess($data, 'DO Expedition Invoice list retrieved successfully');
     }
@@ -59,6 +75,11 @@ class DOExpeditionInvoiceController extends Controller
 
         try {
             $doExpedition = DOExpedition::where('do_code', $request->do_code)->firstOrFail();
+
+            // Check if an invoice already exists for this DO Expedition
+            if (DOExpeditionInvoice::where('do_expedition_id', $doExpedition->id)->exists()) {
+                return $this->responseError(null, 'An invoice already exists for this DO Expedition.', 422);
+            }
 
             $data = DOExpeditionInvoice::create([
                 'do_expedition_id' => $doExpedition->id,
@@ -91,6 +112,7 @@ class DOExpeditionInvoiceController extends Controller
     public function update(Request $request, int $id)
     {
         $request->validate([
+            'do_code' => 'sometimes|required|exists:do_expeditions,do_code',
             'qty' => 'sometimes|required|integer|min:1',
             'do_letter_code' => 'sometimes|required|string',
             'do_assignment_code' => 'sometimes|required|string',
@@ -100,12 +122,29 @@ class DOExpeditionInvoiceController extends Controller
         try {
             $invoice = DOExpeditionInvoice::findOrFail($id);
             
-            $invoice->update($request->only([
+            $data = $request->only([
                 'qty',
                 'do_letter_code',
                 'do_assignment_code',
                 'description'
-            ]));
+            ]);
+
+            if ($request->has('do_code')) {
+                $doExpedition = DOExpedition::where('do_code', $request->do_code)->firstOrFail();
+                
+                // Check if another invoice already uses this DO Expedition
+                $exists = DOExpeditionInvoice::where('do_expedition_id', $doExpedition->id)
+                    ->where('id', '!=', $id)
+                    ->exists();
+                
+                if ($exists) {
+                    return $this->responseError(null, 'An invoice already exists for this DO Expedition.', 422);
+                }
+
+                $data['do_expedition_id'] = $doExpedition->id;
+            }
+
+            $invoice->update($data);
 
             return $this->responseSuccess($invoice->fresh(), 'DO Expedition Invoice updated successfully');
         } catch (Exception $err) {
@@ -138,6 +177,7 @@ class DOExpeditionInvoiceController extends Controller
         }
 
         $validated = $request->validate([
+            'customer_name' => 'nullable|string',
             'date' => 'required|date',
             'subject' => 'required|string',
             'attachment' => 'required|string',
@@ -145,25 +185,43 @@ class DOExpeditionInvoiceController extends Controller
             'do_expedition_invoice_ids' => 'required|array',
             'do_expedition_invoice_ids.*' => 'integer|distinct|exists:do_expedition_invoices,id',
         ]);
-
+        
         try {
-            $ids = $validated['do_expedition_invoice_ids'];
+            return \Illuminate\Support\Facades\DB::transaction(function () use ($validated, $request) {
+                $ids = $validated['do_expedition_invoice_ids'];
 
-            $data = DOExpeditionInvoice::with([
-                'doExpedition',
-                'doExpedition.items:id,uuid,do_expedition_id,loading_in,loading_out,invoice_fee,driver_fee,other_fee,additional_cost_fee,ppn_fee,service_fee,pph_fee',
-                'doExpedition.items.expeditionDestinations:id,uuid,do_expedition_item_id,destination'
-            ])->findOrFail($ids);
+                $data = DOExpeditionInvoice::with([
+                    'doExpedition',
+                    'doExpedition.items:id,uuid,do_expedition_id,customer_id,loading_in,loading_out,invoice_fee,driver_fee,other_fee,additional_cost_fee,ppn_fee,service_fee,pph_fee',
+                    'doExpedition.items.customer:id,name',
+                    'doExpedition.items.expeditionDestinations:id,uuid,do_expedition_item_id,destination'
+                ])->findOrFail($ids);
 
-            $response = [
-                'date' => $request->date,
-                'subject' => $request->subject,
-                'attachment' => $request->attachment,
-                'letter_content' => $request->letter_content,
-                'invoices' => $data
-            ];
+                // Mark as printed
+                DOExpeditionInvoice::whereIn('id', $ids)->update(['is_already_print' => true]);
 
-            return $this->responseSuccess($response, 'DO Expedition Invoice processed successfully');
+                // Determine customer_name automatically if all items share the same customer
+                $customerNames = $data->flatMap(function ($invoice) {
+                    return $invoice->doExpedition->items->map(function ($item) {
+                        return $item->customer->name ?? null;
+                    });
+                })->filter()->unique();
+
+                $customerName = $customerNames->count() === 1 
+                    ? $customerNames->first() 
+                    : ($validated['customer_name'] ?? null);
+
+                $response = [
+                    'date' => $request->date,
+                    'subject' => $request->subject,
+                    'attachment' => $request->attachment,
+                    'letter_content' => $request->letter_content,
+                    'customer_name' => $customerName,
+                    'invoices' => $data
+                ];
+
+                return $this->responseSuccess($response, 'DO Expedition Invoice processed successfully');
+            });
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $err) {
             return $this->responseError($err->getMessage(), 'DO Expedition Invoice not found', 404);
         } catch (Exception $err) {

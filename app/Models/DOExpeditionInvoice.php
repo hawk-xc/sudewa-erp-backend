@@ -18,7 +18,16 @@ class DOExpeditionInvoice extends Model
         'qty',
         'do_letter_code',
         'do_assignment_code',
-        'description'
+        'description',
+        'is_already_print'
+    ];
+
+    protected $casts = [
+        'do_expedition_id' => 'integer',
+        'qty' => 'integer',
+        'is_already_print' => 'boolean',
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime'
     ];
 
     public function doExpedition()
