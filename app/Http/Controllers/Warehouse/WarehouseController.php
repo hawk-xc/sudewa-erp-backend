@@ -471,4 +471,78 @@ class WarehouseController extends Controller
             );
         }
     }
+
+    public function getUnitTransactionOutstanding(Request $request, string $id)
+    {
+        try {
+            $warehouse = Warehouse::findOrFail($id);
+
+            $query = UnitTransactionItem::query()
+                ->whereHas('unitTransaction', function ($q) use ($warehouse, $request) {
+                    $q->where('warehouse_id', $warehouse->id);
+
+                    if ($request->filled('type')) {
+                        $q->where('type', $request->type);
+                    } else {
+                        $q->whereIn('type', ['purchase', 'sales']);
+                    }
+
+                    if ($request->filled('code')) {
+                        $q->where('code', 'like', '%' . $request->code . '%');
+                    }
+                })
+                ->with([
+                    'unitTransaction:id,code,created_at,type,person_id',
+                    'unitTransaction.person:id,name',
+                    'unitType:id,name',
+                ])
+                ->withCount([
+                    'unitTransactionItemDetails as qty_terima' => function ($q) {
+                        $q->where('in_stock', true)->where('is_forecast', false);
+                    },
+                    'unitTransactionItemDetails as qty_kurang' => function ($q) {
+                        $q->where('is_forecast', true)->where('in_stock', false);
+                    }
+                ]);
+
+            if ($request->has('qty_outstanding')) {
+                $isOutstanding = filter_var($request->qty_outstanding, FILTER_VALIDATE_BOOLEAN);
+                
+                if ($isOutstanding) {
+                    $query->whereHas('unitTransactionItemDetails', function ($q) {
+                        $q->where('is_forecast', true)->where('in_stock', false);
+                    });
+                } else {
+                    $query->whereDoesntHave('unitTransactionItemDetails', function ($q) {
+                        $q->where('is_forecast', true)->where('in_stock', false);
+                    });
+                }
+            }
+
+            $allowedSort = ['id', 'created_at', 'qty_total'];
+            $sortBy = in_array($request->order_by, $allowedSort) ? $request->order_by : 'id';
+            $sortDir = $request->order_sort === 'asc' ? 'asc' : 'desc';
+
+            $data = $query->orderBy($sortBy, $sortDir)->paginate($request->per_page ?? 10);
+
+            $data->getCollection()->transform(function ($item) {
+                return [
+                    'transaction_code' => $item->unitTransaction->code ?? null,
+                    'transaction_date' => $item->unitTransaction->created_at ?? null,
+                    'transaction_type' => $item->unitTransaction->type ?? null,
+                    'person_name' => $item->unitTransaction->person->name ?? null,
+                    'unit_type_name' => $item->unitType->name ?? null,
+                    'qty_total' => $item->qty_total,
+                    'qty_received' => $item->qty_terima,
+                    'qty_outstanding' => $item->qty_kurang,
+                ];
+            });
+
+            return $this->responseSuccess($data, 'Warehouse unit transaction outstanding retrieved successfully');
+        } catch (Exception $err) {
+            Log::error('Fetch Warehouse Unit Transaction Outstanding : ' . $err->getMessage());
+
+            return $this->responseError($err->getMessage(), 'Error while fetching warehouse unit transaction outstanding', 500);
+        }
+    }
 }

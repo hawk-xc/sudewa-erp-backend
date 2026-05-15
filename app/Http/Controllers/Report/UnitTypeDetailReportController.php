@@ -119,7 +119,7 @@ class UnitTypeDetailReportController extends Controller
                 return [
                     'id' => $item->id,
                     'created_date' => $item->created_at,
-                    'receipt_date' => $item->warehouseMovement->created_at,
+                    'receipt_date' => $item->warehouseMovement->created_at ?? null,
                     'transaction_code' => $item->unitTransactionItem->unitTransaction->code ?? null,
                     'type' => $item->unitTransactionItem->unitTransaction->type ?? null,
                     'stock_state' => $item->unitTransactionItem->unitTransaction->stock_state ?? null,
@@ -138,9 +138,9 @@ class UnitTypeDetailReportController extends Controller
             return $this->responseSuccess($data, 'Unit Type Detail report retrieved successfully', 200);
 
         } catch (Exception $err) {
-            Log::error($err->getMessage());
+            Log::error('Error retrieving Unit Type Detail report: ' . $err->getMessage());
 
-            return $this->responseError(null, 'Failed to retrieve data', 500);
+            return $this->responseError($err->getMessage(), 'Failed to retrieve data', 500);
         }
     }
 

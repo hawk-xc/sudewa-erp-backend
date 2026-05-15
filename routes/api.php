@@ -181,6 +181,7 @@ Route::group(
             Route::get('warehouse-get-unit-transaction-item-details/{id}', [WarehouseController::class, 'getWarehouseUnitTransactionsDetails']);
             Route::get('warehouse-unit-transaction-data/{id}', [WarehouseController::class, 'getUnitTransaction']);
             Route::get('warehouse-unit-transaction-item-data/{id}', [WarehouseController::class, 'getUnitTransactionItem']);
+            Route::get('warehouse-unit-transaction-outstanding/{id}', [WarehouseController::class, 'getUnitTransactionOutstanding']);
 
             // Receipt Stock
             Route::put('warehouse-activity/{id}/receipt-stock', [WarehouseActivityController::class, 'receiptStock']);
@@ -241,12 +242,13 @@ Route::group(
             Route::apiResource('material-transaction-detail', MaterialTransactionDetailController::class);
             Route::apiResource('material-transaction-billing', MaterialTransactionBillingController::class);
 
-            // DO Expedition API
+            // DO Expedition API    
             Route::get('do-expedition/export', [DOExpeditionController::class, 'export']);
+            Route::get('check-do-expedition-code', [DOExpeditionController::class, 'checkDOCode']);
             Route::apiResource('do-expedition', DOExpeditionController::class);
             Route::apiResource('do-expedition-item', DOExpeditionItemController::class);
             Route::apiResource('do-expedition-item-destination', DOExpeditionItemDestinationController::class);
-            Route::post('do-expedition-invoice/process-invoice', [DOExpeditionInvoiceController::class, 'processInvoice']);
+            Route::put('do-expedition-invoice/{id}/process', [DOExpeditionInvoiceController::class, 'processInvoice']);
             Route::apiResource('do-expedition-invoice', DOExpeditionInvoiceController::class);
 
             // BBN Bill
