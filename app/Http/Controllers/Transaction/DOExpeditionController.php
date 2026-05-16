@@ -5,9 +5,10 @@ namespace App\Http\Controllers\Transaction;
 use App\Exports\DOExpeditionExport;
 use App\Http\Controllers\Controller;
 use App\Models\DOExpedition;
-use App\Traits\DOExpeditionTrait;
+use App\Traits\DOTrait;
 use App\Traits\ResponseTrait;
 use Exception;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -16,34 +17,38 @@ use Maatwebsite\Excel\Facades\Excel;
 
 class DOExpeditionController extends Controller
 {
-    use ResponseTrait, DOExpeditionTrait;
+    use ResponseTrait, DOTrait;
 
     public function __construct()
     {
-        $this->middleware(['permission:transaction:list'])->only(['index', 'show', 'export']);
-        $this->middleware(['permission:transaction:create'])->only('store');
+        $this->middleware(['permission:transaction:list'])->only(['index', 'show', 'export', 'checkDOCode']);
         $this->middleware(['permission:transaction:edit'])->only('update');
-        $this->middleware(['permission:transaction:delete'])->only(['destroy']);
     }
 
-    public function index(Request $request)
+    public function index(Request $request): JsonResponse
     {
-        $query = DOExpedition::with(['vehicle:id,uuid,registration_number', 'driver:id,uuid,name'])
-            ->withSum('items as brutto_value', 'invoice_fee')
-            ->withSum('items as total_ppn', 'ppn_fee')
-            ->withSum('items as total_pph', 'pph_fee')
-            ->withSum('items as total_service_fee', 'service_fee')
-            ->withSum('items as total_additional_cost', 'additional_cost_fee')
-            ->withSum('items as total_other_fee', 'other_fee')
-            ->withSum('items as total_driver_fee', 'driver_fee');
+        $query = DOExpedition::with([
+            'vehicle:id,uuid,registration_number,type', 
+            'driver:id,uuid,name', 
+            'order_list:id,uuid,code',
+            'order_list.customer'
+        ]);
 
         try {
             if ($request->filled('search')) {
                 $search = $request->search;
-                $query->where('do_code', 'like', "%$search%");
+                $query->where('code', 'like', "%$search%");
             }
 
-            $data = $query->orderBy('id', 'desc')->paginate($request->per_page ?? 10);
+            if ($request->filled('do_order_list_id')) {
+                $query->where('do_order_list_id', $request->do_order_list_id);
+            }
+
+            if ($request->filled('is_printed')) {
+                $query->where('is_printed', $request->boolean('is_printed'));
+            }
+
+            $data = $query->latest()->paginate($request->per_page ?? 10);
 
             return $this->responseSuccess($data, 'DO Expedition list retrieved successfully');
         } catch (Exception $err) {
@@ -52,44 +57,10 @@ class DOExpeditionController extends Controller
         }
     }
 
-    public function store(Request $request)
-    {
-        $validated = $request->validate([
-            'date' => 'required|date',
-            'vehicle_id' => 'required|exists:vehicle_fleets,id',
-            'driver_id' => [
-                'required',
-                Rule::exists('persons', 'id')->where(function ($query) {
-                    $query->where('type', 'driver');
-                }),
-            ],
-        ]);
-
-        try {
-            $doExpedition = DB::transaction(function () use ($validated) {
-                $validated['do_code'] = $this->generateDOCode();
-                return DOExpedition::create($validated);
-            });
-
-            return $this->responseSuccess($doExpedition, 'DO Expedition created successfully', 201);
-        } catch (Exception $err) {
-            Log::error('Error creating DO Expedition: ' . $err->getMessage());
-            return $this->responseError($err->getMessage(), 'Failed to create DO Expedition');
-        }
-    }
-
-    public function show($id)
+    public function show(int $id): JsonResponse
     {
         try {
-            $doExpedition = DOExpedition::with(['vehicle', 'driver', 'items.customer', 'items.expeditionDestinations'])
-                ->withCount('items')
-                ->withSum('items as brutto_value', 'invoice_fee')
-                ->withSum('items as total_ppn', 'ppn_fee')
-                ->withSum('items as total_pph', 'pph_fee')
-                ->withSum('items as total_service_fee', 'service_fee')
-                ->withSum('items as total_additional_cost', 'additional_cost_fee')
-                ->withSum('items as total_other_fee', 'other_fee')
-                ->withSum('items as total_driver_fee', 'driver_fee')
+            $doExpedition = DOExpedition::with(['vehicle', 'person', 'order_list.customer', 'order_list.tarifs'])
                 ->findOrFail($id);
             return $this->responseSuccess($doExpedition, 'DO Expedition retrieved successfully');
         } catch (Exception $err) {
@@ -97,9 +68,10 @@ class DOExpeditionController extends Controller
         }
     }
 
-    public function update(Request $request, $id)
+    public function update(Request $request, int $id): JsonResponse
     {
         $validated = $request->validate([
+            'order_list_id' => 'sometimes|required|exists:do_order_lists,id',
             'date' => 'sometimes|required|date',
             'vehicle_id' => 'sometimes|required|exists:vehicle_fleets,id',
             'driver_id' => [
@@ -109,6 +81,7 @@ class DOExpeditionController extends Controller
                     $query->where('type', 'driver');
                 }),
             ],
+            'is_printed' => 'sometimes|boolean',
         ]);
 
         try {
@@ -121,18 +94,6 @@ class DOExpeditionController extends Controller
         }
     }
 
-    public function destroy($id)
-    {
-        try {
-            $doExpedition = DOExpedition::findOrFail($id);
-            $doExpedition->delete();
-            return $this->responseSuccess([], 'DO Expedition deleted successfully');
-        } catch (Exception $err) {
-            Log::error('Error deleting DO Expedition: ' . $err->getMessage());
-            return $this->responseError($err->getMessage(), 'Failed to delete DO Expedition');
-        }
-    }
-
     public function export(Request $request)
     {
         try {
@@ -140,6 +101,20 @@ class DOExpeditionController extends Controller
         } catch (Exception $err) {
             Log::error('Error exporting DO Expedition: ' . $err->getMessage());
             return $this->responseError($err->getMessage(), 'Failed to export DO Expedition');
+        }
+    }
+
+    public function checkDOCode()
+    {
+        try {
+            $nextCode = $this->generateDOCode('expedition');
+
+            return $this->responseSuccess([
+                'next_code' => $nextCode
+            ], 'Next DO Expedition code retrieved successfully');
+        } catch (Exception $err) {
+            Log::error('Error generating next DO Expedition code: ' . $err->getMessage());
+            return $this->responseError($err->getMessage(), 'Failed to generate next DO Expedition code');
         }
     }
 }

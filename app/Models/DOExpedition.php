@@ -14,21 +14,26 @@ class DOExpedition extends Model
 
     protected $fillable = [
         'uuid',
-        'do_code',
-        'date',
+        'code',
+        'do_order_list_id',
         'vehicle_id',
         'driver_id',
+        'date',
+        'driver_note',
+        'is_printed',
     ];
 
     protected $casts = [
+        'do_order_list_id' => 'integer',
         'date' => 'date',
         'vehicle_id' => 'integer',
         'driver_id' => 'integer',
+        'is_printed' => 'boolean',
     ];
 
-    public function items()
+    public function order_list()
     {
-        return $this->hasMany(DOExpeditionItem::class, 'do_expedition_id');
+        return $this->belongsTo(DOOrderList::class, 'do_order_list_id');
     }
 
     public function vehicle()
@@ -39,6 +44,16 @@ class DOExpedition extends Model
     public function driver()
     {
         return $this->belongsTo(Person::class, 'driver_id');
+    }
+
+    public function order_list_tarifs()
+    {
+        return $this->belongsToMany(
+            DOOrderListTarif::class,
+            'do_expedition_order_list_tarifs',
+            'do_expedition_id',
+            'do_order_list_tarif_id'
+        )->withTimestamps();
     }
 
     protected static function booted()
