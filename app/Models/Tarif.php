@@ -14,7 +14,6 @@ class Tarif extends Model
 
     protected $fillable = [
         'uuid',
-        'customer_id',
         'loading_in',
         'loading_out',
         'distance',
@@ -27,7 +26,6 @@ class Tarif extends Model
     ];
 
     protected $casts = [
-        'customer_id' => 'integer',
         'distance' => 'integer',
         'uj_towing'=> 'integer',
         'uj_cdd'=> 'integer',
@@ -37,9 +35,21 @@ class Tarif extends Model
         'is_active' => 'integer'
     ];
 
-    public function customer()
+    public function DOOrderListTarifs()
     {
-        return $this->belongsTo(Person::class, 'customer_id', 'id');
+        return $this->hasMany(DOOrderListTarif::class);
+    }
+
+    public function DOOrderLists()
+    {
+        return $this->belongsToMany(
+            DOOrderList::class, 'do_order_list_tarifs', 'tarif_id', 'do_order_list_id')
+        ->withPivot(
+            'uuid',
+            'qty',
+            'vehicle_type',
+            'load_content'
+        )->withTimestamps();
     }
 
     protected static function booted()

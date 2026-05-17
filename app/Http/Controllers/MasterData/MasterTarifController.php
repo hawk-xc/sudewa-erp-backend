@@ -35,7 +35,6 @@ class MasterTarifController extends Controller
         $this->tarifTable = [
             'id', 
             'uuid', 
-            'person_id', 
             'loading_in', 
             'loading_out', 
             'distance', 
@@ -57,18 +56,12 @@ class MasterTarifController extends Controller
     {
         $query = Tarif::query();
 
-        $query->with('customer:id,name,code');
-
         try {
             if ($request->filled('search')) {
                 $search = $request->search;
                 $query->where(function ($q) use ($search) {
                     $q->where('loading_in', 'like', "%$search%")
-                        ->orWhere('loading_out', 'like', "%$search%")
-                        ->orWhereHas('customer', function($q_cust) use ($search) {
-                            $q_cust->where('name', 'like', "%$search%")
-                                ->orWhere('code', 'like', "%$search%");
-                        });
+                        ->orWhere('loading_out', 'like', "%$search%");
                 });
             }
 
@@ -97,7 +90,7 @@ class MasterTarifController extends Controller
     public function show(string $id)
     {
         try {
-            $tarif = Tarif::with('customer:id,name,code')->find($id);
+            $tarif = Tarif::find($id);
 
             if (!$tarif) {
                 return $this->responseError('The requested resource could not be found.', 'Resource Not Found', 404);
@@ -118,7 +111,6 @@ class MasterTarifController extends Controller
         $request->merge(['is_active' => $request->is_active === 'true']);
 
         $validated = $request->validate([
-            'customer_id' => 'required|integer|exists:persons,id',
             'loading_in' => 'required|string|max:249',
             'loading_out' => 'required|string|max:249',
             'distance' => 'required|integer',
@@ -129,12 +121,6 @@ class MasterTarifController extends Controller
             'inv_fuso' => 'nullable|integer',
             'is_active' => 'sometimes|boolean',
         ]);
-
-        $personType = Person::findOrFail((int) $request->customer_id)->type;
-
-        if ($personType !== 'customer') {
-            return $this->responseError('The customer_id selected is not a customer type.', 'Validation Error', 422);
-        }
 
         try {
             $tarif = DB::transaction(function () use ($validated) {
@@ -156,7 +142,6 @@ class MasterTarifController extends Controller
         $request->merge(['is_active' => $request->is_active === 'true']);
 
         $request->validate([
-            'customer_id' => 'sometimes|integer|exists:persons,id',
             'loading_in' => 'sometimes|string|max:249',
             'loading_out' => 'sometimes|string|max:249',
             'distance' => 'sometimes|integer',
@@ -170,7 +155,6 @@ class MasterTarifController extends Controller
 
         try {
             $data = $request->only([
-                'customer_id', 
                 'loading_in', 
                 'loading_out', 
                 'distance', 
