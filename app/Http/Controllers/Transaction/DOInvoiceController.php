@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Transaction;
 
 use App\Http\Controllers\Controller;
 use App\Models\DOInvoice;
+use App\Models\DOExpedition;
 use App\Models\DOOrderList;
 use App\Traits\DOTrait;
 use App\Traits\ResponseTrait;
@@ -20,7 +21,7 @@ class DOInvoiceController extends Controller
     {
         $this->middleware(['permission:transaction:list'])->only(['index', 'show']);
         $this->middleware(['permission:transaction:create'])->only('store');
-        $this->middleware(['permission:transaction:edit'])->only('update');
+        $this->middleware(['permission:transaction:edit'])->only(['update', 'processInvoice', 'processExpedition']);
         $this->middleware(['permission:transaction:delete'])->only(['destroy']);
     }
 
@@ -126,7 +127,8 @@ class DOInvoiceController extends Controller
             $invoice = DOInvoice::with([
                 'customer', 
                 'order_list.tarifs',
-                'order_list.expeditions.vehicle',
+                'order_list.expeditions.vehicle:id,uuid,registration_number,type,machine_number,chassis_number',
+                'order_list.expeditions.driver:id,uuid,name',
                 'order_list.expeditions.order_list_tarifs.tarif'
             ])->findOrFail($id);
             return $this->responseSuccess($invoice, 'DO Invoice details retrieved successfully');
@@ -187,6 +189,57 @@ class DOInvoiceController extends Controller
         } catch (Exception $err) {
             Log::error('Error deleting DO Invoice: ' . $err->getMessage());
             return $this->responseError($err->getMessage(), 'Failed to delete DO Invoice');
+        }
+    }
+
+    public function processInvoice(Request $request, $id = null)
+    {
+        $invoiceId = $id ?? $request->id;
+
+        if (!$invoiceId) {
+            return $this->responseError('Invoice ID is required', 'Validation Error', 422);
+        }
+
+        try {
+            $invoice = DOInvoice::with([
+                'customer', 
+                'order_list.tarifs',
+                'order_list.expeditions.vehicle:id,uuid,registration_number,type,machine_number,chassis_number',
+                'order_list.expeditions.driver:id,uuid,name',
+                'order_list.expeditions.order_list_tarifs.tarif'
+            ])->findOrFail($invoiceId);
+
+            $invoice->update(['is_already_print' => true]);
+
+            return $this->responseSuccess($invoice, 'DO Invoice processed and printed successfully');
+        } catch (Exception $err) {
+            Log::error('Error processing DO Invoice: ' . $err->getMessage());
+            return $this->responseError($err->getMessage(), 'Failed to process DO Invoice');
+        }
+    }
+
+    public function processExpedition(Request $request, $id = null)
+    {
+        $expeditionId = $id ?? $request->id;
+
+        if (!$expeditionId) {
+            return $this->responseError('Expedition ID is required', 'Validation Error', 422);
+        }
+
+        try {
+            $expedition = DOExpedition::with([
+                'vehicle', 
+                'driver', 
+                'order_list.customer', 
+                'order_list.tarifs'
+            ])->findOrFail($expeditionId);
+
+            $expedition->update(['is_printed' => true]);
+
+            return $this->responseSuccess($expedition, 'DO Expedition processed and printed successfully');
+        } catch (Exception $err) {
+            Log::error('Error processing DO Expedition: ' . $err->getMessage());
+            return $this->responseError($err->getMessage(), 'Failed to process DO Expedition');
         }
     }
 }

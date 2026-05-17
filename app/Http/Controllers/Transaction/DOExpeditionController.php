@@ -60,7 +60,7 @@ class DOExpeditionController extends Controller
     public function show(int $id): JsonResponse
     {
         try {
-            $doExpedition = DOExpedition::with(['vehicle', 'person', 'order_list.customer', 'order_list.tarifs'])
+            $doExpedition = DOExpedition::with(['vehicle', 'driver', 'order_list.customer', 'order_list.tarifs'])
                 ->findOrFail($id);
             return $this->responseSuccess($doExpedition, 'DO Expedition retrieved successfully');
         } catch (Exception $err) {

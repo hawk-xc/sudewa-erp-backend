@@ -243,6 +243,12 @@ Route::group(
             Route::apiResource('material-transaction-billing', MaterialTransactionBillingController::class);
 
             // DO Transaction API    
+            Route::group(['prefix' => 'do-invoice', 'as' => 'do-invoice.'], function() {
+                Route::post('process-invoice/{id}', [DOInvoiceController::class, 'processInvoice']);
+                Route::post('process-expedition/{id}', [DOInvoiceController::class, 'processExpedition']);
+            });
+
+            Route::get('process-invoice', [DOExpeditionController::class, 'export']);
             Route::get('do-expedition/export', [DOExpeditionController::class, 'export']);
             Route::get('check-do-expedition-code', [DOExpeditionController::class, 'checkDOCode']);
             Route::apiResource('do-order-list', DOOrderListController::class);
