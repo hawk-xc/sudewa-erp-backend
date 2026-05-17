@@ -78,6 +78,8 @@ class DOOrderListController extends Controller
                 'customer_id' => $validated['customer_id'],
                 'status' => $validated['status'] ?? 'pending',
                 'bill_invoice' => $validated['bill_invoice'] ?? null,
+                // ppn calculation
+                'ppn' => $validated['bill_invoice'] ? (1.1 * $validated['bill_invoice'] / 100) : 0,
             ]);
 
             return $this->responseSuccess($orderList, 'DO Order List created successfully', 201);
@@ -117,6 +119,9 @@ class DOOrderListController extends Controller
         ]);
 
         try {
+            // ppn calculation
+            $validated['ppn'] = ($validated['bill_invoice']) ? ($validated['bill_invoice'] * 1.1 / 100) : 0;
+
             $orderList = DOOrderList::findOrFail($id);
             $orderList->update($validated);
 

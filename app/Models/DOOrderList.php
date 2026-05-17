@@ -18,11 +18,13 @@ class DOOrderList extends Model
         'customer_id',
         'status', // deliver, process, pending, reject
         'bill_invoice',
+        'ppn'
     ];
 
     protected $casts = [
         'customer_id' => 'integer',
         'bill_invoice' => 'integer',
+        'ppn' => 'integer',
     ];
 
     protected $appends = ['uj_driver', 'loading_in', 'loading_out'];
@@ -69,12 +71,24 @@ class DOOrderList extends Model
 
             if (!$firstTarif) continue;
 
-            $total += match ($vehicleType) {
-                'towing' => $firstTarif->uj_towing ?? 0,
-                'cdd'    => $firstTarif->uj_cdd ?? 0,
-                'fuso'   => $firstTarif->uj_fuso ?? 0,
-                default  => 0,
-            };
+            $normalizedType = strtolower($vehicleType);
+            $matchedType = null;
+            if (str_contains($normalizedType, 'towing') || str_contains($normalizedType, 'trailer')) {
+                $matchedType = 'towing';
+            } elseif (str_contains($normalizedType, 'cdd')) {
+                $matchedType = 'cdd';
+            } elseif (str_contains($normalizedType, 'fuso')) {
+                $matchedType = 'fuso';
+            }
+
+            if ($matchedType) {
+                $total += match ($matchedType) {
+                    'towing' => $firstTarif->uj_towing ?? 0,
+                    'cdd'    => $firstTarif->uj_cdd ?? 0,
+                    'fuso'   => $firstTarif->uj_fuso ?? 0,
+                    default  => 0,
+                };
+            }
         }
 
         return $total;
