@@ -37,9 +37,9 @@ use App\Http\Controllers\Transaction\BBNBillBillingController;
 use App\Http\Controllers\Transaction\BBNBillBillingItemController;
 use App\Http\Controllers\Transaction\BBNBillController;
 use App\Http\Controllers\Transaction\DOExpeditionController;
-use App\Http\Controllers\Transaction\DOExpeditionInvoiceController;
-use App\Http\Controllers\Transaction\DOExpeditionItemController;
-use App\Http\Controllers\Transaction\DOExpeditionItemDestinationController;
+use App\Http\Controllers\Transaction\DOInvoiceController;
+use App\Http\Controllers\Transaction\DOOrderListController;
+use App\Http\Controllers\Transaction\DOOrderListTarifController;
 use App\Http\Controllers\Transaction\MaterialTransactionBillingController;
 use App\Http\Controllers\Transaction\MaterialTransactionController;
 use App\Http\Controllers\Transaction\MaterialTransactionDetailController;
@@ -242,14 +242,13 @@ Route::group(
             Route::apiResource('material-transaction-detail', MaterialTransactionDetailController::class);
             Route::apiResource('material-transaction-billing', MaterialTransactionBillingController::class);
 
-            // DO Expedition API    
+            // DO Transaction API    
             Route::get('do-expedition/export', [DOExpeditionController::class, 'export']);
             Route::get('check-do-expedition-code', [DOExpeditionController::class, 'checkDOCode']);
+            Route::apiResource('do-order-list', DOOrderListController::class);
+            Route::apiResource('do-order-list-tarif', DOOrderListTarifController::class);
             Route::apiResource('do-expedition', DOExpeditionController::class);
-            Route::apiResource('do-expedition-item', DOExpeditionItemController::class);
-            Route::apiResource('do-expedition-item-destination', DOExpeditionItemDestinationController::class);
-            Route::put('do-expedition-invoice/{id}/process', [DOExpeditionInvoiceController::class, 'processInvoice']);
-            Route::apiResource('do-expedition-invoice', DOExpeditionInvoiceController::class);
+            Route::apiResource('do-invoice', DOInvoiceController::class);
 
             // BBN Bill
             Route::put('bbn-bill-detail/{vehicle_data_id}', [VehicleDataController::class, 'updateVehicleRegistrationData']);

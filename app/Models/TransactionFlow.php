@@ -31,6 +31,18 @@ class TransactionFlow extends Model
         'transaction_proof',
     ];
 
+    protected $casts = [
+        'company_id' => 'integer',
+        'unit_transaction_id' => 'integer',
+        'transaction_date' => 'datetime',
+        'bank_usd_debit' => 'integer',
+        'bank_usd_credit' => 'integer',
+        'bank_idr_debit' => 'integer',
+        'bank_idr_credit' => 'integer',
+        'cash_idr_debit' => 'integer',
+        'cash_idr_credit' => 'integer',
+    ];
+
     public function unitTransaction()
     {
         return $this->belongsTo(UnitTransaction::class);
