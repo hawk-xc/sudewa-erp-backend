@@ -190,9 +190,10 @@ class WarehouseController extends Controller
                 ->count();
 
             $stockForecast = UnitTransactionItemDetail::where('in_stock', false)
+                ->where('is_forecast', true)
                 ->where('status', 'normal')
                 ->whereHas('unitTransactionItem.unitTransaction', function ($q) use ($warehouse) {
-                    $q->where('warehouse_id', $warehouse->id)->where('is_forecast', true)->where('type', 'purchase');
+                    $q->where('warehouse_id', $warehouse->id)->where('type', 'purchase');
                 })
                 ->count();
 
@@ -289,7 +290,8 @@ class WarehouseController extends Controller
                 ->join('warehouse_activities', 'warehouse_movements.warehouse_activity_id', '=', 'warehouse_activities.id')
                 ->where('warehouse_activities.warehouse_id', $warehouse->id)
                 ->where('warehouse_movements.status', 'in')
-                ->where('unit_transaction_item_details.status', 'normal');
+                ->where('unit_transaction_item_details.status', 'normal')
+                ->where('unit_transaction_item_details.is_forecast', false);
 
             if ($request->status != 'unprocessed') {
                 $availableQuery->where('unit_transaction_item_details.in_stock', true);
@@ -302,6 +304,7 @@ class WarehouseController extends Controller
                 ->join('unit_transaction_items', 'unit_transaction_item_details.unit_transaction_item_id', '=', 'unit_transaction_items.id')
                 ->join('unit_transactions', 'unit_transaction_items.unit_transaction_id', '=', 'unit_transactions.id')
                 ->where('unit_transaction_item_details.in_stock', false)
+                ->where('unit_transaction_item_details.is_forecast', true)
                 ->where('unit_transaction_item_details.status', 'normal')
                 ->where('unit_transactions.warehouse_id', $warehouse->id)
                 ->where('unit_transactions.type', 'purchase')
