@@ -7,6 +7,7 @@ use App\Http\Controllers\Finance\FinanceAssetController;
 use App\Http\Controllers\Finance\FinanceBillingController;
 use App\Http\Controllers\Finance\PpnDataController;
 use App\Http\Controllers\Finance\UnitTransactionAdjustmentController;
+use App\Http\Controllers\Finance\PurchaseRefundController;
 use App\Http\Controllers\Global\GlobalCompanyController;
 use App\Http\Controllers\Global\GlobalModuleController;
 use App\Http\Controllers\MasterData\MasterAccountController;
@@ -272,6 +273,7 @@ Route::group(
             Route::apiResource('cash-flow', DailyCashFlowController::class);
             Route::apiResource('adjustment', UnitTransactionAdjustmentController::class);
             Route::apiResource('finance-billing', FinanceBillingController::class);
+            Route::get('transaction-refund', [PurchaseRefundController::class, 'index']);
             Route::post('finance-billing-item', [FinanceBillingController::class, 'getBillingItem']);
             Route::post('finance-billing-item/{unit_transaction_billing_id}', [FinanceBillingController::class, 'addItem']);
             Route::put('finance-billing-item/{id}', [FinanceBillingController::class, 'updateItem']);

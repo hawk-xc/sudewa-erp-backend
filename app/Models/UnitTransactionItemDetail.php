@@ -100,6 +100,11 @@ class UnitTransactionItemDetail extends Model
             $movement->update(['status' => 'out']);
         }
 
+        $item = $this->unitTransactionItem;
+        if ($item && $item->unitTransaction) {
+            $item->unitTransaction->recalculateBillingTotals();
+        }
+
         return $this;
     }
 
@@ -114,6 +119,11 @@ class UnitTransactionItemDetail extends Model
         $movement = $this->warehouseMovement()->where('status', 'in')->first();
         if ($movement) {
             $movement->update(['status' => 'out']);
+        }
+
+        $item = $this->unitTransactionItem;
+        if ($item && $item->unitTransaction) {
+            $item->unitTransaction->recalculateBillingTotals();
         }
 
         return $this;

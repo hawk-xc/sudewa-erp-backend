@@ -185,11 +185,12 @@ class WarehouseController extends Controller
             })
                 ->where('status', 'in')
                 ->whereHas('unitTransactionItemDetail', function ($q) {
-                    $q->where('in_stock', true)->where('is_forecast', false);
+                    $q->where('in_stock', true)->where('is_forecast', false)->where('status', 'normal');
                 })
                 ->count();
 
             $stockForecast = UnitTransactionItemDetail::where('in_stock', false)
+                ->where('status', 'normal')
                 ->whereHas('unitTransactionItem.unitTransaction', function ($q) use ($warehouse) {
                     $q->where('warehouse_id', $warehouse->id)->where('is_forecast', true)->where('type', 'purchase');
                 })
@@ -281,7 +282,14 @@ class WarehouseController extends Controller
 
             $perPage = (int) ($request->per_page ?? 10);
 
-            $availableQuery = WarehouseMovement::query()->selectRaw('unit_transaction_items.unit_type_id, COUNT(*) as stock_available')->join('unit_transaction_item_details', 'warehouse_movements.unit_transaction_item_detail_id', '=', 'unit_transaction_item_details.id')->join('unit_transaction_items', 'unit_transaction_item_details.unit_transaction_item_id', '=', 'unit_transaction_items.id')->join('warehouse_activities', 'warehouse_movements.warehouse_activity_id', '=', 'warehouse_activities.id')->where('warehouse_activities.warehouse_id', $warehouse->id)->where('warehouse_movements.status', 'in');
+            $availableQuery = WarehouseMovement::query()
+                ->selectRaw('unit_transaction_items.unit_type_id, COUNT(*) as stock_available')
+                ->join('unit_transaction_item_details', 'warehouse_movements.unit_transaction_item_detail_id', '=', 'unit_transaction_item_details.id')
+                ->join('unit_transaction_items', 'unit_transaction_item_details.unit_transaction_item_id', '=', 'unit_transaction_items.id')
+                ->join('warehouse_activities', 'warehouse_movements.warehouse_activity_id', '=', 'warehouse_activities.id')
+                ->where('warehouse_activities.warehouse_id', $warehouse->id)
+                ->where('warehouse_movements.status', 'in')
+                ->where('unit_transaction_item_details.status', 'normal');
 
             if ($request->status != 'unprocessed') {
                 $availableQuery->where('unit_transaction_item_details.in_stock', true);
@@ -289,7 +297,15 @@ class WarehouseController extends Controller
 
             $availableQuery = $availableQuery->groupBy('unit_transaction_items.unit_type_id');
 
-            $forecastQuery = UnitTransactionItemDetail::query()->selectRaw('unit_transaction_items.unit_type_id, COUNT(*) as stock_forecast')->join('unit_transaction_items', 'unit_transaction_item_details.unit_transaction_item_id', '=', 'unit_transaction_items.id')->join('unit_transactions', 'unit_transaction_items.unit_transaction_id', '=', 'unit_transactions.id')->where('unit_transaction_item_details.in_stock', false)->where('unit_transactions.warehouse_id', $warehouse->id)->where('unit_transactions.type', 'purchase')->groupBy('unit_transaction_items.unit_type_id');
+            $forecastQuery = UnitTransactionItemDetail::query()
+                ->selectRaw('unit_transaction_items.unit_type_id, COUNT(*) as stock_forecast')
+                ->join('unit_transaction_items', 'unit_transaction_item_details.unit_transaction_item_id', '=', 'unit_transaction_items.id')
+                ->join('unit_transactions', 'unit_transaction_items.unit_transaction_id', '=', 'unit_transactions.id')
+                ->where('unit_transaction_item_details.in_stock', false)
+                ->where('unit_transaction_item_details.status', 'normal')
+                ->where('unit_transactions.warehouse_id', $warehouse->id)
+                ->where('unit_transactions.type', 'purchase')
+                ->groupBy('unit_transaction_items.unit_type_id');
 
             $available = $availableQuery->get()->keyBy('unit_type_id');
             $forecast = $forecastQuery->get()->keyBy('unit_type_id');
@@ -388,8 +404,8 @@ class WarehouseController extends Controller
                     'color' => $item->color,
                     'machine_number' => $item->machine_number,
                     'chassis_number' => $item->chassis_number,
-                    'stock_available' => $item->in_stock ? 1 : 0,
-                    'stock_forecast' => ! $item->in_stock ? 1 : 0,
+                    'stock_available' => ($item->in_stock && $item->status === 'normal') ? 1 : 0,
+                    'stock_forecast' => (!$item->in_stock && $item->status === 'normal') ? 1 : 0,
                     'purchase_price' => (int) $item->unitTransactionItem->price / $item->unitTransactionItem->qty_total,
                     'status' => $item->status,
                     'stock_status' => $unitItem->unitTransaction->stock_state ?? null,
@@ -498,10 +514,10 @@ class WarehouseController extends Controller
                 ])
                 ->withCount([
                     'unitTransactionItemDetails as qty_terima' => function ($q) {
-                        $q->where('in_stock', true)->where('is_forecast', false);
+                        $q->where('in_stock', true)->where('is_forecast', false)->where('status', 'normal');
                     },
                     'unitTransactionItemDetails as qty_kurang' => function ($q) {
-                        $q->where('is_forecast', true)->where('in_stock', false);
+                        $q->where('is_forecast', true)->where('in_stock', false)->where('status', 'normal');
                     }
                 ]);
 
@@ -510,11 +526,11 @@ class WarehouseController extends Controller
                 
                 if ($isOutstanding) {
                     $query->whereHas('unitTransactionItemDetails', function ($q) {
-                        $q->where('is_forecast', true)->where('in_stock', false);
+                        $q->where('is_forecast', true)->where('in_stock', false)->where('status', 'normal');
                     });
                 } else {
                     $query->whereDoesntHave('unitTransactionItemDetails', function ($q) {
-                        $q->where('is_forecast', true)->where('in_stock', false);
+                        $q->where('is_forecast', true)->where('in_stock', false)->where('status', 'normal');
                     });
                 }
             }
