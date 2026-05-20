@@ -20,7 +20,7 @@ class UnitTypeDetailPpn extends Model
         'fp_date',
         'nsfp_age',
         'nsfp_amount',
-        'nsfp_input',
+        'nsfp_number',
         'amount',
     ];
 

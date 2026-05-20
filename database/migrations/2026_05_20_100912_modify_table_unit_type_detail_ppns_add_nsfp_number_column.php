@@ -12,7 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('unit_type_detail_ppns', function (Blueprint $table) {
-            $table->string('nsfp_input')->nullable(true)->after('nsfp_amount');
+            $table->string('nsfp_number')->nullable(true)->after('nsfp_amount');
         });
     }
 
@@ -22,7 +22,7 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('unit_type_detail_ppns', function (Blueprint $table) {
-            $table->dropColumn('nsfp_input');
+            $table->dropColumn('nsfp_number');
         });
     }
 };
