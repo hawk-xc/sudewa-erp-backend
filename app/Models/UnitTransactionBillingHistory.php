@@ -15,18 +15,12 @@ class UnitTransactionBillingHistory extends Model
     protected $fillable = [
         'uuid',
         'unit_transaction_billing_id',
-        'bca_payment_amount',
-        'bca_payment_usd_amount',
-        'cash_payment_amount',
         'payment_proof',
         'payment_at',
         'note',
     ];
 
     protected $casts = [
-        'bca_payment_amount' => 'integer',
-        'bca_payment_usd_amount' => 'integer',
-        'cash_payment_amount' => 'integer',
         'payment_at' => 'date',
     ];
 
@@ -38,6 +32,13 @@ class UnitTransactionBillingHistory extends Model
     public function cashFlow()
     {
         return $this->hasOne(CashFlow::class, 'unit_transaction_billing_history_id');
+    }
+
+    public function cashes()
+    {
+        return $this->belongsToMany(Cash::class, 'cash_unit_transaction_billing_history', 'unit_transaction_billing_history_id', 'cash_id')
+            ->withPivot('amount')
+            ->withTimestamps();
     }
 
     protected static function booted()

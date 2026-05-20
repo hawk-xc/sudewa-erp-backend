@@ -44,17 +44,32 @@ class UnitTransactionBilling extends Model
 
     public function getTotalCashPayment(): int
     {
-        return (int) $this->unitTransactionBillingHistories()->sum('cash_payment_amount');
+        return (int) \DB::table('cash_unit_transaction_billing_history')
+            ->join('unit_transaction_billing_histories', 'unit_transaction_billing_histories.id', '=', 'cash_unit_transaction_billing_history.unit_transaction_billing_history_id')
+            ->join('cashes', 'cashes.id', '=', 'cash_unit_transaction_billing_history.cash_id')
+            ->where('unit_transaction_billing_histories.unit_transaction_billing_id', $this->id)
+            ->where('cashes.code', 'cash_idr')
+            ->sum('cash_unit_transaction_billing_history.amount');
     }
 
     public function getTotalBcaCashPayment(): int
     {
-        return (int) $this->unitTransactionBillingHistories()->sum('bca_payment_amount');
+        return (int) \DB::table('cash_unit_transaction_billing_history')
+            ->join('unit_transaction_billing_histories', 'unit_transaction_billing_histories.id', '=', 'cash_unit_transaction_billing_history.unit_transaction_billing_history_id')
+            ->join('cashes', 'cashes.id', '=', 'cash_unit_transaction_billing_history.cash_id')
+            ->where('unit_transaction_billing_histories.unit_transaction_billing_id', $this->id)
+            ->where('cashes.code', 'bca_idr')
+            ->sum('cash_unit_transaction_billing_history.amount');
     }
 
     public function getTotalBcaUsdPayment(): int
     {
-        return (int) $this->unitTransactionBillingHistories()->sum('bca_payment_usd_amount');
+        return (int) \DB::table('cash_unit_transaction_billing_history')
+            ->join('unit_transaction_billing_histories', 'unit_transaction_billing_histories.id', '=', 'cash_unit_transaction_billing_history.unit_transaction_billing_history_id')
+            ->join('cashes', 'cashes.id', '=', 'cash_unit_transaction_billing_history.cash_id')
+            ->where('unit_transaction_billing_histories.unit_transaction_billing_id', $this->id)
+            ->where('cashes.code', 'bca_usd')
+            ->sum('cash_unit_transaction_billing_history.amount');
     }
 
     public function getTotalPaid(): int

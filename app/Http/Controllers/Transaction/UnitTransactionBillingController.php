@@ -98,10 +98,10 @@ class UnitTransactionBillingController extends Controller
 
             $histories = $data->unitTransactionBillingHistories;
 
-            $totalCash = $histories->sum('cash_payment_amount');
-            $totalBca = $histories->sum('bca_payment_amount');
+            $totalCash = $data->getTotalCashPayment();
+            $totalBca = $data->getTotalBcaCashPayment();
 
-            $totalUsd = $histories->sum('bca_payment_usd_amount');
+            $totalUsd = $data->getTotalBcaUsdPayment();
 
             $totalPaid = $totalCash + $totalBca;
 
