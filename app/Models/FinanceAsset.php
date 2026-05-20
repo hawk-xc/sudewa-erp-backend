@@ -16,18 +16,12 @@ class FinanceAsset extends Model
         'uuid',
         'asset_id',
         'economic_age',
-        'depreciation', // decimal(15,2)
-        'residual_value', // decimal(15,2)
-        'final_value', // decimal(15,2)
         'description' // text
     ];
 
     protected $casts = [
         'asset_id' => 'integer',
         'economic_age' => 'integer',
-        'depreciation' => 'decimal:2',
-        'residual_value' => 'decimal:2',
-        'final_value' => 'decimal:2',
     ];
 
     public function company()
