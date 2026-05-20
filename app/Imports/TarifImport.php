@@ -16,20 +16,6 @@ class TarifImport implements ToCollection, WithHeadingRow
     {
         DB::transaction(function () use ($rows) {
             foreach ($rows as $index => $row) {
-                $customerName = $row['customer'] ?? $row['customer_name'] ?? $row['nama_customer'] ?? null;
-                
-                if (!$customerName) {
-                    throw new \Exception('Customer name is required on row '.($index + 2));
-                }
-
-                $customer = Person::where('type', 'customer')
-                    ->where('name', trim($customerName))
-                    ->first();
-
-                if (!$customer) {
-                    throw new \Exception('Customer with name "' . $customerName . '" not found on row ' . ($index + 2));
-                }
-
                 $rowData = [
                     'loading_in' => $row['muat'] ?? $row['loading_in'] ?? null,
                     'loading_out' => $row['bongkar'] ?? $row['loading_out'] ?? null,
@@ -61,7 +47,6 @@ class TarifImport implements ToCollection, WithHeadingRow
                 }
 
                 Tarif::create([
-                    'customer_id' => $customer->id,
                     'loading_in' => $rowData['loading_in'],
                     'loading_out' => $rowData['loading_out'],
                     'distance' => $rowData['distance'],
