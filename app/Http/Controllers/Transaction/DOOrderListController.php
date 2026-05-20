@@ -28,7 +28,16 @@ class DOOrderListController extends Controller
 
     public function index(Request $request)
     {
-        $query = DOOrderList::with([
+        $query = DOOrderList::select([
+            'id',
+            'uuid',
+            'code',
+            'customer_id',
+            'status',
+            'bill_invoice',
+            'ppn',
+            'created_at'
+        ])->with([
             'customer:id,name,code,address', 
             'tarifs',
             'expeditions.vehicle',
@@ -50,6 +59,14 @@ class DOOrderListController extends Controller
 
             $data = $query->latest()->paginate($request->per_page ?? 10);
             
+            $data->getCollection()->transform(function ($item) {
+                $item->vehicles = $item->expeditions->map(function ($expedition) {
+                    return $expedition->vehicle;
+                })->filter()->values();
+                
+                return $item;
+            });
+
             $data->getCollection()->makeHidden(['tarifs', 'expeditions']);
 
             return $this->responseSuccess($data, 'DO Order List retrieved successfully');
