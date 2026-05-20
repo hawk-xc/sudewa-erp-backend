@@ -38,6 +38,7 @@ class PpnDataController extends Controller
             'fp_date',
             'nsfp_age',
             'nsfp_amount',
+            'nsfp_input',
             'amount',
             'created_at',
             'updated_at',
@@ -152,7 +153,8 @@ class PpnDataController extends Controller
 
                     'fp_date' => $ppn->fp_date,
                     'nsfp_age' => $ppn->nsfp_age,
-                    'nsfp_input' => $ppn->nsfp_amount,
+                    'nsfp_input' => $ppn->nsfp_input,
+                    'nsfp_amount' => $ppn->nsfp_amount,
 
                     'qty' => 1,
 
@@ -221,6 +223,7 @@ class PpnDataController extends Controller
                 'fp_date' => 'nullable|date',
                 'nsfp_age' => 'nullable|string|max:50',
                 'nsfp_amount' => 'nullable|numeric|min:0',
+                'nsfp_input' => 'nullable|string',
                 'amount' => 'nullable|numeric|min:0',
             ]);
 
@@ -228,6 +231,7 @@ class PpnDataController extends Controller
                 'fp_date' => $validated['fp_date'] ?? $ppn->fp_date,
                 'nsfp_age' => $validated['nsfp_age'] ?? $ppn->nsfp_age,
                 'nsfp_amount' => $validated['nsfp_amount'] ?? $ppn->nsfp_amount,
+                'nsfp_input' => $validated['nsfp_input'] ?? $ppn->nsfp_input,
                 'amount' => $validated['amount'] ?? $ppn->amount,
             ]);
 
