@@ -24,7 +24,7 @@ class DailyCashFlowController extends Controller
         $this->middleware(['permission:finance:edit'])->only('update');
         $this->middleware(['permission:finance:delete'])->only(['destroy']);
 
-        $this->cashFlowTable = ['id', 'uuid', 'company_id', 'code', 'account_id', 'cash_id', 'date', 'note', 'debet', 'credit', 'payment_proof', 'created_at'];
+        $this->cashFlowTable = ['id', 'uuid', 'company_id', 'code', 'account_id', 'cash_id', 'date', 'note', 'debet', 'credit', 'transaction_category','payment_proof', 'created_at'];
     }
 
     public function index(Request $request)
@@ -44,6 +44,10 @@ class DailyCashFlowController extends Controller
                                 ->orWhere('name', 'like', "%$search%");
                         });
                 });
+            }
+
+            if ($request->filled('transaction_category') && in_array($request->transaction_category, ['general', 'operational', 'director_receivable', 'shareholder_receivable', 'receivable', 'inventory'])) {
+                $query->where('transaction_category', $request->transaction_category);
             }
 
             foreach ($this->cashFlowTable as $field) {
@@ -96,6 +100,7 @@ class DailyCashFlowController extends Controller
             'note' => 'nullable|string',
             'debet' => 'nullable|numeric|min:0|prohibits:credit',
             'credit' => 'nullable|numeric|min:0|prohibits:debet',
+            'transaction_category' => 'nullable|string|in:general,operational,director_receivable,shareholder_receivable,receivable,inventory',
             'payment_proof' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:2048',
         ]);
 
@@ -128,6 +133,7 @@ class DailyCashFlowController extends Controller
             'note' => 'nullable|string',
             'debet' => 'sometimes|numeric|min:0|prohibits:credit',
             'credit' => 'sometimes|numeric|min:0|prohibits:debet',
+            'transaction_category' => 'sometimes|string|in:general,operational,director_receivable,shareholder_receivable,receivable,inventory',
             'payment_proof' => 'sometimes|nullable|file|mimes:jpg,jpeg,png,pdf|max:2048',
         ]);
 
