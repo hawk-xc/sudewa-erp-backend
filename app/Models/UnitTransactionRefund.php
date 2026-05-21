@@ -16,15 +16,15 @@ class UnitTransactionRefund extends Model
         'uuid',
         'unit_transaction_id',
         'code',
-        'qty',
         'refund_date',
         'refund_amount',
         'note'
     ];
 
     protected $casts = [
+        'unit_transaction_id' => 'integer',
         'refund_date' => 'datetime',
-        'refund_amount' => 'decimal:2',
+        'refund_amount' => 'integer',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
     ];

@@ -29,7 +29,6 @@ class UnitTransactionRefundController extends Controller
             'uuid',
             'unit_transaction_id',
             'code',
-            'qty',
             'refund_date',
             'refund_amount',
             'note',
@@ -49,9 +48,9 @@ class UnitTransactionRefundController extends Controller
             $query->select($this->refundTable)
                 ->with([
                     'unitTransaction:id,uuid,code,type',
-                    'unitTransactionRefundPayments',
-                    'unitTransactionItemDetails',
-                ]);
+                ])
+                ->withSum('unitTransactionRefundPayments as total_terbayar', 'amount')
+                ->withCount('unitTransactionItemDetails as total_qty');
 
             if ($request->filled('search')) {
                 $search = $request->search;
@@ -68,7 +67,14 @@ class UnitTransactionRefundController extends Controller
             $sortOrder = $request->sort_order === 'asc' ? 'asc' : 'desc';
             $query->orderBy($sortBy, $sortOrder);
 
-            $data = $query->paginate($request->per_page ?? 10);
+            $data = $query->paginate($request->per_page ?? 10)
+                ->through(function ($item) {
+                    $item->total_bayar = (int) $item->refund_amount;
+                    $item->total_terbayar = (int) $item->total_terbayar;
+                    $item->total_kurang_bayar = $item->total_bayar - $item->total_terbayar;
+                    $item->total_qty = (int) $item->total_qty;
+                    return $item;
+                });
 
             return $this->responseSuccess($data, 'Unit transaction refunds retrieved successfully', 200);
         } catch (Exception $err) {
@@ -83,9 +89,12 @@ class UnitTransactionRefundController extends Controller
      */
     public function store(Request $request)
     {
+        if (is_string($request->unit_transaction_item_detail_ids)) {
+            $request->merge(['unit_transaction_item_detail_ids' => json_decode($request->unit_transaction_item_detail_ids, true)]);
+        }
+
         $request->validate([
             'unit_transaction_id' => 'required|exists:unit_transactions,id',
-            'qty' => 'required|integer|min:1',
             'refund_date' => 'required|date',
             'refund_amount' => 'required|numeric|min:0',
             'note' => 'nullable|string',
@@ -101,7 +110,6 @@ class UnitTransactionRefundController extends Controller
                 $refund = UnitTransactionRefund::create([
                     'unit_transaction_id' => $request->unit_transaction_id,
                     'code' => $code,
-                    'qty' => $request->qty,
                     'refund_date' => $request->refund_date,
                     'refund_amount' => $request->refund_amount,
                     'note' => $request->note,
@@ -134,6 +142,11 @@ class UnitTransactionRefundController extends Controller
                 'unitTransactionItemDetails',
             ])->findOrFail($id);
 
+            $refund->total_bayar = (int) $refund->refund_amount;
+            $refund->total_terbayar = (int) $refund->unitTransactionRefundPayments->sum('amount');
+            $refund->total_kurang_bayar = $refund->total_bayar - $refund->total_terbayar;
+            $refund->total_qty = $refund->unitTransactionItemDetails->count();
+
             return $this->responseSuccess($refund, 'Unit transaction refund retrieved successfully', 200);
         } catch (Exception $err) {
             Log::error('Error while retrieving unit transaction refund: ' . $err->getMessage());
@@ -149,7 +162,6 @@ class UnitTransactionRefundController extends Controller
     {
         $request->validate([
             'unit_transaction_id' => 'nullable|exists:unit_transactions,id',
-            'qty' => 'nullable|integer|min:1',
             'refund_date' => 'nullable|date',
             'refund_amount' => 'nullable|numeric|min:0',
             'note' => 'nullable|string',
