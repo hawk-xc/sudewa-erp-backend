@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Transaction;
 
 use App\Http\Controllers\Controller;
+use App\Models\FinanceRefund;
 use App\Models\UnitTransactionRefund;
 use App\Traits\RefundTrait;
 use App\Traits\ResponseTrait;
@@ -49,7 +50,7 @@ class UnitTransactionRefundController extends Controller
                 ->with([
                     'unitTransaction:id,uuid,code,type',
                 ])
-                ->withSum('unitTransactionRefundPayments as total_terbayar', 'amount')
+                ->withSum('unitTransactionRefundPayments as total_paid', 'amount')
                 ->withCount('unitTransactionItemDetails as total_qty');
 
             if ($request->filled('search')) {
@@ -69,9 +70,9 @@ class UnitTransactionRefundController extends Controller
 
             $data = $query->paginate($request->per_page ?? 10)
                 ->through(function ($item) {
-                    $item->total_bayar = (int) $item->refund_amount;
-                    $item->total_terbayar = (int) $item->total_terbayar;
-                    $item->total_kurang_bayar = $item->total_bayar - $item->total_terbayar;
+                    $item->total_payable = (int) $item->refund_amount;
+                    $item->total_paid = (int) $item->total_paid;
+                    $item->remaining_payment = $item->total_payable - $item->total_paid;
                     $item->total_qty = (int) $item->total_qty;
                     return $item;
                 });
@@ -98,7 +99,19 @@ class UnitTransactionRefundController extends Controller
             'refund_date' => 'required|date',
             'refund_amount' => 'required|numeric|min:0',
             'note' => 'nullable|string',
-            'unit_transaction_item_detail_ids' => 'nullable|array',
+            'unit_transaction_item_detail_ids' => [
+                'nullable',
+                'array',
+                function ($attribute, $value, $fail) {
+                    $existingIds = DB::table('unit_transaction_refund_item_detail')
+                        ->whereIn('unit_transaction_item_detail_id', $value)
+                        ->pluck('unit_transaction_item_detail_id')
+                        ->toArray();
+                    if (!empty($existingIds)) {
+                        $fail('The following item detail IDs have already been refunded: ' . implode(', ', $existingIds));
+                    }
+                }
+            ],
             'unit_transaction_item_detail_ids.*' => 'exists:unit_transaction_item_details,id',
         ]);
 
@@ -115,11 +128,22 @@ class UnitTransactionRefundController extends Controller
                     'note' => $request->note,
                 ]);
 
+                FinanceRefund::create([
+                    'unit_transaction_refund_id' => $refund->id,
+                    'status' => 'waiting',
+                ]);
+
                 if ($request->filled('unit_transaction_item_detail_ids')) {
                     $refund->unitTransactionItemDetails()->sync($request->unit_transaction_item_detail_ids);
                 }
 
-                return $refund->load(['unitTransaction', 'unitTransactionItemDetails']);
+                $refund->load(['unitTransaction', 'unitTransactionItemDetails', 'unitTransactionRefundPayments']);
+                $refund->total_payable = (int) $refund->refund_amount;
+                $refund->total_paid = (int) $refund->unitTransactionRefundPayments->sum('amount');
+                $refund->remaining_payment = $refund->total_payable - $refund->total_paid;
+                $refund->total_qty = $refund->unitTransactionItemDetails->count();
+
+                return $refund;
             });
 
             return $this->responseSuccess($refund, 'Unit transaction refund created successfully', 201);
@@ -142,9 +166,9 @@ class UnitTransactionRefundController extends Controller
                 'unitTransactionItemDetails',
             ])->findOrFail($id);
 
-            $refund->total_bayar = (int) $refund->refund_amount;
-            $refund->total_terbayar = (int) $refund->unitTransactionRefundPayments->sum('amount');
-            $refund->total_kurang_bayar = $refund->total_bayar - $refund->total_terbayar;
+            $refund->total_payable = (int) $refund->refund_amount;
+            $refund->total_paid = (int) $refund->unitTransactionRefundPayments->sum('amount');
+            $refund->remaining_payment = $refund->total_payable - $refund->total_paid;
             $refund->total_qty = $refund->unitTransactionItemDetails->count();
 
             return $this->responseSuccess($refund, 'Unit transaction refund retrieved successfully', 200);
@@ -160,12 +184,29 @@ class UnitTransactionRefundController extends Controller
      */
     public function update(Request $request, string $id)
     {
+        if (is_string($request->unit_transaction_item_detail_ids)) {
+            $request->merge(['unit_transaction_item_detail_ids' => json_decode($request->unit_transaction_item_detail_ids, true)]);
+        }
+        
         $request->validate([
             'unit_transaction_id' => 'nullable|exists:unit_transactions,id',
             'refund_date' => 'nullable|date',
             'refund_amount' => 'nullable|numeric|min:0',
             'note' => 'nullable|string',
-            'unit_transaction_item_detail_ids' => 'nullable|array',
+            'unit_transaction_item_detail_ids' => [
+                'nullable',
+                'array',
+                function ($attribute, $value, $fail) use ($id) {
+                    $existingIds = DB::table('unit_transaction_refund_item_detail')
+                        ->where('unit_transaction_refund_id', '!=', $id)
+                        ->whereIn('unit_transaction_item_detail_id', $value)
+                        ->pluck('unit_transaction_item_detail_id')
+                        ->toArray();
+                    if (!empty($existingIds)) {
+                        $fail('The following item detail IDs have already been refunded in another transaction: ' . implode(', ', $existingIds));
+                    }
+                }
+            ],
             'unit_transaction_item_detail_ids.*' => 'exists:unit_transaction_item_details,id',
         ]);
 
@@ -187,7 +228,13 @@ class UnitTransactionRefundController extends Controller
                     $refund->unitTransactionItemDetails()->sync($request->unit_transaction_item_detail_ids ?? []);
                 }
 
-                return $refund->load(['unitTransaction', 'unitTransactionItemDetails']);
+                $refund->load(['unitTransaction', 'unitTransactionItemDetails', 'unitTransactionRefundPayments']);
+                $refund->total_payable = (int) $refund->refund_amount;
+                $refund->total_paid = (int) $refund->unitTransactionRefundPayments->sum('amount');
+                $refund->remaining_payment = $refund->total_payable - $refund->total_paid;
+                $refund->total_qty = $refund->unitTransactionItemDetails->count();
+
+                return $refund;
             });
 
             return $this->responseSuccess($refund, 'Unit transaction refund updated successfully', 200);

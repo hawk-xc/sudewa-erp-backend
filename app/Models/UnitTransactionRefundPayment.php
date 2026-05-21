@@ -23,7 +23,7 @@ class UnitTransactionRefundPayment extends Model
     protected $casts = [
         'unit_transaction_refund_id' => 'integer',
         'payment_date' => 'datetime',
-        'amount' => 'decimal:2',
+        'amount' => 'integer',
     ];
 
     public function unitTransactionRefund()

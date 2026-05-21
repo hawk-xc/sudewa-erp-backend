@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Transaction;
 
 use App\Http\Controllers\Controller;
+use App\Models\UnitTransactionRefund;
 use App\Models\UnitTransactionRefundPayment;
 use App\Traits\ResponseTrait;
 use Exception;
@@ -83,6 +84,22 @@ class UnitTransactionRefundPaymentController extends Controller
             'payment_date' => 'required|date',
         ]);
 
+        $refund = UnitTransactionRefund::with('unitTransactionRefundPayments')->findOrFail($request->unit_transaction_refund_id);
+        $totalPaid = $refund->unitTransactionRefundPayments->sum('amount');
+        $paymentRemaining = (int) $refund->refund_amount - $totalPaid;
+
+        if ($paymentRemaining <= 0) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'amount' => ['This refund has already been fully paid.']
+            ]);
+        }
+
+        if ($request->amount > $paymentRemaining) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'amount' => ["The payment amount cannot exceed the remaining payment of {$paymentRemaining}."]
+            ]);
+        }
+
         try {
             $payment = DB::transaction(function () use ($request) {
                 // Generate payment code
@@ -104,7 +121,14 @@ class UnitTransactionRefundPaymentController extends Controller
                 ]);
             });
 
-            return $this->responseSuccess($payment->load('unitTransactionRefund'), 'Unit transaction refund payment created successfully', 201);
+            $payment->load('unitTransactionRefund.unitTransactionRefundPayments');
+            $refund = $payment->unitTransactionRefund;
+            if ($refund) {
+                $totalPaid = $refund->unitTransactionRefundPayments->sum('amount');
+                $payment->payment_remaining = (int) $refund->refund_amount - $totalPaid;
+            }
+
+            return $this->responseSuccess($payment, 'Unit transaction refund payment created successfully', 201);
         } catch (Exception $err) {
             Log::error('Error while creating unit transaction refund payment: ' . $err->getMessage());
 
@@ -141,6 +165,32 @@ class UnitTransactionRefundPaymentController extends Controller
             'payment_date' => 'nullable|date',
         ]);
 
+        $payment = UnitTransactionRefundPayment::findOrFail($id);
+        $refundId = $request->unit_transaction_refund_id ?? $payment->unit_transaction_refund_id;
+
+        $refund = UnitTransactionRefund::with('unitTransactionRefundPayments')->findOrFail($refundId);
+        $totalPaid = $refund->unitTransactionRefundPayments->sum('amount');
+
+        if ($refundId == $payment->unit_transaction_refund_id) {
+            $totalPaid -= $payment->amount;
+        }
+
+        $paymentRemaining = (int) $refund->refund_amount - $totalPaid;
+
+        if ($request->filled('amount')) {
+            if ($paymentRemaining <= 0) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'amount' => ['This refund has already been fully paid.']
+                ]);
+            }
+
+            if ($request->amount > $paymentRemaining) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'amount' => ["The payment amount cannot exceed the remaining payment of {$paymentRemaining}."]
+                ]);
+            }
+        }
+
         try {
             $payment = DB::transaction(function () use ($request, $id) {
                 $payment = UnitTransactionRefundPayment::findOrFail($id);
@@ -156,7 +206,14 @@ class UnitTransactionRefundPaymentController extends Controller
                 return $payment;
             });
 
-            return $this->responseSuccess($payment->load('unitTransactionRefund'), 'Unit transaction refund payment updated successfully', 200);
+            $payment->load('unitTransactionRefund.unitTransactionRefundPayments');
+            $refund = $payment->unitTransactionRefund;
+            if ($refund) {
+                $totalPaid = $refund->unitTransactionRefundPayments->sum('amount');
+                $payment->payment_remaining = (int) $refund->refund_amount - $totalPaid;
+            }
+
+            return $this->responseSuccess($payment, 'Unit transaction refund payment updated successfully', 200);
         } catch (Exception $err) {
             Log::error('Error while updating unit transaction refund payment: ' . $err->getMessage());
 
