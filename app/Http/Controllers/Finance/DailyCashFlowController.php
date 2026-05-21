@@ -139,7 +139,7 @@ class DailyCashFlowController extends Controller
 
         try {
             $cashFlow = CashFlow::findOrFail($id);
-            $data = array_filter($request->only(['company_id', 'account_id', 'cash_id', 'date', 'note', 'debet', 'credit']), fn ($value) => ! is_null($value) && $value !== '');
+            $data = array_filter($request->only(['company_id', 'account_id', 'cash_id', 'date', 'note', 'debet', 'credit', 'transaction_category']), fn ($value) => ! is_null($value) && $value !== '');
 
             if ($request->hasFile('payment_proof')) {
                 if ($cashFlow->payment_proof) {

@@ -6,8 +6,9 @@ use App\Http\Controllers\Finance\DailyCashFlowController;
 use App\Http\Controllers\Finance\FinanceAssetController;
 use App\Http\Controllers\Finance\FinanceBillingController;
 use App\Http\Controllers\Finance\PpnDataController;
-use App\Http\Controllers\Finance\UnitTransactionAdjustmentController;
 use App\Http\Controllers\Finance\PurchaseRefundController;
+use App\Http\Controllers\Finance\UnitTransactionAdjustmentController;
+use App\Http\Controllers\Finance\WithHoldingTaxController;
 use App\Http\Controllers\Global\GlobalCompanyController;
 use App\Http\Controllers\Global\GlobalModuleController;
 use App\Http\Controllers\MasterData\MasterAccountController;
@@ -51,6 +52,8 @@ use App\Http\Controllers\Transaction\UnitTransactionController;
 use App\Http\Controllers\Transaction\UnitTransactionItemController;
 use App\Http\Controllers\Transaction\UnitTransactionItemDetailController;
 use App\Http\Controllers\Transaction\UnitTransactionItemSalesController;
+use App\Http\Controllers\Transaction\UnitTransactionRefundController;
+use App\Http\Controllers\Transaction\UnitTransactionRefundPaymentController;
 use App\Http\Controllers\Transaction\VehicleDataController;
 use App\Http\Controllers\Transaction\VehicleDocumentController;
 use App\Http\Controllers\Transaction\VehicleRegistrationController;
@@ -228,6 +231,8 @@ Route::group(
                 Route::apiResource('unit-transaction-item-detail', UnitTransactionItemDetailController::class);
                 Route::apiResource('unit-transaction-billing', UnitTransactionBillingController::class);
                 Route::apiResource('unit-transaction-billing-history', UnitTransactionBillingHistoryController::class);
+                Route::apiResource('unit-transaction-refund', UnitTransactionRefundController::class);
+                Route::apiResource('unit-transaction-refund-payment', UnitTransactionRefundPaymentController::class);
             });
 
             // Vehicle Data
@@ -269,15 +274,18 @@ Route::group(
             Route::post('finance-asset/import', [FinanceAssetController::class, 'import']);
             Route::get('finance-asset/export', [FinanceAssetController::class, 'export']);
             Route::apiResource('finance-asset', FinanceAssetController::class)->except(['store', 'destroy']);
-            Route::apiResource('ppn', PpnDataController::class);
-            Route::apiResource('cash-flow', DailyCashFlowController::class);
-            Route::apiResource('adjustment', UnitTransactionAdjustmentController::class);
-            Route::apiResource('finance-billing', FinanceBillingController::class);
             Route::get('transaction-refund', [PurchaseRefundController::class, 'index']);
             Route::post('finance-billing-item', [FinanceBillingController::class, 'getBillingItem']);
             Route::post('finance-billing-item/{unit_transaction_billing_id}', [FinanceBillingController::class, 'addItem']);
             Route::put('finance-billing-item/{id}', [FinanceBillingController::class, 'updateItem']);
             Route::delete('finance-billing-item/{id}', [FinanceBillingController::class, 'destroyItem']);
+
+            Route::apiResource('ppn', PpnDataController::class);
+            Route::apiResource('cash-flow', DailyCashFlowController::class);
+            Route::apiResource('adjustment', UnitTransactionAdjustmentController::class);
+            Route::apiResource('finance-billing', FinanceBillingController::class);
+            // hold
+            Route::apiResource('withholding-tax', WithHoldingTaxController::class);
         });
 
         // Report Data

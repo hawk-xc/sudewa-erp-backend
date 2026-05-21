@@ -7,6 +7,7 @@ use App\Models\Person;
 use App\Models\UnitTransactionItemDetail;
 use App\Models\MaterialTransactionDetail;
 use App\Models\WarehouseActivity;
+use App\Models\WarehouseMovement;
 use App\Repositories\AuthRepository;
 use App\Traits\ResponseTrait;
 use Exception;
@@ -24,6 +25,7 @@ class WarehouseActivityController extends Controller
         'id',
         'uuid',
         'person_id',
+        'cash_id',
         'warehouse_id',
         'activity_number',
         'activity_type',
@@ -50,6 +52,7 @@ class WarehouseActivityController extends Controller
         return WarehouseActivity::with([
             'warehouse:id,uuid,name',
             'person:id,uuid,name',
+            'cash:id,uuid,code,description,type',
         ])->select($this->activityTable);
     }
 
@@ -92,6 +95,7 @@ class WarehouseActivityController extends Controller
     {
         $validated = $request->validate([
             'person_id' => 'required|exists:persons,id',
+            'cash_id' => 'nullable|integer|exists:cashes,id',
             'warehouse_id' => 'required|exists:warehouses,id',
             'activity_type' => 'required|in:receipt,issue',
             'activity_date' => 'required|date',
@@ -136,6 +140,7 @@ class WarehouseActivityController extends Controller
 
             $validated = $request->validate([
                 'person_id' => 'sometimes|exists:persons,id',
+                'cash_id' => 'sometimes|nullable|integer|exists:cashes,id',
                 'warehouse_id' => 'sometimes|exists:warehouses,id',
                 'activity_type' => 'sometimes|in:receipt,issue',
                 'activity_date' => 'sometimes|date',
@@ -188,6 +193,7 @@ class WarehouseActivityController extends Controller
         $validated = $request->validate([
             'unit_transaction_details' => 'required|array|min:1',
             'unit_transaction_details.*' => 'integer|exists:unit_transaction_item_details,id',
+            'cash_id' => 'nullable|integer|exists:cashes,id',
         ]);
 
         try {
@@ -220,6 +226,12 @@ class WarehouseActivityController extends Controller
             $unitTransactionItemDetailList = [];
 
             DB::transaction(function () use ($validated, $activity, &$unitTransactionItemDetailList) {
+                if (isset($validated['cash_id'])) {
+                    $activity->update([
+                        'cash_id' => $validated['cash_id'],
+                    ]);
+                }
+
                 $details = UnitTransactionItemDetail::with([
                     'unitTransactionItem.unitTransaction.unitTransactionBilling',
                 ])->whereIn('id', $validated['unit_transaction_details'])->get();
@@ -256,14 +268,14 @@ class WarehouseActivityController extends Controller
                     }
 
                     $detail->update(['in_stock' => true, 'is_forecast' => false]);
-                    $detail->receiptStock((int) $activity->warehouse_id);
+                    $detail->receiptStock((int) $activity->id);
 
                     $unitTransactionItemDetailList[] = $detail;
                 }
             });
 
             $responseData = [
-                'activity' => $activity,
+                'activity' => $activity->fresh(),
                 'unit_transaction_item_details' => $unitTransactionItemDetailList,
             ];
 
@@ -292,6 +304,7 @@ class WarehouseActivityController extends Controller
         $validated = $request->validate([
             'unit_transaction_details' => 'required|array|min:1',
             'unit_transaction_details.*' => 'integer|exists:unit_transaction_item_details,id',
+            'cash_id' => 'nullable|integer|exists:cashes,id',
         ]);
 
         try {
@@ -303,7 +316,12 @@ class WarehouseActivityController extends Controller
 
             $unitTransactionItemDetailList = [];
 
-            DB::transaction(function () use ($validated, &$unitTransactionItemDetailList) {
+            DB::transaction(function () use ($validated, $activity, &$unitTransactionItemDetailList) {
+                if (isset($validated['cash_id'])) {
+                    $activity->update([
+                        'cash_id' => $validated['cash_id'],
+                    ]);
+                }
 
                 $details = UnitTransactionItemDetail::with([
                     'unitTransactionItem.unitTransaction.unitTransactionBilling',
@@ -343,7 +361,7 @@ class WarehouseActivityController extends Controller
             });
 
             $responseData = [
-                'activity' => $activity,
+                'activity' => $activity->fresh(),
                 'unit_transaction_item_details' => $unitTransactionItemDetailList,
             ];
 
@@ -372,27 +390,62 @@ class WarehouseActivityController extends Controller
         $validated = $request->validate([
             'unit_transaction_details' => 'required|array|min:1',
             'unit_transaction_details.*' => 'integer|exists:unit_transaction_item_details,id',
+            'cash_id' => 'required|integer|exists:cashes,id',
+            'warehouse_id' => 'required|integer|exists:warehouses,id',
+            'description' => 'nullable|string',
         ]);
 
         try {
             $unitTransactionItemDetailList = [];
+            $activity = null;
 
-            DB::transaction(function () use ($validated, &$unitTransactionItemDetailList) {
+            DB::transaction(function () use ($validated, &$unitTransactionItemDetailList, &$activity) {
                 $details = UnitTransactionItemDetail::with(['unitTransactionItem.unitTransaction'])
                     ->whereIn('id', $validated['unit_transaction_details'])
                     ->get();
+
+                if ($details->isEmpty()) {
+                    throw new Exception("No valid unit transaction details found.");
+                }
+
+                $firstDetail = $details->first();
+                $personId = $firstDetail->unitTransactionItem->unitTransaction->person_id;
+
+                // Create the WarehouseActivity automatically
+                $activity = WarehouseActivity::create([
+                    'person_id' => $personId,
+                    'cash_id' => $validated['cash_id'],
+                    'warehouse_id' => $validated['warehouse_id'],
+                    'activity_type' => 'receipt', // sales refund is receipt of goods
+                    'activity_date' => now(),
+                    'description' => $validated['description'] ?? 'Automatic Sales Refund',
+                ]);
 
                 foreach ($details as $detail) {
                     if ($detail->unitTransactionItem->unitTransaction->type !== 'sales') {
                         throw new Exception("Detail ID {$detail->id} is not a sales transaction");
                     }
                     $detail->refundStock();
+
+                    // Create movement of status refund associated with this warehouse activity
+                    WarehouseMovement::create([
+                        'warehouse_activity_id' => $activity->id,
+                        'unit_transaction_id' => $detail->unitTransactionItem->unitTransaction->id,
+                        'unit_transaction_item_detail_id' => $detail->id,
+                        'status' => 'refund',
+                    ]);
+
                     $unitTransactionItemDetailList[] = $detail;
                 }
             });
 
+            $responseData = [
+                'activity' => $activity ? $activity->fresh() : null,
+                'unit_transaction_item_details' => $unitTransactionItemDetailList,
+            ];
+
             return $this->responseSuccess(
-                $unitTransactionItemDetailList,
+                (object) $responseData,
                 'Refund stock processed successfully'
             );
 
@@ -416,27 +469,62 @@ class WarehouseActivityController extends Controller
         $validated = $request->validate([
             'unit_transaction_details' => 'required|array|min:1',
             'unit_transaction_details.*' => 'integer|exists:unit_transaction_item_details,id',
+            'cash_id' => 'required|integer|exists:cashes,id',
+            'warehouse_id' => 'required|integer|exists:warehouses,id',
+            'description' => 'nullable|string',
         ]);
 
         try {
             $unitTransactionItemDetailList = [];
+            $activity = null;
 
-            DB::transaction(function () use ($validated, &$unitTransactionItemDetailList) {
+            DB::transaction(function () use ($validated, &$unitTransactionItemDetailList, &$activity) {
                 $details = UnitTransactionItemDetail::with(['unitTransactionItem.unitTransaction'])
                     ->whereIn('id', $validated['unit_transaction_details'])
                     ->get();
+
+                if ($details->isEmpty()) {
+                    throw new Exception("No valid unit transaction details found.");
+                }
+
+                $firstDetail = $details->first();
+                $personId = $firstDetail->unitTransactionItem->unitTransaction->person_id;
+
+                // Create the WarehouseActivity automatically
+                $activity = WarehouseActivity::create([
+                    'person_id' => $personId,
+                    'cash_id' => $validated['cash_id'],
+                    'warehouse_id' => $validated['warehouse_id'],
+                    'activity_type' => 'issue', // purchase return is issue of goods
+                    'activity_date' => now(),
+                    'description' => $validated['description'] ?? 'Automatic Purchase Return',
+                ]);
 
                 foreach ($details as $detail) {
                     if ($detail->unitTransactionItem->unitTransaction->type !== 'purchase') {
                         throw new Exception("Detail ID {$detail->id} is not a purchase transaction");
                     }
                     $detail->returnStock();
+
+                    // Create movement of status refund associated with this warehouse activity
+                    WarehouseMovement::create([
+                        'warehouse_activity_id' => $activity->id,
+                        'unit_transaction_id' => $detail->unitTransactionItem->unitTransaction->id,
+                        'unit_transaction_item_detail_id' => $detail->id,
+                        'status' => 'refund',
+                    ]);
+
                     $unitTransactionItemDetailList[] = $detail;
                 }
             });
 
+            $responseData = [
+                'activity' => $activity ? $activity->fresh() : null,
+                'unit_transaction_item_details' => $unitTransactionItemDetailList,
+            ];
+
             return $this->responseSuccess(
-                $unitTransactionItemDetailList,
+                (object) $responseData,
                 'Return stock processed successfully'
             );
 

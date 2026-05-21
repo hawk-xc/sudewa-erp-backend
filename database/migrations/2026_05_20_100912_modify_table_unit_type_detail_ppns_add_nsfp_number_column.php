@@ -11,9 +11,13 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('unit_type_detail_ppns', function (Blueprint $table) {
-            $table->string('nsfp_number')->nullable(true)->after('nsfp_amount');
-        });
+        if (Schema::hasTable('unit_type_detail_ppns')) {
+            Schema::table('unit_type_detail_ppns', function (Blueprint $table) {
+                if (!Schema::hasColumn('unit_type_detail_ppns', 'nsfp_number')) {
+                    $table->string('nsfp_number')->nullable(true)->after('nsfp_amount');
+                }
+            });
+        }
     }
 
     /**
@@ -21,8 +25,12 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('unit_type_detail_ppns', function (Blueprint $table) {
-            $table->dropColumn('nsfp_number');
-        });
+        if (Schema::hasTable('unit_type_detail_ppns')) {
+            Schema::table('unit_type_detail_ppns', function (Blueprint $table) {
+                if (Schema::hasColumn('unit_type_detail_ppns', 'nsfp_number')) {
+                    $table->dropColumn('nsfp_number');
+                }
+            });
+        }
     }
 };
