@@ -51,6 +51,16 @@ class UnitTransactionItemDetail extends Model
         return $this->hasMany(UnitTransactionAdjustmentItems::class);
     }
 
+    public function unitTransactionRefunds()
+    {
+        return $this->belongsToMany(
+            UnitTransactionRefund::class,
+            'unit_transaction_refund_item_detail',
+            'unit_transaction_item_detail_id',
+            'unit_transaction_refund_id'
+        );
+    }
+
     public function receiptStock(?int $activityId = null)
     {
         $unitTransaction = $this->unitTransactionItem->unitTransaction;

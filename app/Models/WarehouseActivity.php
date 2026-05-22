@@ -17,6 +17,7 @@ class WarehouseActivity extends Model
     protected $fillable = [
         'uuid',
         'person_id',
+        'cash_id', // relation with cash
         'warehouse_id',
         'activity_number',
         'activity_type',
@@ -42,6 +43,11 @@ class WarehouseActivity extends Model
     public function warehouseMovements()
     {
         return $this->hasMany(WarehouseMovement::class);
+    }
+
+    public function cash()
+    {
+        return $this->belongsTo(Cash::class, 'cash_id', 'id');
     }
 
     protected static function boot()

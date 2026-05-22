@@ -65,6 +65,12 @@ class FinanceAssetController extends Controller
                 });
             }
 
+            if ($request->filled('company_id')) {
+                $query->whereHas('asset', function ($q) use ($request) {
+                    $q->where('company_id', $request->company_id);
+                });
+            }
+
             foreach ($this->financeAssetTable as $field) {
                 if ($request->filled($field)) {
                     $query->where($field, $request->$field);

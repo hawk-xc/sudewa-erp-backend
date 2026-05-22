@@ -25,7 +25,7 @@ class UnitTransaction extends Model
     ];
 
     protected $casts = [
-        'max_capacity' => 'decimal:2',
+        'max_capacity' => 'integer',
         'stock_state' => 'string',
         'is_refunded' => 'boolean'
     ];
