@@ -5,6 +5,7 @@ use App\Http\Controllers\Dashboard\BillingStatController;
 use App\Http\Controllers\Finance\DailyCashFlowController;
 use App\Http\Controllers\Finance\FinanceAssetController;
 use App\Http\Controllers\Finance\FinanceBillingController;
+use App\Http\Controllers\Finance\FinanceRefundController;
 use App\Http\Controllers\Finance\PpnDataController;
 use App\Http\Controllers\Finance\PurchaseRefundController;
 use App\Http\Controllers\Finance\UnitTransactionAdjustmentController;
@@ -286,7 +287,11 @@ Route::group(
             Route::apiResource('cash-flow', DailyCashFlowController::class);
             Route::apiResource('adjustment', UnitTransactionAdjustmentController::class);
             Route::apiResource('finance-billing', FinanceBillingController::class);
-            Route::apiResource('finance-refund', FinanceRefundController::class);
+
+            // Finance Refund
+            Route::get('finance-refund', [FinanceRefundController::class, 'index']);
+            Route::get('finance-refund/{id}', [FinanceRefundController::class, 'show']);
+            Route::put('finance-refund/{id}', [FinanceRefundController::class, 'update']);
             // hold
             Route::apiResource('withholding-tax', WithHoldingTaxController::class);
         });
