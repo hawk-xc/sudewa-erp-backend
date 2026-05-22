@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Transaction;
 
 use App\Http\Controllers\Controller;
+use App\Models\FinanceRefund;
 use App\Models\UnitTransactionRefund;
 use App\Models\UnitTransactionRefundPayment;
 use App\Traits\ResponseTrait;
@@ -102,7 +103,6 @@ class UnitTransactionRefundPaymentController extends Controller
 
         try {
             $payment = DB::transaction(function () use ($request) {
-                // Generate payment code
                 $prefix = 'PAY-REF';
                 $date = now()->format('Ymd');
                 $lastPayment = UnitTransactionRefundPayment::whereDate('created_at', today())
@@ -112,6 +112,12 @@ class UnitTransactionRefundPaymentController extends Controller
                 $lastNumber = $lastPayment ? (int) substr($lastPayment->code, -4) : 0;
                 $newNumber = str_pad($lastNumber + 1, 4, '0', STR_PAD_LEFT);
                 $code = "{$prefix}-{$date}-{$newNumber}";
+
+                FinanceRefund::firstOrCreate([
+                    'unit_transaction_refund_id' => $request->unit_transaction_refund_id
+                ], [
+                    'status' => 'waiting'
+                ]);
 
                 return UnitTransactionRefundPayment::create([
                     'unit_transaction_refund_id' => $request->unit_transaction_refund_id,

@@ -34,6 +34,11 @@ class FinanceRefund extends Model
         return $this->hasMany(FinanceRefundPayment::class, 'finance_refund_id', 'id');
     }
 
+    public function cash()
+    {
+        return $this->belongsTo(Cash::class, 'cash_id');
+    }
+
     protected static function booted()
     {
         static::creating(function ($model) {

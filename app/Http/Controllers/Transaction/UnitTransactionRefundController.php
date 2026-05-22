@@ -128,11 +128,6 @@ class UnitTransactionRefundController extends Controller
                     'note' => $request->note,
                 ]);
 
-                FinanceRefund::create([
-                    'unit_transaction_refund_id' => $refund->id,
-                    'status' => 'waiting',
-                ]);
-
                 if ($request->filled('unit_transaction_item_detail_ids')) {
                     $refund->unitTransactionItemDetails()->sync($request->unit_transaction_item_detail_ids);
                 }
