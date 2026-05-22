@@ -25,7 +25,7 @@ class UnitTransaction extends Model
     ];
 
     protected $casts = [
-        'max_capacity' => 'decimal:2',
+        'max_capacity' => 'integer',
         'stock_state' => 'string',
         'is_refunded' => 'boolean'
     ];
@@ -182,6 +182,43 @@ class UnitTransaction extends Model
                     default => 0,
                 };
             });
+    }
+
+    public function recalculateBillingTotals()
+    {
+        $billing = $this->unitTransactionBilling;
+        if ($billing) {
+            // Recalculate based on non-refunded and non-returned items
+            $total_dpp_ppn = $this->unitTransactionItems()
+                ->with(['unitTransactionItemDetails' => function ($q) {
+                    $q->whereNotIn('status', ['refunded', 'returned']);
+                }])
+                ->get()
+                ->sum(function ($item) {
+                    $qty = $item->unitTransactionItemDetails->count();
+                    $dpp = $qty * $item->dpp_per_unit_price;
+                    $ppn = $qty * $item->ppn_per_unit_price;
+                    return $dpp + $ppn;
+                });
+
+            // Add bbn_price and other_fee
+            $bbn_price = (int) $this->unitTransactionItems()->sum('bbn_price');
+            $other_fee = (int) $this->unitTransactionItems()->sum('other_fee');
+
+            $newGrandTotal = $total_dpp_ppn + $bbn_price + $other_fee;
+
+            $billing->update([
+                'grand_total' => $newGrandTotal,
+            ]);
+
+            // Also update finance billing if exists
+            $financeBilling = $billing->financeBilling;
+            if ($financeBilling) {
+                $financeBilling->update([
+                    'grand_total' => $newGrandTotal,
+                ]);
+            }
+        }
     }
 
     protected static function booted()

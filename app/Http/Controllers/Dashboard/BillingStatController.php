@@ -23,7 +23,7 @@ class BillingStatController extends Controller
 
             $query->with([
                 'unitTransaction:id,uuid,code,type,created_at',
-                'unitTransactionBillingHistories:id,unit_transaction_billing_id,bca_payment_amount,bca_payment_usd_amount,cash_payment_amount,payment_at'
+                'unitTransactionBillingHistories.cashes'
             ]);
 
             if ($request->filled('type') && in_array($request->type, ['purchase', 'sales'])) {
@@ -55,27 +55,31 @@ class BillingStatController extends Controller
                 foreach ($billing->unitTransactionBillingHistories as $history) {
 
                     $paymentDate = $history->payment_at ?? $billing->created_at;
+                    
+                    $cashAmt = $history->cashes->where('code', 'cash_idr')->sum('pivot.amount');
+                    $bcaAmt = $history->cashes->where('code', 'bca_idr')->sum('pivot.amount');
+                    $usdAmt = $history->cashes->where('code', 'bca_usd')->sum('pivot.amount');
 
                     if (!$startDate && !$endDate) {
-                        $openingBalance[$type]['cash'] += (int) $history->cash_payment_amount;
-                        $openingBalance[$type]['bca_idr'] += (int) $history->bca_payment_amount;
-                        $openingBalance[$type]['bca_usd'] += (int) $history->bca_payment_usd_amount;
+                        $openingBalance[$type]['cash'] += $cashAmt;
+                        $openingBalance[$type]['bca_idr'] += $bcaAmt;
+                        $openingBalance[$type]['bca_usd'] += $usdAmt;
                         continue;
                     }
 
                     if ($startDate && $paymentDate < $startDate) {
-                        $openingBalance[$type]['cash'] += (int) $history->cash_payment_amount;
-                        $openingBalance[$type]['bca_idr'] += (int) $history->bca_payment_amount;
-                        $openingBalance[$type]['bca_usd'] += (int) $history->bca_payment_usd_amount;
+                        $openingBalance[$type]['cash'] += $cashAmt;
+                        $openingBalance[$type]['bca_idr'] += $bcaAmt;
+                        $openingBalance[$type]['bca_usd'] += $usdAmt;
                     }
 
                     if (
                         (!$startDate || $paymentDate >= $startDate) &&
                         (!$endDate || $paymentDate <= $endDate)
                     ) {
-                        $mutation[$type]['cash'] += (int) $history->cash_payment_amount;
-                        $mutation[$type]['bca_idr'] += (int) $history->bca_payment_amount;
-                        $mutation[$type]['bca_usd'] += (int) $history->bca_payment_usd_amount;
+                        $mutation[$type]['cash'] += $cashAmt;
+                        $mutation[$type]['bca_idr'] += $bcaAmt;
+                        $mutation[$type]['bca_usd'] += $usdAmt;
                     }
                 }
             }
@@ -133,7 +137,7 @@ class BillingStatController extends Controller
                 })
                 ->with([
                     'person:id,uuid,name,code',
-                    'unitTransactionBilling.unitTransactionBillingHistories'
+                    'unitTransactionBilling.unitTransactionBillingHistories.cashes'
                 ]);
 
             if ($request->filled('search')) {
@@ -170,9 +174,9 @@ class BillingStatController extends Controller
                 $customers[$customerId]['total_transaction'] += 1;
 
                 foreach ($trx->unitTransactionBilling->unitTransactionBillingHistories as $history) {
-                    $customers[$customerId]['total_cash'] += (int) $history->cash_payment_amount;
-                    $customers[$customerId]['total_bca_idr'] += (int) $history->bca_payment_amount;
-                    $customers[$customerId]['total_bca_usd'] += (int) $history->bca_payment_usd_amount;
+                    $customers[$customerId]['total_cash'] += (int) $history->cashes->where('code', 'cash_idr')->sum('pivot.amount');
+                    $customers[$customerId]['total_bca_idr'] += (int) $history->cashes->where('code', 'bca_idr')->sum('pivot.amount');
+                    $customers[$customerId]['total_bca_usd'] += (int) $history->cashes->where('code', 'bca_usd')->sum('pivot.amount');
                 }
             }
 

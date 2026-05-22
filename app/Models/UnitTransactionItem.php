@@ -32,9 +32,19 @@ class UnitTransactionItem extends Model
     ];
 
     protected $casts = [
+        'transaction_date' => 'date',
         'quantity' => 'integer',
-        'price' => 'decimal:2',
-        'total_price' => 'decimal:2',
+        'price' => 'integer',
+        'total_price' => 'integer',
+        'bbn_price' => 'integer',
+        'expedition_fee' => 'integer',
+        'other_fee' => 'integer',
+        'hpp_per_unit_price' => 'integer',
+        'dpp_per_unit_price' => 'integer',
+        'ppn_per_unit_price' => 'integer',
+        'hpp_total_price' => 'integer',
+        'dpp_total_price' => 'integer',
+        'ppn_total_price' => 'integer',
     ];
 
     public function unitTransaction()

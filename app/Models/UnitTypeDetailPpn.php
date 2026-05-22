@@ -20,12 +20,17 @@ class UnitTypeDetailPpn extends Model
         'fp_date',
         'nsfp_age',
         'nsfp_amount',
+        'nsfp_number',
         'amount',
     ];
 
     protected $casts = [
+        'unit_transaction_id' => 'integer',
+        'unit_transaction_item_detail_id' => 'integer',
         'nsfp_amount' => 'integer',
         'amount' => 'integer',
+        'nsfp_age' => 'date',
+        'fp_age' => 'date',
     ];
 
     public function unitTransactionItemDetails()

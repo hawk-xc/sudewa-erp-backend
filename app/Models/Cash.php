@@ -42,6 +42,18 @@ class Cash extends Model
         return $this->hasMany(UnitTransactionAdjustment::class);
     }
 
+    public function warehouseActivities()
+    {
+        return $this->hasMany(WarehouseActivity::class, 'cash_id', 'id');
+    }
+
+    public function unitTransactionBillingHistories()
+    {
+        return $this->belongsToMany(UnitTransactionBillingHistory::class, 'cash_unit_transaction_billing_history', 'cash_id', 'unit_transaction_billing_history_id')
+            ->withPivot('amount')
+            ->withTimestamps();
+    }
+
     protected static function booted()
     {
         static::creating(function ($model) {

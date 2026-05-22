@@ -22,17 +22,12 @@ class TarifExport implements FromCollection, WithHeadings, WithMapping
     public function collection()
     {
         $query = Tarif::query();
-        $query->with('customer:id,name,code');
 
         if ($this->request->filled('search')) {
             $search = $this->request->search;
             $query->where(function ($q) use ($search) {
                 $q->where('loading_in', 'like', "%$search%")
-                    ->orWhere('loading_out', 'like', "%$search%")
-                    ->orWhereHas('customer', function ($q_cust) use ($search) {
-                        $q_cust->where('name', 'like', "%$search%")
-                            ->orWhere('code', 'like', "%$search%");
-                    });
+                    ->orWhere('loading_out', 'like', "%$search%");
             });
         }
 
@@ -53,7 +48,6 @@ class TarifExport implements FromCollection, WithHeadings, WithMapping
         return [
             'ID',
             'UUID',
-            'Nama Customer',
             'Muat',
             'Bongkar',
             'Jarak',
@@ -72,7 +66,6 @@ class TarifExport implements FromCollection, WithHeadings, WithMapping
         return [
             $tarif->id,
             $tarif->uuid,
-            $tarif->customer->name ?? '-',
             $tarif->loading_in,
             $tarif->loading_out,
             $tarif->distance,

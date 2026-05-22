@@ -13,6 +13,8 @@ class CashFlow extends Model
 {
     use HasFactory;
 
+    protected $table = 'cash_flows';
+
     protected $fillable = [
         'uuid',
         'code',
@@ -20,6 +22,7 @@ class CashFlow extends Model
         'cash_id',
         'account_id',
         'unit_transaction_billing_history_id',
+        'transaction_category',
         'date',
         'note',
         'debet',

@@ -4,14 +4,11 @@ namespace App\Http\Controllers\Transaction;
 
 use App\Http\Controllers\Controller;
 use App\Models\DOOrderList;
-use App\Models\DOOrderListTarif;
 use App\Traits\DOTrait;
 use App\Traits\ResponseTrait;
 use Exception;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
 class DOOrderListController extends Controller
@@ -28,7 +25,17 @@ class DOOrderListController extends Controller
 
     public function index(Request $request)
     {
-        $query = DOOrderList::with([
+        $query = DOOrderList::select([
+            'id',
+            'uuid',
+            'code',
+            'customer_id',
+            'status',
+            'vehicle_type',
+            'bill_invoice',
+            'ppn',
+            'created_at'
+        ])->with([
             'customer:id,name,code,address', 
             'tarifs',
             'expeditions.vehicle',
@@ -50,6 +57,14 @@ class DOOrderListController extends Controller
 
             $data = $query->latest()->paginate($request->per_page ?? 10);
             
+            $data->getCollection()->transform(function ($item) {
+                $item->vehicles = $item->expeditions->map(function ($expedition) {
+                    return $expedition->vehicle;
+                })->filter()->values();
+                
+                return $item;
+            });
+
             $data->getCollection()->makeHidden(['tarifs', 'expeditions']);
 
             return $this->responseSuccess($data, 'DO Order List retrieved successfully');
@@ -69,6 +84,7 @@ class DOOrderListController extends Controller
                 }),
             ],
             'status' => 'sometimes|in:deliver,process,pending,reject',
+            'vehicle_type' => 'required|in:fuso,cdd,towing',
             'bill_invoice' => 'nullable|integer',
         ]);
 
@@ -78,6 +94,7 @@ class DOOrderListController extends Controller
                 'customer_id' => $validated['customer_id'],
                 'status' => $validated['status'] ?? 'pending',
                 'bill_invoice' => $validated['bill_invoice'] ?? null,
+                'vehicle_type' => $validated['vehicle_type'] ?? null,
                 // ppn calculation
                 'ppn' => $validated['bill_invoice'] ? (1.1 * $validated['bill_invoice'] / 100) : 0,
             ]);
@@ -115,6 +132,7 @@ class DOOrderListController extends Controller
                 }),
             ],
             'status' => 'sometimes|required|in:deliver,process,pending,reject',
+            'vehicle_type' => 'sometimes|in:cdd,fuso,towing',
             'bill_invoice' => 'sometimes|nullable|integer',
         ]);
 

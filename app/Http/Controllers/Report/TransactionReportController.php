@@ -83,6 +83,8 @@ class TransactionReportController extends Controller
                     'ppn' => $item->ppn_total_price,
                     'bbn' => $item->bbn_price,
                     'other_fee' => $item->other_fee,
+                    'expedition_fee' => $item->expedition_fee,
+                    'hpp_fee' => $item->hpp_total_price,
                     'total' => (float) ($item->dpp_total_price + $item->ppn_total_price + ($item->bbn_price ?? 0) + ($item->other_fee ?? 0)),
                     'is_paid' => (bool) ($item->unitTransaction->unitTransactionBilling->is_paid ?? false),
                     'payment_status' => ($item->unitTransaction->unitTransactionBilling->is_paid ?? false) ? 'Lunas' : 'Belum Lunas',

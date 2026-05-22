@@ -112,9 +112,12 @@ class UnitTransactionBillingHistoryController extends Controller
                 ]);
             }
 
-            $totalPaidBefore =
-                $billing->unitTransactionBillingHistories()->sum('bca_payment_amount') +
-                $billing->unitTransactionBillingHistories()->sum('cash_payment_amount');
+            $totalPaidBefore = DB::table('cash_unit_transaction_billing_history')
+                ->join('unit_transaction_billing_histories', 'unit_transaction_billing_histories.id', '=', 'cash_unit_transaction_billing_history.unit_transaction_billing_history_id')
+                ->join('cashes', 'cashes.id', '=', 'cash_unit_transaction_billing_history.cash_id')
+                ->where('unit_transaction_billing_histories.unit_transaction_billing_id', $billing->id)
+                ->whereIn('cashes.code', ['cash_idr', 'bca_idr'])
+                ->sum('cash_unit_transaction_billing_history.amount');
 
             $newTotalPaid = $totalPaidBefore + $paymentTotal;
 
@@ -127,9 +130,6 @@ class UnitTransactionBillingHistoryController extends Controller
             DB::transaction(function () use ($billing, $validated, $newTotalPaid, $cashSlug) {
                 $history = UnitTransactionBillingHistory::create([
                     'unit_transaction_billing_id' => $billing->id,
-                    'bca_payment_amount' => $validated['bca_payment_amount'] ?? 0,
-                    'bca_payment_usd_amount' => $validated['bca_payment_usd_amount'] ?? 0,
-                    'cash_payment_amount' => $validated['cash_payment_amount'] ?? 0,
                     'payment_at' => $validated['payment_at'] ?? now(),
                     'payment_proof' => $validated['payment_proof'] ?? null,
                     'note' => $validated['note'] ?? null,
@@ -155,9 +155,11 @@ class UnitTransactionBillingHistoryController extends Controller
                     };
 
                     if ($amountToAdd && $amountToAdd > 0) {
-                        Cash::where('company_id', $companyId)
-                            ->where('code', $slug)
-                            ->increment('amount', $amountToAdd);
+                        $cash = Cash::where('company_id', $companyId)->where('code', $slug)->first();
+                        if ($cash) {
+                            $history->cashes()->attach($cash->id, ['amount' => $amountToAdd]);
+                            $cash->increment('amount', $amountToAdd);
+                        }
                     }
                 }
 
@@ -282,7 +284,7 @@ class UnitTransactionBillingHistoryController extends Controller
     public function update(Request $request, string $id)
     {
         try {
-            $history = UnitTransactionBillingHistory::with('unitTransactionBilling.unitTransaction.warehouse')->findOrFail($id);
+            $history = UnitTransactionBillingHistory::with(['unitTransactionBilling.unitTransaction.warehouse', 'cashes'])->findOrFail($id);
 
             $validated = $request->validate([
                 'bca_payment_amount' => 'nullable|numeric|min:0',
@@ -303,24 +305,59 @@ class UnitTransactionBillingHistoryController extends Controller
                     );
                 }
 
+                $cashIdrPivot = $history->cashes->where('code', 'cash_idr')->first();
+                $historyCashPaymentAmount = $cashIdrPivot ? $cashIdrPivot->pivot->amount : 0;
+
+                $bcaIdrPivot = $history->cashes->where('code', 'bca_idr')->first();
+                $historyBcaPaymentAmount = $bcaIdrPivot ? $bcaIdrPivot->pivot->amount : 0;
+
+                $bcaUsdPivot = $history->cashes->where('code', 'bca_usd')->first();
+                $historyBcaUsdPaymentAmount = $bcaUsdPivot ? $bcaUsdPivot->pivot->amount : 0;
+
                 $diffs = [
-                    'cash_idr' => (array_key_exists('cash_payment_amount', $validated) ? $validated['cash_payment_amount'] : $history->cash_payment_amount) - $history->cash_payment_amount,
-                    'bca_idr' => (array_key_exists('bca_payment_amount', $validated) ? $validated['bca_payment_amount'] : $history->bca_payment_amount) - $history->bca_payment_amount,
-                    'bca_usd' => (array_key_exists('bca_payment_usd_amount', $validated) ? $validated['bca_payment_usd_amount'] : $history->bca_payment_usd_amount) - $history->bca_payment_usd_amount,
+                    'cash_idr' => (array_key_exists('cash_payment_amount', $validated) ? $validated['cash_payment_amount'] : $historyCashPaymentAmount) - $historyCashPaymentAmount,
+                    'bca_idr' => (array_key_exists('bca_payment_amount', $validated) ? $validated['bca_payment_amount'] : $historyBcaPaymentAmount) - $historyBcaPaymentAmount,
+                    'bca_usd' => (array_key_exists('bca_payment_usd_amount', $validated) ? $validated['bca_payment_usd_amount'] : $historyBcaUsdPaymentAmount) - $historyBcaUsdPaymentAmount,
                 ];
 
                 foreach (['cash_idr', 'bca_idr', 'bca_usd'] as $slug) {
-                    if ($diffs[$slug] != 0) {
-                        Cash::where('company_id', $companyId)
-                            ->where('code', $slug)
-                            ->increment('amount', $diffs[$slug]);
+                    $diff = $diffs[$slug];
+                    $newVal = match($slug) {
+                        'cash_idr' => array_key_exists('cash_payment_amount', $validated) ? $validated['cash_payment_amount'] : $historyCashPaymentAmount,
+                        'bca_idr' => array_key_exists('bca_payment_amount', $validated) ? $validated['bca_payment_amount'] : $historyBcaPaymentAmount,
+                        'bca_usd' => array_key_exists('bca_payment_usd_amount', $validated) ? $validated['bca_payment_usd_amount'] : $historyBcaUsdPaymentAmount,
+                    };
+
+                    $cash = Cash::where('company_id', $companyId)->where('code', $slug)->first();
+                    if ($cash) {
+                        if ($diff != 0) {
+                            $cash->increment('amount', $diff);
+                        }
+                        
+                        if ($newVal > 0) {
+                            $existingPivot = $history->cashes->where('id', $cash->id)->first();
+                            if ($existingPivot) {
+                                $history->cashes()->updateExistingPivot($cash->id, ['amount' => $newVal]);
+                            } else {
+                                $history->cashes()->attach($cash->id, ['amount' => $newVal]);
+                            }
+                        } else {
+                            $history->cashes()->detach($cash->id);
+                        }
                     }
                 }
 
-                $history->update($validated);
+                $history->update([
+                    'note' => $validated['note'] ?? $history->note,
+                    'payment_proof' => $validated['payment_proof'] ?? $history->payment_proof,
+                ]);
 
-                $totalPaid = $billing->unitTransactionBillingHistories()->sum('bca_payment_amount') + 
-                             $billing->unitTransactionBillingHistories()->sum('cash_payment_amount');
+                $totalPaid = DB::table('cash_unit_transaction_billing_history')
+                    ->join('unit_transaction_billing_histories', 'unit_transaction_billing_histories.id', '=', 'cash_unit_transaction_billing_history.unit_transaction_billing_history_id')
+                    ->join('cashes', 'cashes.id', '=', 'cash_unit_transaction_billing_history.cash_id')
+                    ->where('unit_transaction_billing_histories.unit_transaction_billing_id', $billing->id)
+                    ->whereIn('cashes.code', ['cash_idr', 'bca_idr'])
+                    ->sum('cash_unit_transaction_billing_history.amount');
                 
                 $remaining = $billing->grand_total - $totalPaid;
 
@@ -345,16 +382,20 @@ class UnitTransactionBillingHistoryController extends Controller
     public function destroy(string $id)
     {
         try {
-            $history = UnitTransactionBillingHistory::with('unitTransactionBilling.unitTransaction.warehouse')->findOrFail($id);
+            $history = UnitTransactionBillingHistory::with(['unitTransactionBilling.unitTransaction.warehouse', 'cashes'])->findOrFail($id);
 
             DB::transaction(function () use ($history) {
                 $billing = $history->unitTransactionBilling;
                 $companyId = $billing->unitTransaction->warehouse->company_id;
 
+                $cashIdrPivot = $history->cashes->where('code', 'cash_idr')->first();
+                $bcaIdrPivot = $history->cashes->where('code', 'bca_idr')->first();
+                $bcaUsdPivot = $history->cashes->where('code', 'bca_usd')->first();
+
                 $amountsToDeduct = [
-                    'cash_idr' => $history->cash_payment_amount,
-                    'bca_idr' => $history->bca_payment_amount,
-                    'bca_usd' => $history->bca_payment_usd_amount,
+                    'cash_idr' => $cashIdrPivot ? $cashIdrPivot->pivot->amount : 0,
+                    'bca_idr' => $bcaIdrPivot ? $bcaIdrPivot->pivot->amount : 0,
+                    'bca_usd' => $bcaUsdPivot ? $bcaUsdPivot->pivot->amount : 0,
                 ];
 
                 foreach (['cash_idr', 'bca_idr', 'bca_usd'] as $slug) {
@@ -367,8 +408,12 @@ class UnitTransactionBillingHistoryController extends Controller
 
                 $history->delete();
 
-                $totalPaid = $billing->unitTransactionBillingHistories()->sum('bca_payment_amount') + 
-                             $billing->unitTransactionBillingHistories()->sum('cash_payment_amount');
+                $totalPaid = DB::table('cash_unit_transaction_billing_history')
+                    ->join('unit_transaction_billing_histories', 'unit_transaction_billing_histories.id', '=', 'cash_unit_transaction_billing_history.unit_transaction_billing_history_id')
+                    ->join('cashes', 'cashes.id', '=', 'cash_unit_transaction_billing_history.cash_id')
+                    ->where('unit_transaction_billing_histories.unit_transaction_billing_id', $billing->id)
+                    ->whereIn('cashes.code', ['cash_idr', 'bca_idr'])
+                    ->sum('cash_unit_transaction_billing_history.amount');
                 
                 $remaining = $billing->grand_total - $totalPaid;
 

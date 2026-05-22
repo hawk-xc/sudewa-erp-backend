@@ -6,32 +6,27 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
 
-class FinanceAsset extends Model
+class FinanceRefundPayment extends Model
 {
     use HasFactory;
 
-    protected $table = 'finance_assets';
+    protected $table = 'finance_refund_payments';
 
     protected $fillable = [
         'uuid',
-        'asset_id',
-        'economic_age',
-        'description' // text
+        'finance_refund_id',
+        'refund_nominal',
+        'note'
     ];
 
     protected $casts = [
-        'asset_id' => 'integer',
-        'economic_age' => 'integer',
+        'finance_refund_id' => 'integer',
+        'refund_nominal' => 'decimal:2'
     ];
 
-    public function company()
+    public function financeRefund()
     {
-        return $this->belongsTo(Company::class);
-    }
-
-    public function asset()
-    {
-        return $this->belongsTo(Asset::class);
+        return $this->belongsTo(FinanceRefund::class, 'finance_refund_id', 'id');
     }
 
     protected static function booted()

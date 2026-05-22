@@ -30,8 +30,8 @@ class FinanceAssetController extends Controller
         $this->middleware(['permission:finance:edit'])->only('update');
 
         $this->financeAssetTable = [
-            'id', 'uuid', 'asset_id', 'economic_age', 'depreciation',
-            'residual_value', 'final_value', 'description', 'created_at', 'updated_at'
+            'id', 'uuid', 'asset_id', 'economic_age',
+            'description', 'created_at', 'updated_at'
         ];
     }
 
@@ -40,7 +40,7 @@ class FinanceAssetController extends Controller
      */
     public function index(Request $request)
     {
-        $query = FinanceAsset::query()->with('asset:id,code,serial_number,name,type,purchase_date');
+        $query = FinanceAsset::query()->with('asset:id,code,serial_number,name,type,purchase_date,price');
         $query->select($this->financeAssetTable);
 
         try {
@@ -65,6 +65,12 @@ class FinanceAssetController extends Controller
                 });
             }
 
+            if ($request->filled('company_id')) {
+                $query->whereHas('asset', function ($q) use ($request) {
+                    $q->where('company_id', $request->company_id);
+                });
+            }
+
             foreach ($this->financeAssetTable as $field) {
                 if ($request->filled($field)) {
                     $query->where($field, $request->$field);
@@ -84,6 +90,30 @@ class FinanceAssetController extends Controller
             $perPage = $request->per_page ?? 10;
             $data = $query->paginate($perPage);
 
+            $data->getCollection()->transform(function ($item) {
+                $economicAgeInMonths = ($item->economic_age ?? 0) * 12;
+                $depreciationPerMonth = $economicAgeInMonths > 0 ? ($item->asset?->price ?? 0) / $economicAgeInMonths : 0;
+
+                $purchaseDate = $item->asset?->purchase_date;
+                $monthsUsed = 0;
+                if ($purchaseDate) {
+                    $purchaseCarbon = \Carbon\Carbon::parse($purchaseDate);
+                    if ($purchaseCarbon->isPast()) {
+                        $monthsUsed = $purchaseCarbon->diffInMonths(\Carbon\Carbon::now());
+                    }
+                }
+
+                $difference = 48 - $depreciationPerMonth;
+                $finalValue = ($item->asset?->price ?? 0) - ($depreciationPerMonth * $monthsUsed);
+
+                $item->depreciation_per_month = round($depreciationPerMonth, 2);
+                $item->months_used = $monthsUsed;
+                $item->difference = round($difference, 2);
+                $item->final_value = round($finalValue, 2);
+
+                return $item;
+            });
+
             return $this->responseSuccess($data, 'Finance Asset list retrieved successfully', 200);
         } catch (Exception $err) {
             Log::error('Error While retrieved Finance Asset data : '.$err->getMessage());
@@ -100,6 +130,26 @@ class FinanceAssetController extends Controller
         try {
             $asset = FinanceAsset::with('asset')->select($this->financeAssetTable)->findOrFail($id);
 
+            $economicAgeInMonths = ($asset->economic_age ?? 0) * 12;
+            $depreciationPerMonth = $economicAgeInMonths > 0 ? ($asset->asset?->price ?? 0) / $economicAgeInMonths : 0;
+
+            $purchaseDate = $asset->asset?->purchase_date;
+            $monthsUsed = 0;
+            if ($purchaseDate) {
+                $purchaseCarbon = \Carbon\Carbon::parse($purchaseDate);
+                if ($purchaseCarbon->isPast()) {
+                    $monthsUsed = $purchaseCarbon->diffInMonths(\Carbon\Carbon::now());
+                }
+            }
+
+            $difference = 48 - $depreciationPerMonth;
+            $finalValue = ($asset->asset?->price ?? 0) - ($depreciationPerMonth * $monthsUsed);
+
+            $asset->depreciation_per_month = round($depreciationPerMonth, 2);
+            $asset->months_used = $monthsUsed;
+            $asset->difference = round($difference, 2);
+            $asset->final_value = round($finalValue, 2);
+
             return $this->responseSuccess($asset, 'Finance Asset retrieved successfully', 200);
         } catch (Exception $err) {
             Log::error('Error While retrieved Finance Asset data : '.$err->getMessage());
@@ -115,14 +165,11 @@ class FinanceAssetController extends Controller
     {
         $request->validate([
             'economic_age' => 'nullable|integer|min:0',
-            'depreciation' => 'nullable|numeric|min:0',
-            'residual_value' => 'nullable|numeric|min:0',
-            'final_value' => 'nullable|numeric|min:0',
             'description' => 'nullable|string',
         ]);
 
         try {
-            $data = array_filter($request->only(['economic_age', 'depreciation', 'residual_value', 'final_value', 'description']), fn ($value) => $value !== '' && $value !== null);
+            $data = array_filter($request->only(['economic_age', 'description']), fn ($value) => $value !== '' && $value !== null);
 
             $asset = DB::transaction(function () use ($id, $data) {
                 $asset = FinanceAsset::findOrFail($id);

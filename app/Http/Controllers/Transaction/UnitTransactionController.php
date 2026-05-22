@@ -109,8 +109,8 @@ class UnitTransactionController extends Controller
                 if ($item->unitTransactionBilling) {
                     $billing = $item->unitTransactionBilling;
 
-                    $totalCash = (int) $billing->unitTransactionBillingHistories->sum('cash_payment_amount');
-                    $totalBca = (int) $billing->unitTransactionBillingHistories->sum('bca_payment_amount');
+                    $totalCash = $billing->getTotalCashPayment();
+                    $totalBca = $billing->getTotalBcaCashPayment();
 
                     $totalPaid = $totalCash + $totalBca;
                     $remaining = (int) $billing->grand_total - $totalPaid;
@@ -163,8 +163,8 @@ class UnitTransactionController extends Controller
             if ($data->unitTransactionBilling) {
                 $billing = $data->unitTransactionBilling;
 
-                $totalCash = (int) $billing->unitTransactionBillingHistories->sum('cash_payment_amount');
-                $totalBca = (int) $billing->unitTransactionBillingHistories->sum('bca_payment_amount');
+                $totalCash = $billing->getTotalCashPayment();
+                $totalBca = $billing->getTotalBcaCashPayment();
 
                 $totalPaid = $totalCash + $totalBca;
                 $remaining = (int) $billing->grand_total - $totalPaid;

@@ -32,7 +32,6 @@ class AssetSeeder extends Seeder
             if ($asset->financeAsset) {
                 $asset->financeAsset->update([
                     'economic_age' => rand(1, 10),
-                    'depreciation' => rand(100000, 5000000),
                     'description' => 'Dummy finance details for ' . $asset->name,
                 ]);
             }

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Transaction;
 use App\Exports\DOExpeditionExport;
 use App\Http\Controllers\Controller;
 use App\Models\DOExpedition;
+use App\Models\DOOrderList;
 use App\Traits\DOTrait;
 use App\Traits\ResponseTrait;
 use Exception;
@@ -70,10 +71,26 @@ class DOExpeditionController extends Controller
 
     public function update(Request $request, int $id): JsonResponse
     {
+        $doExpedition = DOExpedition::findOrFail($id);
+        $orderListId = $request->input('order_list_id') ?? $doExpedition->do_order_list_id;
+        $vehicleType = null;
+        if ($orderListId) {
+            $orderList = DOOrderList::find($orderListId);
+            $vehicleType = $orderList?->vehicle_type;
+        }
+
         $validated = $request->validate([
             'order_list_id' => 'sometimes|required|exists:do_order_lists,id',
             'date' => 'sometimes|required|date',
-            'vehicle_id' => 'sometimes|required|exists:vehicle_fleets,id',
+            'vehicle_id' => [
+                'sometimes',
+                'required',
+                Rule::exists('vehicle_fleets', 'id')->where(function ($query) use ($vehicleType) {
+                    if ($vehicleType) {
+                        $query->where('type', $vehicleType);
+                    }
+                }),
+            ],
             'driver_id' => [
                 'sometimes',
                 'required',
@@ -85,7 +102,6 @@ class DOExpeditionController extends Controller
         ]);
 
         try {
-            $doExpedition = DOExpedition::findOrFail($id);
             $doExpedition->update($validated);
             return $this->responseSuccess($doExpedition, 'DO Expedition updated successfully');
         } catch (Exception $err) {
