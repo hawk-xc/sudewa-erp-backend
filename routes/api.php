@@ -42,6 +42,7 @@ use App\Http\Controllers\Transaction\DOExpeditionController;
 use App\Http\Controllers\Transaction\DOInvoiceController;
 use App\Http\Controllers\Transaction\DOOrderListController;
 use App\Http\Controllers\Transaction\DOOrderListTarifController;
+use App\Http\Controllers\Transaction\DOOrderListTarifItemController;
 use App\Http\Controllers\Transaction\MaterialTransactionBillingController;
 use App\Http\Controllers\Transaction\MaterialTransactionController;
 use App\Http\Controllers\Transaction\MaterialTransactionDetailController;
@@ -259,6 +260,7 @@ Route::group(
             Route::get('check-do-expedition-code', [DOExpeditionController::class, 'checkDOCode']);
             Route::apiResource('do-order-list', DOOrderListController::class);
             Route::apiResource('do-order-list-tarif', DOOrderListTarifController::class);
+            Route::apiResource('do-order-list-tarif-item', DOOrderListTarifItemController::class);
             Route::apiResource('do-expedition', DOExpeditionController::class);
             Route::apiResource('do-invoice', DOInvoiceController::class);
 
@@ -274,7 +276,7 @@ Route::group(
             Route::post('finance-asset/import', [FinanceAssetController::class, 'import']);
             Route::get('finance-asset/export', [FinanceAssetController::class, 'export']);
             Route::apiResource('finance-asset', FinanceAssetController::class)->except(['store', 'destroy']);
-            Route::get('transaction-refund', [PurchaseRefundController::class, 'index']);
+            // Route::get('transaction-refund', [PurchaseRefundController::class, 'index']);
             Route::post('finance-billing-item', [FinanceBillingController::class, 'getBillingItem']);
             Route::post('finance-billing-item/{unit_transaction_billing_id}', [FinanceBillingController::class, 'addItem']);
             Route::put('finance-billing-item/{id}', [FinanceBillingController::class, 'updateItem']);
@@ -284,6 +286,7 @@ Route::group(
             Route::apiResource('cash-flow', DailyCashFlowController::class);
             Route::apiResource('adjustment', UnitTransactionAdjustmentController::class);
             Route::apiResource('finance-billing', FinanceBillingController::class);
+            Route::apiResource('finance-refund', FinanceRefundController::class);
             // hold
             Route::apiResource('withholding-tax', WithHoldingTaxController::class);
         });

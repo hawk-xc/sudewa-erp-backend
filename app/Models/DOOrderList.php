@@ -17,6 +17,7 @@ class DOOrderList extends Model
         'code',
         'customer_id',
         'status', // deliver, process, pending, reject
+        'vehicle_type', // fuso, cdd, towing
         'bill_invoice',
         'ppn'
     ];
@@ -118,8 +119,6 @@ class DOOrderList extends Model
             'tarif_id'
         )->withPivot([
             'uuid',
-            'qty',
-            'load_content',
             'delivery_destination'
         ])->withTimestamps();
     }

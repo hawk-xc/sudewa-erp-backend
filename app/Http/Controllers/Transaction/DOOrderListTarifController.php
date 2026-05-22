@@ -9,6 +9,7 @@ use App\Traits\DOTrait;
 use App\Traits\ResponseTrait;
 use Exception;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
@@ -45,7 +46,7 @@ class DOOrderListTarifController extends Controller
     public function show($id)
     {
         try {
-            $item = DOOrderListTarif::with(['tarif', 'do_order_list'])->findOrFail($id);
+            $item = DOOrderListTarif::with(['tarif', 'do_order_list', 'doOrderListTarifItems'])->findOrFail($id);
             return $this->responseSuccess($item, 'DO Order List Tarif details retrieved successfully');
         } catch (Exception $err) {
             return $this->responseError('DO Order List Tarif not found', 'Not Found', 404);
@@ -60,9 +61,7 @@ class DOOrderListTarifController extends Controller
         $validated = $request->validate([
             'do_orderlist_id' => 'required|exists:do_order_lists,id',
             'tarif_id' => 'required|exists:tarifs,id',
-            'qty' => 'required|integer|min:1',
             'vehicle_type' => 'nullable|in:towing,cdd,fuso',
-            'load_content' => 'nullable|string',
             'delivery_destination' => 'nullable|string'
         ]);
 
@@ -71,9 +70,7 @@ class DOOrderListTarifController extends Controller
                 'uuid' => (string) Str::uuid(),
                 'do_orderlist_id' => $validated['do_orderlist_id'],
                 'tarif_id' => $validated['tarif_id'],
-                'qty' => $validated['qty'],
                 'vehicle_type' => $validated['vehicle_type'] ?? null,
-                'load_content' => $validated['load_content'] ?? null,
                 'delivery_destination' => $validated['delivery_destination'] ?? null
             ]);
             
@@ -100,9 +97,8 @@ class DOOrderListTarifController extends Controller
     {
         $validated = $request->validate([
             'tarif_id' => 'sometimes|required|exists:tarifs,id',
-            'qty' => 'sometimes|required|integer|min:1',
             'vehicle_type' => 'sometimes|nullable|in:towing,cdd,fuso',
-            'load_content' => 'sometimes|nullable|string',
+            'delivery_destination' => 'sometimes|nullable|string',
         ]);
 
         try {

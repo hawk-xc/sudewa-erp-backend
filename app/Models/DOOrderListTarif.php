@@ -16,15 +16,12 @@ class DOOrderListTarif extends Model
         'uuid',
         'do_orderlist_id',
         'tarif_id',
-        'qty',
-        'load_content',
         'delivery_destination'
     ];
 
     protected $casts = [
         'do_orderlist_id' => 'integer',
         'tarif_id' => 'integer',
-        'qty' => 'integer',
     ];
 
     public function do_order_list()
@@ -45,6 +42,11 @@ class DOOrderListTarif extends Model
             'do_order_list_tarif_id',
             'do_expedition_id'
         )->withTimestamps();
+    }
+
+    public function doOrderListTarifItems()
+    {
+        return $this->hasMany(DOOrderListTarifItems::class, 'do_order_list_tarif_id', 'id');
     }
 
     protected static function booted()
