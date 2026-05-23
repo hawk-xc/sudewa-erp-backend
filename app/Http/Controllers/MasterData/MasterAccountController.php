@@ -34,12 +34,12 @@ class MasterAccountController extends Controller
     {
         $this->middleware(['permission:master-data:list'])->only(['index', 'show', 'export']);
         $this->middleware(['permission:master-data:create'])->only('store', 'import');
-        $this->middleware(['permission:master-data:edit'])->only('update');
+        $this->middleware(['permission:master-data:edit'])->only(['update', 'bulkUpdate']);
         $this->middleware(['permission:master-data:delete'])->only(['destroy']);
 
         $this->authRepository = $ar;
 
-        $this->accountTable = ['id', 'uuid', 'code', 'account_group_id', 'name', 'description', 'type', 'created_at'];
+        $this->accountTable = ['id', 'uuid', 'code', 'account_group_id', 'name', 'description', 'type', 'category', 'created_at'];
     }
 
     /**
@@ -129,6 +129,7 @@ class MasterAccountController extends Controller
                 'name' => 'required|string|max:255',
                 'description' => 'nullable|string',
                 'type' => 'required|in:debet,credit',
+                'category' => 'sometimes|required|in:general_administration,current_assets,liabilities',
             ]);
 
             $account = DB::transaction(function () use ($validated) {
@@ -160,6 +161,7 @@ class MasterAccountController extends Controller
                     'name' => 'sometimes|required|string|max:255',
                     'description' => 'nullable|string',
                     'type' => 'sometimes|required|in:debet,credit',
+                    'category' => 'sometimes|required|in:general_administration,current_assets,liabilities',
                 ]);
 
                 DB::transaction(function () use ($account, $validated) {
@@ -176,6 +178,47 @@ class MasterAccountController extends Controller
             Log::error('Error While updating Account data : '.$err->getMessage());
 
             return $this->responseError($err->getMessage(), 'Account update failed', 500);
+        }
+    }
+
+    /**
+     * Bulk update accounts.
+     */
+    public function bulkUpdate(Request $request)
+    {
+        if (is_string($request->account_id)) {
+            $request->merge(['account_id' => json_decode($request->account_id, true)]);
+        }
+
+        try {
+            $validated = $request->validate([
+                'account_id' => 'required|array',
+                'account_id.*' => 'integer|distinct|exists:accounts,id',
+                'account_group_id' => 'sometimes|required|integer|exists:account_groups,id',
+                'category' => 'sometimes|required|in:general_administration,current_assets,liabilities',
+            ]);
+
+            DB::transaction(function () use ($validated) {
+                $updateData = [];
+                if (isset($validated['account_group_id'])) {
+                    $updateData['account_group_id'] = $validated['account_group_id'];
+                }
+                if (isset($validated['category'])) {
+                    $updateData['category'] = $validated['category'];
+                }
+
+                if (!empty($updateData)) {
+                    Account::whereIn('id', $validated['account_id'])->update($updateData);
+                }
+            });
+
+            return $this->responseSuccess(null, 'Accounts updated successfully in bulk', 200);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return $this->responseError($e->errors(), 'Validation failed', 422);
+        } catch (Exception $err) {
+            Log::error('Error While bulk updating Account data : '.$err->getMessage());
+
+            return $this->responseError($err->getMessage(), 'Bulk account update failed', 500);
         }
     }
 

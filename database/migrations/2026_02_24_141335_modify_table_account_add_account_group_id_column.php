@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::table('accounts', function (Blueprint $table) {
             $table->dropColumn('group_code');
-            $table->foreignId('account_group_id')->nullable()->constrained('account_groups')->nullOnDelete();
+            $table->foreignId('account_group_id')->nullable()->constrained('account_groups')->nullOnDelete()->after('uuid');
         });
     }
 
