@@ -31,7 +31,7 @@ class DOExpeditionController extends Controller
         $query = DOExpedition::with([
             'vehicle:id,uuid,registration_number,type', 
             'driver:id,uuid,name', 
-            'order_list:id,uuid,code',
+            'order_list:id,uuid,code,vehicle_type',
             'order_list.customer'
         ]);
 
@@ -79,6 +79,13 @@ class DOExpeditionController extends Controller
             $vehicleType = $orderList?->vehicle_type;
         }
 
+        $messages = [
+            'vehicle_id.exists' => $vehicleType 
+                ? "The selected vehicle is invalid or its type does not match the required vehicle type for this order: '{$vehicleType}'."
+                : "The selected vehicle does not exist.",
+            'driver_id.exists' => "The selected driver is invalid or does not have 'driver' type.",
+        ];
+
         $validated = $request->validate([
             'order_list_id' => 'sometimes|required|exists:do_order_lists,id',
             'date' => 'sometimes|required|date',
@@ -99,7 +106,7 @@ class DOExpeditionController extends Controller
                 }),
             ],
             'is_printed' => 'sometimes|boolean',
-        ]);
+        ], $messages);
 
         try {
             $doExpedition->update($validated);

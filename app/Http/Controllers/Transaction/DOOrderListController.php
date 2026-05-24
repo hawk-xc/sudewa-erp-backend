@@ -113,7 +113,8 @@ class DOOrderListController extends Controller
                 'customer', 
                 'tarifs', 
                 'expeditions.vehicle', 
-                'expeditions.order_list_tarifs.tarif'
+                'expeditions.order_list_tarifs.tarif',
+                'expeditions.order_list_tarifs.doOrderListTarifItems'
             ])->findOrFail($id);
             return $this->responseSuccess($orderList, 'DO Order List details retrieved successfully');
         } catch (Exception $err) {
