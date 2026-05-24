@@ -160,6 +160,7 @@ Route::group(
     
             // Master Data
             Route::apiResource('account-group', MasterAccountGroupController::class);
+            Route::put('account/bulk-update', [MasterAccountController::class, 'bulkUpdate']);
             Route::apiResource('account', MasterAccountController::class);
             Route::apiResource('cash', MasterCashController::class);
             Route::apiResource('customer', MasterCustomerController::class);

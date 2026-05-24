@@ -44,7 +44,7 @@ class VehicleFleetImport implements ToCollection, WithHeadingRow
 
                 $rowData = [
                     'registration_number' => isset($row['nomor_polisi']) ? trim($row['nomor_polisi']) : null,
-                    'type' => isset($row['tipe_kendaraan']) ? trim($row['tipe_kendaraan']) : null,
+                    'type' => isset($row['tipe_kendaraan']) ? strtolower(trim($row['tipe_kendaraan'])) : null,
                     'machine_number' => isset($row['nomor_mesin']) ? trim($row['nomor_mesin']) : null,
                     'chassis_number' => isset($row['nomor_rangka']) ? trim($row['nomor_rangka']) : null,
                     'stnk_age' => $stnkAge,
@@ -55,7 +55,7 @@ class VehicleFleetImport implements ToCollection, WithHeadingRow
 
                 $validator = Validator::make($rowData, [
                     'registration_number' => 'required|string|max:249',
-                    'type' => 'required|string|max:249',
+                    'type' => 'required|string|in:fuso,towing,cdd',
                     'machine_number' => 'required|string|max:249|unique:vehicle_fleets,machine_number',
                     'chassis_number' => 'required|string|max:249|unique:vehicle_fleets,chassis_number',
                     'stnk_age' => 'nullable|date',

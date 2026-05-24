@@ -48,6 +48,10 @@ class VehicleFleetController extends Controller
      */
     public function index(Request $request)
     {
+        $request->validate([
+            'type' => 'nullable|string|in:fuso,towing,cdd',
+        ]);
+
         $query = VehicleFleet::query();
 
         try {
@@ -105,7 +109,7 @@ class VehicleFleetController extends Controller
     {
         $validated = $request->validate([
             'registration_number' => 'required|string|max:249',
-            'type' => 'required|string|max:249',
+            'type' => 'required|string|in:fuso,towing,cdd',
             'machine_number' => 'required|string|max:249|unique:vehicle_fleets,machine_number',
             'chassis_number' => 'required|string|max:249|unique:vehicle_fleets,chassis_number',
             'stnk_age' => 'nullable|date',
@@ -141,7 +145,7 @@ class VehicleFleetController extends Controller
     {
         $validated = $request->validate([
             'registration_number' => 'sometimes|string|max:249',
-            'type' => 'sometimes|string|max:249',
+            'type' => 'sometimes|string|in:fuso,towing,cdd',
             'machine_number' => 'sometimes|string|max:249|unique:vehicle_fleets,machine_number,'.$id,
             'chassis_number' => 'sometimes|string|max:249|unique:vehicle_fleets,chassis_number,'.$id,
             'stnk_age' => 'nullable|date',
@@ -235,6 +239,10 @@ class VehicleFleetController extends Controller
      */
     public function export(Request $request)
     {
+        $request->validate([
+            'type' => 'nullable|string|in:fuso,towing,cdd',
+        ]);
+
         try {
             return Excel::download(
                 new VehicleFleetExport($request, $this->vehicleFleetTable),

@@ -19,6 +19,11 @@ class Account extends Model
         'name',
         'description',
         'type',
+        'category'
+    ];
+
+    protected $casts = [
+        'account_group_id' => 'integer'
     ];
 
     public function accountGroup()
