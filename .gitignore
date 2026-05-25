@@ -4,6 +4,7 @@
 /storage/*.key
 /vendor
 .env
+.antigravitycli
 .env.backup
 .phpunit.result.cache
 .gitlab-ci.yml

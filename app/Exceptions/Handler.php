@@ -102,7 +102,7 @@ class Handler extends ExceptionHandler
             if ($exception instanceof \Spatie\Permission\Exceptions\UnauthorizedException || 
                 $exception instanceof \Illuminate\Auth\AccessDeniedException || 
                 $exception instanceof \Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException) {
-                return $this->responseError(null, 'You do not have the required permissions to access this resource.', 403);
+                return $this->responseError(null, 'You do not have the required permissions to access this resource.', 401);
             }
 
             if ($exception instanceof \TypeError) {

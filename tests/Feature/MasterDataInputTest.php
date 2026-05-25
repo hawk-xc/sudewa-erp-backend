@@ -225,7 +225,7 @@ class MasterDataInputTest extends TestCase
     {
         $response = $this->withHeaders($this->getHeaders())->postJson('/wapi/master-data/vehicle-fleet', [
             'registration_number' => 'B 1234 ABC',
-            'type' => 'CDD',
+            'type' => 'cdd',
             'machine_number' => 'MACH-FLEET-1',
             'chassis_number' => 'CHAS-FLEET-1',
         ]);
