@@ -119,16 +119,29 @@ class UnitTransactionRefundController extends Controller
                     // Check if owned by the selected unit transaction
                     $unitTransactionId = $request->unit_transaction_id;
                     if ($unitTransactionId) {
-                        $invalidIds = UnitTransactionItemDetail::whereIn('id', $value)
-                            ->whereHas('unitTransactionItem', function ($query) use ($unitTransactionId) {
-                                $query->where('unit_transaction_id', '!=', $unitTransactionId);
-                            })
-                            ->pluck('id')
-                            ->toArray();
+                        $unitTransaction = DB::table('unit_transactions')->find($unitTransactionId);
+                        if ($unitTransaction) {
+                            if ($unitTransaction->type === 'purchase') {
+                                $validIds = DB::table('unit_transaction_item_details')
+                                    ->join('unit_transaction_items', 'unit_transaction_items.id', '=', 'unit_transaction_item_details.unit_transaction_item_id')
+                                    ->where('unit_transaction_items.unit_transaction_id', $unitTransactionId)
+                                    ->whereIn('unit_transaction_item_details.id', $value)
+                                    ->pluck('unit_transaction_item_details.id')
+                                    ->toArray();
+                            } else {
+                                $validIds = DB::table('unit_transaction_item_sales')
+                                    ->join('unit_transaction_items', 'unit_transaction_items.id', '=', 'unit_transaction_item_sales.unit_transaction_item_id')
+                                    ->where('unit_transaction_items.unit_transaction_id', $unitTransactionId)
+                                    ->whereIn('unit_transaction_item_sales.unit_transaction_item_detail_id', $value)
+                                    ->pluck('unit_transaction_item_sales.unit_transaction_item_detail_id')
+                                    ->toArray();
+                            }
 
-                        if (!empty($invalidIds)) {
-                            $fail('The following item detail IDs do not belong to the selected unit transaction: ' . implode(', ', $invalidIds));
-                            return;
+                            $invalidIds = array_diff($value, $validIds);
+                            if (!empty($invalidIds)) {
+                                $fail('The following item detail IDs do not belong to the selected unit transaction: ' . implode(', ', $invalidIds));
+                                return;
+                            }
                         }
                     }
 
