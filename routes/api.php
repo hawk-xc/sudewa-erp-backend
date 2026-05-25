@@ -29,6 +29,7 @@ use App\Http\Controllers\MasterData\MasterSupplierController;
 use App\Http\Controllers\MasterData\MasterTarifController;
 use App\Http\Controllers\MasterData\MasterUnitTypeController;
 use App\Http\Controllers\MasterData\MasterUnitTypePriceArchiveController;
+use App\Http\Controllers\MasterData\MasterVehicleEquipmentController;
 use App\Http\Controllers\MasterData\MasterVendorController;
 use App\Http\Controllers\MasterData\VehicleFleetController;
 use App\Http\Controllers\Permission\PermissionController;
@@ -60,6 +61,7 @@ use App\Http\Controllers\Transaction\VehicleDataController;
 use App\Http\Controllers\Transaction\VehicleDocumentController;
 use App\Http\Controllers\Transaction\VehicleRegistrationController;
 use App\Http\Controllers\User\UserController;
+use App\Http\Controllers\Warehouse\VehicleEquipmentTransactionController;
 use App\Http\Controllers\Warehouse\WarehouseActivityController;
 use App\Http\Controllers\Warehouse\WarehouseController;
 use Illuminate\Support\Facades\Route;
@@ -178,6 +180,7 @@ Route::group(
             Route::apiResource('material', MasterMaterialController::class);
             Route::apiResource('vendor', MasterVendorController::class);
             Route::apiResource('tarif', MasterTarifController::class);
+            Route::apiResource('vehicle-equipment', MasterVehicleEquipmentController::class);
             Route::apiResource('vehicle-fleet', VehicleFleetController::class);
         });
 
@@ -202,6 +205,7 @@ Route::group(
             Route::post('warehouse-activity/refund-material-stock', [WarehouseActivityController::class, 'refundMaterialStock']);
             Route::post('warehouse-activity/return-material-stock', [WarehouseActivityController::class, 'returnMaterialStock']);
 
+            Route::apiResource('vehicle-equipment-transaction', VehicleEquipmentTransactionController::class);
             Route::apiResource('warehouse-activity', WarehouseActivityController::class);
             Route::apiResource('warehouse-data', WarehouseController::class);
         });
