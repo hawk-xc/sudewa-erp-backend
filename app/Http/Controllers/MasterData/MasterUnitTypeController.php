@@ -111,13 +111,16 @@ class MasterUnitTypeController extends Controller
                 $unitType['forecasted_stock'] = $unitType->getForecastStock($warehouseId);
 
                 $detailsQuery = UnitTransactionItemDetail::query()
-                    ->where('in_stock', true)
                     ->whereHas('unitTransactionItem', function ($q) use ($unitType) {
                         $q->where('unit_type_id', $unitType->id);
                     })
                     ->whereHas('unitTransactionItem.unitTransaction', function ($q) use ($warehouseId) {
                         $q->where('warehouse_id', $warehouseId);
                     });
+
+                if ($request->filled('in_stock') && in_array($request->in_stock, ['true', 'false'])) {
+                        $detailsQuery->where('in_stock', (bool) $request->in_stock);
+                }
 
                 if ($request->filled('color')) {
                     $detailsQuery->where('color', 'like', '%' . $request->color . '%');

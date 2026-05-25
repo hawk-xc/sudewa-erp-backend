@@ -5,6 +5,10 @@ namespace App\Http\Controllers\Transaction;
 use App\Http\Controllers\Controller;
 use App\Models\FinanceRefund;
 use App\Models\UnitTransactionRefund;
+use App\Models\UnitTransaction;
+use App\Models\UnitTransactionItemDetail;
+use App\Models\WarehouseActivity;
+use App\Models\WarehouseMovement;
 use App\Traits\RefundTrait;
 use App\Traits\ResponseTrait;
 use Exception;
@@ -102,13 +106,41 @@ class UnitTransactionRefundController extends Controller
             'unit_transaction_item_detail_ids' => [
                 'nullable',
                 'array',
-                function ($attribute, $value, $fail) {
+                function ($attribute, $value, $fail) use ($request) {
                     $existingIds = DB::table('unit_transaction_refund_item_detail')
                         ->whereIn('unit_transaction_item_detail_id', $value)
                         ->pluck('unit_transaction_item_detail_id')
                         ->toArray();
                     if (!empty($existingIds)) {
                         $fail('The following item detail IDs have already been refunded: ' . implode(', ', $existingIds));
+                        return;
+                    }
+
+                    // Check if owned by the selected unit transaction
+                    $unitTransactionId = $request->unit_transaction_id;
+                    if ($unitTransactionId) {
+                        $invalidIds = UnitTransactionItemDetail::whereIn('id', $value)
+                            ->whereHas('unitTransactionItem', function ($query) use ($unitTransactionId) {
+                                $query->where('unit_transaction_id', '!=', $unitTransactionId);
+                            })
+                            ->pluck('id')
+                            ->toArray();
+
+                        if (!empty($invalidIds)) {
+                            $fail('The following item detail IDs do not belong to the selected unit transaction: ' . implode(', ', $invalidIds));
+                            return;
+                        }
+                    }
+
+                    // Check if in stock
+                    $notInStockIds = UnitTransactionItemDetail::whereIn('id', $value)
+                        ->where('in_stock', false)
+                        ->pluck('id')
+                        ->toArray();
+
+                    if (!empty($notInStockIds)) {
+                        $fail('The following item detail IDs are not in stock: ' . implode(', ', $notInStockIds));
+                        return;
                     }
                 }
             ],
@@ -130,6 +162,41 @@ class UnitTransactionRefundController extends Controller
 
                 if ($request->filled('unit_transaction_item_detail_ids')) {
                     $refund->unitTransactionItemDetails()->sync($request->unit_transaction_item_detail_ids);
+
+                    $unitTransaction = $refund->unitTransaction;
+                    $activity = WarehouseActivity::create([
+                        'person_id' => $unitTransaction->person_id,
+                        'warehouse_id' => $unitTransaction->warehouse_id,
+                        'activity_type' => $unitTransaction->type === 'purchase' ? 'issue' : 'receipt',
+                        'activity_date' => $refund->refund_date ?? now(),
+                        'description' => 'Refund ' . $refund->code,
+                    ]);
+
+                    $details = UnitTransactionItemDetail::whereIn('id', $request->unit_transaction_item_detail_ids)->get();
+                    foreach ($details as $detail) {
+                        WarehouseMovement::create([
+                            'warehouse_activity_id' => $activity->id,
+                            'unit_transaction_id' => $unitTransaction->id,
+                            'unit_transaction_item_detail_id' => $detail->id,
+                            'status' => 'refund',
+                        ]);
+
+                        if ($unitTransaction->type === 'purchase') {
+                            $detail->update([
+                                'in_stock' => false,
+                                'is_forecast' => false,
+                                'status' => 'returned',
+                            ]);
+                        } else if ($unitTransaction->type === 'sales') {
+                            $detail->update([
+                                'in_stock' => true,
+                                'is_forecast' => false,
+                                'status' => 'returned',
+                            ]);
+                        }
+                    }
+
+                    $unitTransaction->recalculateBillingTotals();
                 }
 
                 $refund->load(['unitTransaction', 'unitTransactionItemDetails', 'unitTransactionRefundPayments']);
@@ -209,6 +276,35 @@ class UnitTransactionRefundController extends Controller
             $refund = DB::transaction(function () use ($request, $id) {
                 $refund = UnitTransactionRefund::findOrFail($id);
 
+                // 1. Revert old item details of this refund
+                $oldDetailIds = $refund->unitTransactionItemDetails()->pluck('unit_transaction_item_details.id')->toArray();
+                if (!empty($oldDetailIds)) {
+                    $oldDetails = UnitTransactionItemDetail::whereIn('id', $oldDetailIds)->get();
+                    foreach ($oldDetails as $oldDetail) {
+                        $oldTx = $oldDetail->unitTransactionItem->unitTransaction;
+                        if ($oldTx) {
+                            if ($oldTx->type === 'purchase') {
+                                $oldDetail->update([
+                                    'in_stock' => true,
+                                    'is_forecast' => false,
+                                    'status' => null,
+                                ]);
+                            } else if ($oldTx->type === 'sales') {
+                                $oldDetail->update([
+                                    'in_stock' => false,
+                                    'is_forecast' => false,
+                                    'status' => null,
+                                ]);
+                            }
+                            $oldTx->recalculateBillingTotals();
+                        }
+                    }
+                }
+
+                // 2. Delete associated old WarehouseActivity (which cascade deletes movements)
+                WarehouseActivity::where('description', 'Refund ' . $refund->code)->delete();
+
+                // 3. Update the refund
                 $data = array_filter($request->only([
                     'unit_transaction_id',
                     'qty',
@@ -219,8 +315,48 @@ class UnitTransactionRefundController extends Controller
 
                 $refund->update($data);
 
+                // 4. Sync new details
                 if ($request->has('unit_transaction_item_detail_ids')) {
                     $refund->unitTransactionItemDetails()->sync($request->unit_transaction_item_detail_ids ?? []);
+                }
+
+                // 5. Apply stock updates for new details
+                $newDetailIds = $refund->unitTransactionItemDetails()->pluck('unit_transaction_item_details.id')->toArray();
+                if (!empty($newDetailIds)) {
+                    $unitTransaction = $refund->unitTransaction;
+                    $activity = WarehouseActivity::create([
+                        'person_id' => $unitTransaction->person_id,
+                        'warehouse_id' => $unitTransaction->warehouse_id,
+                        'activity_type' => $unitTransaction->type === 'purchase' ? 'issue' : 'receipt',
+                        'activity_date' => $refund->refund_date ?? now(),
+                        'description' => 'Refund ' . $refund->code,
+                    ]);
+
+                    $details = UnitTransactionItemDetail::whereIn('id', $newDetailIds)->get();
+                    foreach ($details as $detail) {
+                        WarehouseMovement::create([
+                            'warehouse_activity_id' => $activity->id,
+                            'unit_transaction_id' => $unitTransaction->id,
+                            'unit_transaction_item_detail_id' => $detail->id,
+                            'status' => 'refund',
+                        ]);
+
+                        if ($unitTransaction->type === 'purchase') {
+                            $detail->update([
+                                'in_stock' => false,
+                                'is_forecast' => false,
+                                'status' => 'returned',
+                            ]);
+                        } else if ($unitTransaction->type === 'sales') {
+                            $detail->update([
+                                'in_stock' => true,
+                                'is_forecast' => false,
+                                'status' => 'returned',
+                            ]);
+                        }
+                    }
+
+                    $unitTransaction->recalculateBillingTotals();
                 }
 
                 $refund->load(['unitTransaction', 'unitTransactionItemDetails', 'unitTransactionRefundPayments']);
@@ -248,6 +384,36 @@ class UnitTransactionRefundController extends Controller
         try {
             DB::transaction(function () use ($id) {
                 $refund = UnitTransactionRefund::findOrFail($id);
+
+                // 1. Revert old item details of this refund
+                $detailIds = $refund->unitTransactionItemDetails()->pluck('unit_transaction_item_details.id')->toArray();
+                if (!empty($detailIds)) {
+                    $details = UnitTransactionItemDetail::whereIn('id', $detailIds)->get();
+                    foreach ($details as $detail) {
+                        $tx = $detail->unitTransactionItem->unitTransaction;
+                        if ($tx) {
+                            if ($tx->type === 'purchase') {
+                                $detail->update([
+                                    'in_stock' => true,
+                                    'is_forecast' => false,
+                                    'status' => null,
+                                ]);
+                            } else if ($tx->type === 'sales') {
+                                $detail->update([
+                                    'in_stock' => false,
+                                    'is_forecast' => false,
+                                    'status' => null,
+                                ]);
+                            }
+                            $tx->recalculateBillingTotals();
+                        }
+                    }
+                }
+
+                // 2. Delete associated WarehouseActivity
+                WarehouseActivity::where('description', 'Refund ' . $refund->code)->delete();
+
+                // 3. Detach and delete refund
                 $refund->unitTransactionItemDetails()->detach();
                 $refund->delete();
             });

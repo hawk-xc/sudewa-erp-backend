@@ -117,9 +117,11 @@ class PpnDataController extends Controller
                     continue;
                 }
 
+                $trxBrutto = $trx->getBrutoAmount();
+
+                $dppUnit = (int) $trxBrutto / 1.11;
+                $ppnUnit = (int) $dppUnit*0.11;
                 $hargaUnit = (int) $item->price;
-                $dppUnit = (int) $item->dpp_per_unit_price;
-                $ppnUnit = (int) $item->ppn_per_unit_price;
 
                 if ($request->filled('min_price') && $hargaUnit < $request->min_price) {
                     continue;
@@ -173,11 +175,12 @@ class PpnDataController extends Controller
                         'color' => $detail->color,
                     ],
 
+                    'total_price' => $trx->getBrutoAmount(),
                     'unit_price' => $hargaUnit,
                     'dpp_amount' => $dppUnit,
                     'ppn_11' => $ppnUnit,
 
-                    'payment_amount' => $hargaUnit,
+                    'payment_amount' => $dppUnit + $ppnUnit,
                 ]);
             }
 
