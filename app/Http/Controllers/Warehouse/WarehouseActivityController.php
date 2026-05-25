@@ -249,17 +249,17 @@ class WarehouseActivityController extends Controller
                         );
                     }
 
-                    if (! $billing) {
-                        throw new Exception(
-                            "Transaction for detail ID {$detail->id} has no billing yet"
-                        );
-                    }
+                    // if (! $billing) {
+                    //     throw new Exception(
+                    //         "Transaction for detail ID {$detail->id} has no billing yet"
+                    //     );
+                    // }
 
-                    if (! $billing->is_paid) {
-                        throw new Exception(
-                            "Transaction for detail ID {$detail->id} has no paid billing yet"
-                        );
-                    }
+                    // if (! $billing->is_paid) {
+                    //     throw new Exception(
+                    //         "Transaction for detail ID {$detail->id} has no paid billing yet"
+                    //     );
+                    // }
 
                     if ($detail->in_stock) {
                         throw new Exception(
@@ -340,17 +340,17 @@ class WarehouseActivityController extends Controller
 
                     $billing = $transaction->unitTransactionBilling;
 
-                    if (! $billing) {
-                        throw new Exception(
-                            "Transaction for detail ID {$detail->id} has no billing yet"
-                        );
-                    }
+                    // if (! $billing) {
+                    //     throw new Exception(
+                    //         "Transaction for detail ID {$detail->id} has no billing yet"
+                    //     );
+                    // }
 
-                    if (! $detail->in_stock) {
-                        throw new Exception(
-                            "Detail ID {$detail->id} is not available in stock"
-                        );
-                    }
+                    // if (! $detail->in_stock) {
+                    //     throw new Exception(
+                    //         "Detail ID {$detail->id} is not available in stock"
+                    //     );
+                    // }
 
                     $detail->update(['in_stock' => false]);
 
