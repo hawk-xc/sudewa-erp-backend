@@ -3,7 +3,9 @@
 namespace Database\Seeders;
 
 use App\Models\Cash;
+use App\Models\CashFlow;
 use App\Models\Company;
+use App\Models\FinanceBilling;
 use App\Models\Person;
 use App\Models\UnitTransaction;
 use App\Models\UnitTransactionBilling;
@@ -126,7 +128,7 @@ class UnitTransactionSeeder extends Seeder
                     }
                 }
 
-                $grandTotal = $unitTransaction->getBrutoAmountActual();
+                $grandTotal = $unitTransaction->getBrutoAmount();
                 $billing = UnitTransactionBilling::create([
                     'unit_transaction_id' => $unitTransaction->id,
                     'grand_total' => $grandTotal,
@@ -143,6 +145,27 @@ class UnitTransactionSeeder extends Seeder
                 if ($cash) {
                     $history->cashes()->attach($cash->id, ['amount' => $grandTotal]);
                     $cash->increment('amount', $grandTotal);
+
+                    // Create cash flow record
+                    $cashFlow = CashFlow::create([
+                        'company_id' => $company->id,
+                        'cash_id' => $cash->id,
+                        'account_id' => $cash->account_id,
+                        'unit_transaction_billing_history_id' => $history->id,
+                        'date' => Carbon::now(),
+                        'note' => "Pelunasan Total " . $unitTransaction->code,
+                        'debet' => 0,
+                        'credit' => $grandTotal,
+                    ]);
+
+                    // Create finance billing record
+                    FinanceBilling::create([
+                        'unit_transaction_billing_id' => $billing->id,
+                        'cash_flow_id' => $cashFlow->id,
+                        'grand_total' => $grandTotal,
+                        'last_payment_at' => now(),
+                        'is_valid' => false,
+                    ]);
                 }
 
                 $billing->update([
@@ -242,7 +265,15 @@ class UnitTransactionSeeder extends Seeder
                     }
                 }
 
-                $this->command->info("Created Draft Purchase: {$code}");
+                // Create unpaid billing for draft purchase
+                $grandTotal = $unitTransaction->getBrutoAmount();
+                UnitTransactionBilling::create([
+                    'unit_transaction_id' => $unitTransaction->id,
+                    'grand_total' => $grandTotal,
+                    'is_paid' => false,
+                ]);
+
+                $this->command->info("Created Draft Purchase (with Billing): {$code}");
             });
         }
     }
@@ -346,7 +377,7 @@ class UnitTransactionSeeder extends Seeder
                     return;
                 }
 
-                $grandTotal = $unitTransaction->getBrutoAmountActual();
+                $grandTotal = $unitTransaction->getBrutoAmount();
                 $billing = UnitTransactionBilling::create([
                     'unit_transaction_id' => $unitTransaction->id,
                     'grand_total' => $grandTotal,
@@ -363,6 +394,27 @@ class UnitTransactionSeeder extends Seeder
                 if ($cash) {
                     $history->cashes()->attach($cash->id, ['amount' => $grandTotal]);
                     $cash->increment('amount', $grandTotal);
+
+                    // Create cash flow record
+                    $cashFlow = CashFlow::create([
+                        'company_id' => $company->id,
+                        'cash_id' => $cash->id,
+                        'account_id' => $cash->account_id,
+                        'unit_transaction_billing_history_id' => $history->id,
+                        'date' => Carbon::now(),
+                        'note' => "Pelunasan Total " . $unitTransaction->code,
+                        'debet' => $grandTotal,
+                        'credit' => 0,
+                    ]);
+
+                    // Create finance billing record
+                    FinanceBilling::create([
+                        'unit_transaction_billing_id' => $billing->id,
+                        'cash_flow_id' => $cashFlow->id,
+                        'grand_total' => $grandTotal,
+                        'last_payment_at' => now(),
+                        'is_valid' => false,
+                    ]);
                 }
 
                 $billing->update([
@@ -478,7 +530,15 @@ class UnitTransactionSeeder extends Seeder
                     return;
                 }
 
-                $this->command->info("Created Draft Sales: {$code}");
+                // Create unpaid billing for draft sales
+                $grandTotal = $unitTransaction->getBrutoAmount();
+                UnitTransactionBilling::create([
+                    'unit_transaction_id' => $unitTransaction->id,
+                    'grand_total' => $grandTotal,
+                    'is_paid' => false,
+                ]);
+
+                $this->command->info("Created Draft Sales (with Billing): {$code}");
             });
         }
     }
