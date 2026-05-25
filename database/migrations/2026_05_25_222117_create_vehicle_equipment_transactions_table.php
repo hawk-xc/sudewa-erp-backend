@@ -15,15 +15,14 @@ return new class extends Migration
             $table->id();
             $table->uuid('uuid')->unique();
             $table->string('code')->unique();
-            $table->foreignId('person_id')->nullable()->constrained('persons')->nullOnDelete();
-            $table->foreignId('vehicle_fleet_id')->nullable()->constrained('vehicle_fleets')->nullOnDelete();
-            $table->string('supplier_name')->nullable();
-            $table->enum('type', ['receipt', 'dispatch']);
-            $table->date('transaction_date');
-            $table->decimal('purchase_amount', 15, 2)->default(0);
-            $table->string('location')->nullable();
-            $table->string('category')->nullable();
-            $table->text('description')->nullable();
+            $table->foreignId('person_id')->nullable(true)->constrained('persons')->nullOnDelete();
+            $table->foreignId('vehicle_fleet_id')->nullable(true)->constrained('vehicle_fleets')->nullOnDelete();
+            $table->string('supplier_name')->nullable(true);
+            $table->enum('type', ['receipt', 'dispatch'])->default('receipt');
+            $table->date('transaction_date')->nullable(true);
+            $table->string('location')->nullable(true);
+            $table->enum('category', ['general', 'equipment', 'maintenance'])->default('general')->nullable(false);
+            $table->text('description')->nullable(true);
             $table->timestamps();
         });
     }

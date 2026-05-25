@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\VehicleEquipment;
 use App\Repositories\AuthRepository;
 use App\Traits\ResponseTrait;
+use App\Traits\VehicleEquipmentTrait;
 use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -18,7 +19,7 @@ use Illuminate\Support\Facades\Log;
  */
 class MasterVehicleEquipmentController extends Controller
 {
-    use ResponseTrait;
+    use ResponseTrait, VehicleEquipmentTrait;
 
     protected AuthRepository $authRepository;
 
@@ -116,12 +117,12 @@ class MasterVehicleEquipmentController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'code' => 'required|string|max:249|unique:vehicle_equipment,code',
             'name' => 'required|string|max:249',
         ]);
 
         try {
             $equipment = DB::transaction(function () use ($validated) {
+                $validated['code'] = $this->generateEquipmentCode();
                 return VehicleEquipment::create($validated);
             });
 
@@ -139,12 +140,11 @@ class MasterVehicleEquipmentController extends Controller
     public function update(Request $request, string $id)
     {
         $request->validate([
-            'code' => 'sometimes|string|max:249|unique:vehicle_equipment,code,'.$id,
             'name' => 'sometimes|string|max:249',
         ]);
 
         try {
-            $data = array_filter($request->only(['code', 'name']), fn ($value) => ! is_null($value) && $value !== '');
+            $data = array_filter($request->only(['name']), fn ($value) => ! is_null($value) && $value !== '');
 
             if (empty($data)) {
                 return $this->responseError(null, 'No data provided to update', 422);

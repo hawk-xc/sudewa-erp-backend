@@ -20,7 +20,6 @@ class VehicleEquipmentTransaction extends Model
         'supplier_name', // nullable
         'type', // receipt, dispatch
         'transaction_date',
-        'purchase_amount',
         'location',
         'category',
         'description'
