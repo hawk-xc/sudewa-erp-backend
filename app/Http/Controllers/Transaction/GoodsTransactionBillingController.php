@@ -3,20 +3,20 @@
 namespace App\Http\Controllers\Transaction;
 
 use App\Http\Controllers\Controller;
-use App\Models\MaterialTransaction;
-use App\Models\MaterialTransactionBilling;
+use App\Models\GoodsTransaction;
+use App\Models\GoodsTransactionBilling;
 use App\Traits\ResponseTrait;
 use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
-class MaterialTransactionBillingController extends Controller
+class GoodsTransactionBillingController extends Controller
 {
     use ResponseTrait;
 
     // projection
-    protected $materialTransactionBillingTable;
+    protected $goodsTransactionBillingTable;
 
     public function __construct()
     {
@@ -25,10 +25,10 @@ class MaterialTransactionBillingController extends Controller
         $this->middleware(['permission:transaction:edit'])->only('update');
         $this->middleware(['permission:transaction:delete'])->only(['destroy']);
 
-        $this->materialTransactionBillingTable = [
+        $this->goodsTransactionBillingTable = [
             'id',
             'uuid',
-            'material_transaction_id',
+            'goods_transaction_id',
             'cash_id',
             'amount',
             'payment_date',
@@ -38,13 +38,13 @@ class MaterialTransactionBillingController extends Controller
     }
 
     /**
-     * List all material transaction billings.
+     * List all goods transaction billings.
      */
     public function index(Request $request)
     {
-        $query = MaterialTransactionBilling::with(['materialTransaction', 'cash']);
+        $query = GoodsTransactionBilling::with(['goodsTransaction', 'cash']);
 
-        $query->select($this->materialTransactionBillingTable);
+        $query->select($this->goodsTransactionBillingTable);
 
         try {
             if ($request->filled('search')) {
@@ -62,13 +62,13 @@ class MaterialTransactionBillingController extends Controller
                 });
             }
 
-            foreach ($this->materialTransactionBillingTable as $field) {
+            foreach ($this->goodsTransactionBillingTable as $field) {
                 if ($request->filled($field)) {
                     $query->where($field, $request->$field);
                 }
             }
 
-            $allowedSort = $this->materialTransactionBillingTable;
+            $allowedSort = $this->goodsTransactionBillingTable;
 
             $sortBy = in_array($request->sort_by, $allowedSort)
                 ? $request->sort_by
@@ -82,21 +82,21 @@ class MaterialTransactionBillingController extends Controller
 
             $data = $query->paginate($perPage);
 
-            return $this->responseSuccess($data, 'Material Transaction Billing list retrieved successfully', 200);
+            return $this->responseSuccess($data, 'Goods Transaction Billing list retrieved successfully', 200);
         } catch (Exception $err) {
-            Log::error('Error While retrieved Material Transaction Billing data : '.$err->getMessage());
+            Log::error('Error While retrieved Goods Transaction Billing data : '.$err->getMessage());
 
-            return $this->responseError($err->getMessage(), 'Material Transaction Billing list retrieved Failed', 500);
+            return $this->responseError($err->getMessage(), 'Goods Transaction Billing list retrieved Failed', 500);
         }
     }
 
     /**
-     * Store a new material transaction billing.
+     * Store a new goods transaction billing.
      */
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'material_transaction_id' => 'required|exists:material_transactions,id',
+            'goods_transaction_id' => 'required|exists:goods_transactions,id',
             'cash_id' => 'required|exists:cashes,id',
             'amount' => 'required|numeric|min:1',
             'payment_date' => 'required|date',
@@ -104,14 +104,14 @@ class MaterialTransactionBillingController extends Controller
         ]);
 
         try {
-            $transaction = MaterialTransaction::findOrFail($validated['material_transaction_id']);
+            $transaction = GoodsTransaction::findOrFail($validated['goods_transaction_id']);
 
             if ($transaction->is_paid) {
                 return $this->responseError('Transaction is already fully paid.', 'Access Denied', 403);
             }
 
             $totalAmount = $transaction->getTotalAmount();
-            $totalPaidExisting = (int) $transaction->materialTransactionBillings()->sum('amount');
+            $totalPaidExisting = (int) $transaction->goodsTransactionBillings()->sum('amount');
             $newTotalPaid = $totalPaidExisting + (int) $validated['amount'];
 
             if ($newTotalPaid > $totalAmount) {
@@ -120,7 +120,7 @@ class MaterialTransactionBillingController extends Controller
 
             $data = DB::transaction(function () use ($validated, $transaction, $newTotalPaid, $totalAmount) {
                 // Set is_paid to true for the billing record as it's a payment
-                $data = MaterialTransactionBilling::create(array_merge($validated, ['is_paid' => true]));
+                $data = GoodsTransactionBilling::create(array_merge($validated, ['is_paid' => true]));
                 
                 $isFullyPaid = $newTotalPaid >= $totalAmount;
                 $transaction->update(['is_paid' => $isFullyPaid]);
@@ -131,7 +131,7 @@ class MaterialTransactionBillingController extends Controller
                         'in_stock' => true
                     ];
 
-                    $transaction->materialTransactionDetails()->update($detailStatus);
+                    $transaction->goodsTransactionDetails()->update($detailStatus);
                 }
 
                 return $data;
@@ -142,39 +142,39 @@ class MaterialTransactionBillingController extends Controller
                 'total' => $totalAmount - (int) $validated['amount']
             ]);
 
-            return $this->responseSuccess($responseData, 'Material Transaction Billing created successfully', 201);
+            return $this->responseSuccess($responseData, 'Goods Transaction Billing created successfully', 201);
         } catch (Exception $err) {
-            Log::error('Error while trying create Material Transaction Billing Data : '.$err->getMessage());
+            Log::error('Error while trying create Goods Transaction Billing Data : '.$err->getMessage());
 
-            return $this->responseError($err->getMessage(), 'Material Transaction Billing creation failed', 500);
+            return $this->responseError($err->getMessage(), 'Goods Transaction Billing creation failed', 500);
         }
     }
 
     /**
-     * Get material transaction billing detail.
+     * Get goods transaction billing detail.
      */
     public function show($id)
     {
         try {
-            $data = MaterialTransactionBilling::with(['materialTransaction', 'cash'])
-                ->select($this->materialTransactionBillingTable)
+            $data = GoodsTransactionBilling::with(['goodsTransaction', 'cash'])
+                ->select($this->goodsTransactionBillingTable)
                 ->findOrFail($id);
 
-            return $this->responseSuccess($data, 'Material Transaction Billing detail retrieved successfully', 200);
+            return $this->responseSuccess($data, 'Goods Transaction Billing detail retrieved successfully', 200);
         } catch (Exception $err) {
-            Log::error('Error While retrieved Material Transaction Billing data : '.$err->getMessage());
+            Log::error('Error While retrieved Goods Transaction Billing data : '.$err->getMessage());
 
-            return $this->responseError($err->getMessage(), 'Material Transaction Billing not found', 404);
+            return $this->responseError($err->getMessage(), 'Goods Transaction Billing not found', 404);
         }
     }
 
     /**
-     * Update a material transaction billing.
+     * Update a goods transaction billing.
      */
     public function update(Request $request, $id)
     {
         $request->validate([
-            'material_transaction_id' => 'sometimes|required|exists:material_transactions,id',
+            'goods_transaction_id' => 'sometimes|required|exists:goods_transactions,id',
             'cash_id' => 'sometimes|required|exists:cashes,id',
             'amount' => 'sometimes|required|numeric|min:1',
             'payment_date' => 'sometimes|required|date',
@@ -182,9 +182,9 @@ class MaterialTransactionBillingController extends Controller
         ]);
 
         try {
-            $billing = MaterialTransactionBilling::findOrFail($id);
-            $transactionId = $request->material_transaction_id ?? $billing->material_transaction_id;
-            $transaction = MaterialTransaction::findOrFail($transactionId);
+            $billing = GoodsTransactionBilling::findOrFail($id);
+            $transactionId = $request->goods_transaction_id ?? $billing->goods_transaction_id;
+            $transaction = GoodsTransaction::findOrFail($transactionId);
 
             if ($transaction->is_paid) {
                 return $this->responseError('Transaction is already fully paid.', 'Access Denied', 403);
@@ -193,7 +193,7 @@ class MaterialTransactionBillingController extends Controller
             $totalAmount = $transaction->getTotalAmount();
             $amountToApply = $request->amount ?? $billing->amount;
 
-            $totalPaidOthers = (int) $transaction->materialTransactionBillings()
+            $totalPaidOthers = (int) $transaction->goodsTransactionBillings()
                 ->where('id', '!=', $id)
                 ->sum('amount');
 
@@ -204,7 +204,7 @@ class MaterialTransactionBillingController extends Controller
             }
 
             $data = array_filter(
-                $request->only(['material_transaction_id', 'cash_id', 'amount', 'payment_date', 'description']),
+                $request->only(['goods_transaction_id', 'cash_id', 'amount', 'payment_date', 'description']),
                 fn ($val) => ! is_null($val) && $val !== ''
             );
 
@@ -218,24 +218,24 @@ class MaterialTransactionBillingController extends Controller
                 'total' => $totalAmount - (int) $amountToApply
             ]);
 
-            return $this->responseSuccess($responseData, 'Material Transaction Billing updated successfully', 200);
+            return $this->responseSuccess($responseData, 'Goods Transaction Billing updated successfully', 200);
         } catch (Exception $err) {
-            Log::error('Error while trying update Material Transaction Billing data : '.$err->getMessage());
+            Log::error('Error while trying update Goods Transaction Billing data : '.$err->getMessage());
 
-            return $this->responseError($err->getMessage(), 'Material Transaction Billing update failed', 500);
+            return $this->responseError($err->getMessage(), 'Goods Transaction Billing update failed', 500);
         }
     }
 
     /**
-     * Delete a material transaction billing.
+     * Delete a goods transaction billing.
      */
     public function destroy($id)
     {
         try {
-            $data = MaterialTransactionBilling::findOrFail($id);
+            $data = GoodsTransactionBilling::findOrFail($id);
             
             DB::transaction(function () use ($data) {
-                $transaction = $data->materialTransaction;
+                $transaction = $data->goodsTransaction;
                 $data->delete();
                 
                 $transaction->update(['is_paid' => false]);
@@ -245,14 +245,14 @@ class MaterialTransactionBillingController extends Controller
                     'in_stock' => false
                 ];
 
-                $transaction->materialTransactionDetails()->update($detailStatus);
+                $transaction->goodsTransactionDetails()->update($detailStatus);
             });
 
-            return $this->responseSuccess(null, 'Material Transaction Billing deleted successfully', 200);
+            return $this->responseSuccess(null, 'Goods Transaction Billing deleted successfully', 200);
         } catch (Exception $err) {
-            Log::error('Error while trying delete Material Transaction Billing data : '.$err->getMessage());
+            Log::error('Error while trying delete Goods Transaction Billing data : '.$err->getMessage());
 
-            return $this->responseError($err->getMessage(), 'Material Transaction Billing deletion failed', 500);
+            return $this->responseError($err->getMessage(), 'Goods Transaction Billing deletion failed', 500);
         }
     }
 }

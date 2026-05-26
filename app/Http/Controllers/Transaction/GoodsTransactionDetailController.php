@@ -4,8 +4,8 @@ namespace App\Http\Controllers\Transaction;
 
 use App\Http\Controllers\Controller;
 use App\Models\Material;
-use App\Models\MaterialTransaction;
-use App\Models\MaterialTransactionDetail;
+use App\Models\GoodsTransaction;
+use App\Models\GoodsTransactionDetail;
 use App\Traits\ResponseTrait;
 use Exception;
 use Illuminate\Http\Request;
@@ -13,12 +13,12 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
 
-class MaterialTransactionDetailController extends Controller
+class GoodsTransactionDetailController extends Controller
 {
     use ResponseTrait;
 
     // projection
-    protected $materialTransactionDetailTable;
+    protected $goodsTransactionDetailTable;
 
     public function __construct()
     {
@@ -27,11 +27,11 @@ class MaterialTransactionDetailController extends Controller
         $this->middleware(['permission:transaction:edit'])->only('update');
         $this->middleware(['permission:transaction:delete'])->only(['destroy']);
 
-        $this->materialTransactionDetailTable = [
+        $this->goodsTransactionDetailTable = [
             'id',
             'uuid',
             'order_code',
-            'material_transaction_id',
+            'goods_transaction_id',
             'material_id',
             'qty',
             'price',
@@ -43,17 +43,17 @@ class MaterialTransactionDetailController extends Controller
     }
 
     /**
-     * List all material transaction details.
+     * List all goods transaction details.
      */
     public function index(Request $request)
     {   
-        $query = MaterialTransactionDetail::with(['materialTransaction', 'material']);
+        $query = GoodsTransactionDetail::with(['goodsTransaction', 'material']);
 
-        $query->select($this->materialTransactionDetailTable);
+        $query->select($this->goodsTransactionDetailTable);
 
         try {
             if ($request->filled('type')) {
-                $query->whereHas('materialTransaction', function ($q) use ($request) {
+                $query->whereHas('goodsTransaction', function ($q) use ($request) {
                     $q->where('type', $request->type);
                 });
             }
@@ -69,7 +69,7 @@ class MaterialTransactionDetailController extends Controller
                                 $mq->where('name', 'LIKE BINARY', "%$search%")
                                     ->orWhere('code', 'LIKE BINARY', "%$search%");
                             })
-                            ->orWhereHas('materialTransaction', function ($tq) use ($search) {
+                            ->orWhereHas('goodsTransaction', function ($tq) use ($search) {
                                 $tq->where('code', 'LIKE BINARY', "%$search%")
                                     ->orWhere('supplier_name', 'LIKE BINARY', "%$search%");
                             });
@@ -79,7 +79,7 @@ class MaterialTransactionDetailController extends Controller
                                 $mq->where('name', 'like', "%$search%")
                                     ->orWhere('code', 'like', "%$search%");
                             })
-                            ->orWhereHas('materialTransaction', function ($tq) use ($search) {
+                            ->orWhereHas('goodsTransaction', function ($tq) use ($search) {
                                 $tq->where('code', 'like', "%$search%")
                                     ->orWhere('supplier_name', 'like', "%$search%");
                             });
@@ -87,13 +87,13 @@ class MaterialTransactionDetailController extends Controller
                 });
             }
 
-            foreach ($this->materialTransactionDetailTable as $field) {
+            foreach ($this->goodsTransactionDetailTable as $field) {
                 if ($request->filled($field)) {
                     $query->where($field, $request->$field);
                 }
             }
 
-            $allowedSort = $this->materialTransactionDetailTable;
+            $allowedSort = $this->goodsTransactionDetailTable;
 
             $sortBy = in_array($request->sort_by, $allowedSort)
                 ? $request->sort_by
@@ -107,27 +107,27 @@ class MaterialTransactionDetailController extends Controller
 
             $data = $query->paginate($perPage);
 
-            return $this->responseSuccess($data, 'Material Transaction Detail list retrieved successfully', 200);
+            return $this->responseSuccess($data, 'Goods Transaction Detail list retrieved successfully', 200);
         } catch (Exception $err) {
-            Log::error('Error While retrieved Material Transaction Detail data : '.$err->getMessage());
+            Log::error('Error While retrieved Goods Transaction Detail data : '.$err->getMessage());
 
-            return $this->responseError($err->getMessage(), 'Material Transaction Detail list retrieved Failed', 500);
+            return $this->responseError($err->getMessage(), 'Goods Transaction Detail list retrieved Failed', 500);
         }
     }
 
     /**
-     * Store a new material transaction detail.
+     * Store a new goods transaction detail.
      */
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'material_transaction_id' => 'required|exists:material_transactions,id',
-            'order_code' => 'required|unique:material_transaction_details,order_code',
+            'goods_transaction_id' => 'required|exists:goods_transactions,id',
+            'order_code' => 'required|unique:goods_transaction_details,order_code',
             'material_id' => [
                 'required',
                 'exists:materials,id',
-                Rule::unique('material_transaction_details')->where(function ($query) use ($request) {
-                    return $query->where('material_transaction_id', $request->material_transaction_id);
+                Rule::unique('goods_transaction_details')->where(function ($query) use ($request) {
+                    return $query->where('goods_transaction_id', $request->goods_transaction_id);
                 }),
             ],
             'qty' => 'required|integer|min:1',
@@ -138,7 +138,7 @@ class MaterialTransactionDetailController extends Controller
         ]);
 
         try {
-            $transaction = MaterialTransaction::findOrFail($validated['material_transaction_id']);
+            $transaction = GoodsTransaction::findOrFail($validated['goods_transaction_id']);
 
             if ($transaction->type == 'sales') {
                 $availableStock = $this->getAvailableStock($request->material_id);
@@ -148,7 +148,7 @@ class MaterialTransactionDetailController extends Controller
                 }
             }
 
-            if ($transaction->materialTransactionBillings()->where('is_paid', true)->exists()) {
+            if ($transaction->goodsTransactionBillings()->where('is_paid', true)->exists()) {
                 return $this->responseError(null, 'Cannot add items to a transaction that has already have payments!', 422);
             }
 
@@ -158,53 +158,53 @@ class MaterialTransactionDetailController extends Controller
                     $validated['description'] = "Pembayaran " . $typeState . " material ke " . $transaction->supplier_name;
                 }
 
-                return MaterialTransactionDetail::create($validated);
+                return GoodsTransactionDetail::create($validated);
             });
 
-            return $this->responseSuccess($data, 'Material Transaction Detail created successfully', 201);
+            return $this->responseSuccess($data, 'Goods Transaction Detail created successfully', 201);
         } catch (Exception $err) {
-            Log::error('Error while trying create Material Transaction Detail Data : '.$err->getMessage());
+            Log::error('Error while trying create Goods Transaction Detail Data : '.$err->getMessage());
 
-            return $this->responseError($err->getMessage(), 'Material Transaction Detail creation failed', 500);
+            return $this->responseError($err->getMessage(), 'Goods Transaction Detail creation failed', 500);
         }
     }
 
     /**
-     * Get material transaction detail.
+     * Get goods transaction detail.
      */
     public function show($id)
     {
         try {
-            $data = MaterialTransactionDetail::with(['materialTransaction', 'material'])
-                ->select($this->materialTransactionDetailTable)
+            $data = GoodsTransactionDetail::with(['goodsTransaction', 'material'])
+                ->select($this->goodsTransactionDetailTable)
                 ->findOrFail($id);
 
-            return $this->responseSuccess($data, 'Material Transaction Detail detail retrieved successfully', 200);
+            return $this->responseSuccess($data, 'Goods Transaction Detail detail retrieved successfully', 200);
         } catch (Exception $err) {
-            Log::error('Error While retrieved Material Transaction Detail data : '.$err->getMessage());
+            Log::error('Error While retrieved Goods Transaction Detail data : '.$err->getMessage());
 
-            return $this->responseError($err->getMessage(), 'Material Transaction Detail not found', 404);
+            return $this->responseError($err->getMessage(), 'Goods Transaction Detail not found', 404);
         }
     }
 
     /**
-     * Update a material transaction detail.
+     * Update a goods transaction detail.
      */
     public function update(Request $request, $id)
     {
-        $detail = MaterialTransactionDetail::findOrFail($id);
+        $detail = GoodsTransactionDetail::findOrFail($id);
 
         $request->validate([
             'material_id' => [
                 'sometimes',
                 'required',
                 'exists:materials,id',
-                Rule::unique('material_transaction_details')->where(function ($query) use ($request, $detail) {
-                    $materialTransactionId = $request->material_transaction_id ?? $detail->material_transaction_id;
-                    return $query->where('material_transaction_id', $materialTransactionId);
+                Rule::unique('goods_transaction_details')->where(function ($query) use ($request, $detail) {
+                    $goodsTransactionId = $request->goods_transaction_id ?? $detail->goods_transaction_id;
+                    return $query->where('goods_transaction_id', $goodsTransactionId);
                 })->ignore($id),
             ],
-            'order_code' => 'sometimes|unique:material_transaction_details,order_code,' . $id,
+            'order_code' => 'sometimes|unique:goods_transaction_details,order_code,' . $id,
             'qty' => 'sometimes|required|integer|min:1',
             'price' => 'sometimes|required|numeric|min:0',
             'in_stock' => 'nullable|boolean',
@@ -216,7 +216,7 @@ class MaterialTransactionDetailController extends Controller
 
         try {
             $data = array_filter(
-                $request->only(['material_transaction_id', 'material_id', 'qty', 'price', 'in_stock', 'is_forecast', 'description']),
+                $request->only(['goods_transaction_id', 'material_id', 'qty', 'price', 'in_stock', 'is_forecast', 'description']),
                 fn ($val) => ! is_null($val) && $val !== ''
             );
 
@@ -224,13 +224,13 @@ class MaterialTransactionDetailController extends Controller
                 return $this->responseError(null, 'No data provided to update', 422);
             }
 
-            $materialTransactionId = $data['material_transaction_id'] ?? $detail->material_transaction_id;
+            $goodsTransactionId = $data['goods_transaction_id'] ?? $detail->goods_transaction_id;
             $materialId = $data['material_id'] ?? $detail->material_id;
             $qty = $data['qty'] ?? $detail->qty;
 
-            $transaction = MaterialTransaction::findOrFail($materialTransactionId);
+            $transaction = GoodsTransaction::findOrFail($goodsTransactionId);
 
-            if ($transaction->materialTransactionBillings()->where('is_paid', true)->exists()) {
+            if ($transaction->goodsTransactionBillings()->where('is_paid', true)->exists()) {
                 return $this->responseError(null, 'Cannot update items in a transaction that has already have payments.', 422);
             }
 
@@ -246,23 +246,23 @@ class MaterialTransactionDetailController extends Controller
                 $detail->update($data);
             });
 
-            return $this->responseSuccess($detail->fresh(), 'Material Transaction Detail updated successfully', 200);
+            return $this->responseSuccess($detail->fresh(), 'Goods Transaction Detail updated successfully', 200);
         } catch (Exception $err) {
-            Log::error('Error while trying update Material Transaction Detail data : '.$err->getMessage());
+            Log::error('Error while trying update Goods Transaction Detail data : '.$err->getMessage());
 
-            return $this->responseError($err->getMessage(), 'Material Transaction Detail update failed', 500);
+            return $this->responseError($err->getMessage(), 'Goods Transaction Detail update failed', 500);
         }
     }
 
     /**
-     * Delete a material transaction detail.
+     * Delete a goods transaction detail.
      */
     public function destroy($id)
     {
         try {
-            $data = MaterialTransactionDetail::findOrFail($id);
+            $data = GoodsTransactionDetail::findOrFail($id);
 
-            if ($data->materialTransaction->materialTransactionBillings()->where('is_paid', true)->exists()) {
+            if ($data->goodsTransaction->goodsTransactionBillings()->where('is_paid', true)->exists()) {
                 return $this->responseError(null, 'Cannot delete items from a transaction that has already have payments.', 422);
             }
 
@@ -270,11 +270,11 @@ class MaterialTransactionDetailController extends Controller
                 $data->delete();
             });
 
-            return $this->responseSuccess(null, 'Material Transaction Detail deleted successfully', 200);
+            return $this->responseSuccess(null, 'Goods Transaction Detail deleted successfully', 200);
         } catch (Exception $err) {
-            Log::error('Error while trying delete Material Transaction Detail data : '.$err->getMessage());
+            Log::error('Error while trying delete Goods Transaction Detail data : '.$err->getMessage());
 
-            return $this->responseError($err->getMessage(), 'Material Transaction Detail deletion failed', 500);
+            return $this->responseError($err->getMessage(), 'Goods Transaction Detail deletion failed', 500);
         }
     }
 
@@ -283,14 +283,14 @@ class MaterialTransactionDetailController extends Controller
      */
     private function getAvailableStock($materialId, $excludeDetailId = null)
     {
-        $purchased = MaterialTransactionDetail::where('material_id', $materialId)
-            ->whereHas('materialTransaction', function ($q) {
+        $purchased = GoodsTransactionDetail::where('material_id', $materialId)
+            ->whereHas('goodsTransaction', function ($q) {
                 $q->where('type', 'purchase');
             })
             ->sum('qty');
 
-        $soldQuery = MaterialTransactionDetail::where('material_id', $materialId)
-            ->whereHas('materialTransaction', function ($q) {
+        $soldQuery = GoodsTransactionDetail::where('material_id', $materialId)
+            ->whereHas('goodsTransaction', function ($q) {
                 $q->where('type', 'sales');
             });
 

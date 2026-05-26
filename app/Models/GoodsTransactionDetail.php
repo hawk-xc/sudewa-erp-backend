@@ -6,27 +6,30 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
 
-class MaterialTransactionDetail extends Model
+class GoodsTransactionDetail extends Model
 {
     use HasFactory;
 
-    protected $table = 'material_transaction_details';
+    protected $table = 'goods_transaction_details';
 
     protected $fillable = [
         'uuid',
-        'order_code',
-        'material_transaction_id',
+        'code',
+        'goods_transaction_id',
         'material_id',
+        'vehicle_equipment_id',
         'in_stock', // bool -> default false
         'is_forecast', // bool -> default true 
         'qty',
+        'type', // pcs, set, box
         'price',
         'description',
     ];
 
     protected $casts = [
-        'material_transaction_id' => 'integer',
+        'goods_transaction_id' => 'integer',
         'material_id' => 'integer',
+        'vehicle_equipment_id' => 'integer',
         'qty' => 'integer',
         'price' => 'integer',
         'in_stock' => 'boolean',
@@ -37,14 +40,19 @@ class MaterialTransactionDetail extends Model
         'total',
     ];
 
+    public function vehicleEquipment()
+    {
+        return $this->belongsTo(VehicleEquipment::class, 'vehicle_equipment_id', 'id');
+    }
+
     public function getTotalAttribute()
     {
         return $this->price * $this->qty;
     }
 
-    public function materialTransaction()
+    public function goodsTransaction()
     {
-        return $this->belongsTo(MaterialTransaction::class);
+        return $this->belongsTo(GoodsTransaction::class);
     }
 
     public function material()
@@ -54,21 +62,21 @@ class MaterialTransactionDetail extends Model
 
     public function warehouseMovement()
     {
-        return $this->hasOne(WarehouseMovement::class, 'material_transaction_detail_id', 'id');
+        return $this->hasOne(WarehouseMovement::class, 'goods_transaction_detail_id', 'id');
     }
 
     public function receiptStock(?int $activityId = null)
     {
-        $materialTransaction = $this->materialTransaction;
+        $goodsTransaction = $this->goodsTransaction;
 
         return WarehouseMovement::firstOrCreate(
             [
-                'material_transaction_detail_id' => $this->id,
+                'goods_transaction_detail_id' => $this->id,
                 'status' => 'in',
             ],
             [
                 'warehouse_activity_id' => $activityId,
-                'material_transaction_id' => $materialTransaction->id,
+                'goods_transaction_id' => $goodsTransaction->id,
                 'status' => 'in',
             ]
         );

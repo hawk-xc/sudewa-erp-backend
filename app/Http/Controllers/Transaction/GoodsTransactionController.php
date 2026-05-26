@@ -3,22 +3,22 @@
 namespace App\Http\Controllers\Transaction;
 
 use App\Http\Controllers\Controller;
-use App\Models\MaterialTransaction;
+use App\Models\GoodsTransaction;
 use App\Traits\FileTrait;
 use App\Traits\ResponseTrait;
-use App\Traits\MaterialTransactionTrait;
+use App\Traits\GoodsTransactionTrait;
 use Exception;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
-class MaterialTransactionController extends Controller
+class GoodsTransactionController extends Controller
 {
-    use ResponseTrait, MaterialTransactionTrait, FileTrait;
+    use ResponseTrait, GoodsTransactionTrait, FileTrait;
 
     // projection
-    protected $materialTransactionTable;
+    protected $goodsTransactionTable;
 
     public function __construct()
     {
@@ -27,7 +27,7 @@ class MaterialTransactionController extends Controller
         $this->middleware(['permission:transaction:edit'])->only(['update', 'updateState', 'uploadInvoice']);
         $this->middleware(['permission:transaction:delete'])->only(['destroy']);
 
-        $this->materialTransactionTable = [
+        $this->goodsTransactionTable = [
             'id',
             'uuid',
             'code',
@@ -45,11 +45,11 @@ class MaterialTransactionController extends Controller
     }
 
     /**
-     * List all material transactions.
+     * List all goods transactions.
      */
     public function index(Request $request)
     {
-        $query = MaterialTransaction::query();
+        $query = GoodsTransaction::query();
         
         if ($request->filled('type')) {
             if ($request->type == 'purchase') {
@@ -59,7 +59,7 @@ class MaterialTransactionController extends Controller
             }
         } 
 
-        $query->select($this->materialTransactionTable);
+        $query->select($this->goodsTransactionTable);
 
         try {
             if ($request->filled('search')) {
@@ -77,13 +77,13 @@ class MaterialTransactionController extends Controller
                 });
             }
 
-            foreach ($this->materialTransactionTable as $field) {
+            foreach ($this->goodsTransactionTable as $field) {
                 if ($request->filled($field)) {
                     $query->where($field, $request->$field);
                 }
             }
 
-            $allowedSort = $this->materialTransactionTable;
+            $allowedSort = $this->goodsTransactionTable;
 
             $sortBy = in_array($request->sort_by, $allowedSort)
                 ? $request->sort_by
@@ -93,7 +93,7 @@ class MaterialTransactionController extends Controller
 
             $query->orderBy($sortBy, $sortOrder);
 
-            $query->with(['materialTransactionDetails', 'materialTransactionBillings']);
+            $query->with(['goodsTransactionDetails', 'goodsTransactionBillings']);
 
             $perPage = $request->per_page ?? 10;
 
@@ -101,22 +101,22 @@ class MaterialTransactionController extends Controller
                 ->through(function ($item) {
                     $item->makeHidden('total_brutto');
 
-                    $item->unsetRelation('materialTransactionDetails');
-                    $item->unsetRelation('materialTransactionBillings');
+                    $item->unsetRelation('goodsTransactionDetails');
+                    $item->unsetRelation('goodsTransactionBillings');
 
                     return $item;
                 });
 
-            return $this->responseSuccess($data, 'Material Transaction list retrieved successfully', 200);
+            return $this->responseSuccess($data, 'Goods Transaction list retrieved successfully', 200);
         } catch (Exception $err) {
-            Log::error('Error While retrieved Material Transaction data : '.$err->getMessage());
+            Log::error('Error While retrieved Goods Transaction data : '.$err->getMessage());
 
-            return $this->responseError($err->getMessage(), 'Material Transaction list retrieved Failed', 500);
+            return $this->responseError($err->getMessage(), 'Goods Transaction list retrieved Failed', 500);
         }
     }
 
     /**
-     * Store a new material transaction.
+     * Store a new goods transaction.
      */
     public function store(Request $request)
     {
@@ -138,41 +138,41 @@ class MaterialTransactionController extends Controller
                     $validated['description'] = "Pembayaran " . $typeState . " material ke " . $name;
                 }
 
-                return MaterialTransaction::create($validated);
+                return GoodsTransaction::create($validated);
             });
 
-            return $this->responseSuccess($data, 'Material Transaction created successfully', 201);
+            return $this->responseSuccess($data, 'Goods Transaction created successfully', 201);
         } catch (Exception $err) {
-            Log::error('Error while trying create Material Transaction Data : '.$err->getMessage());
+            Log::error('Error while trying create Goods Transaction Data : '.$err->getMessage());
 
-            return $this->responseError($err->getMessage(), 'Material Transaction creation failed', 500);
+            return $this->responseError($err->getMessage(), 'Goods Transaction creation failed', 500);
         }
     }
 
     /**
-     * Get material transaction details.
+     * Get goods transaction details.
      */
     public function show(int $id): JsonResponse
     {
         try {
-            $data = MaterialTransaction::with(['materialTransactionDetails.material', 'materialTransactionBillings.cash'])
-                ->select($this->materialTransactionTable)
+            $data = GoodsTransaction::with(['goodsTransactionDetails.material', 'goodsTransactionBillings.cash'])
+                ->select($this->goodsTransactionTable)
                 ->findOrFail($id);
 
             $data->makeHidden('total_brutto');
             
-            return $this->responseSuccess($data, 'Material Transaction detail retrieved successfully', 200);
+            return $this->responseSuccess($data, 'Goods Transaction detail retrieved successfully', 200);
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $err) {
-            return $this->responseError(null, 'Material Transaction not found', 404);
+            return $this->responseError(null, 'Goods Transaction not found', 404);
         } catch (Exception $err) {
-            Log::error('Error while retrieving Material Transaction data: '.$err->getMessage());
+            Log::error('Error while retrieving Goods Transaction data: '.$err->getMessage());
 
             return $this->responseError($err->getMessage(), 'An unexpected error occurred', 500);
         }
     }
 
     /**
-     * Update a material transaction.
+     * Update a goods transaction.
      */
     public function update(Request $request, $id)
     {
@@ -186,7 +186,7 @@ class MaterialTransactionController extends Controller
         ]);
 
         try {
-            $transaction = MaterialTransaction::findOrFail($id);
+            $transaction = GoodsTransaction::findOrFail($id);
             
             $data = array_filter(
                 $request->only(['warehouse_id', 'person_id', 'stock_state', 'supplier_name', 'transaction_date', 'description']),
@@ -201,40 +201,40 @@ class MaterialTransactionController extends Controller
                 $transaction->update($data);
             });
 
-            return $this->responseSuccess($transaction->fresh(), 'Material Transaction updated successfully', 200);
+            return $this->responseSuccess($transaction->fresh(), 'Goods Transaction updated successfully', 200);
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $err) {
-            return $this->responseError(null, 'Material Transaction not found', 404);
+            return $this->responseError(null, 'Goods Transaction not found', 404);
         } catch (Exception $err) {
-            Log::error('Error while updating Material Transaction data: '.$err->getMessage());
+            Log::error('Error while updating Goods Transaction data: '.$err->getMessage());
 
-            return $this->responseError($err->getMessage(), 'Material Transaction update failed', 500);
+            return $this->responseError($err->getMessage(), 'Goods Transaction update failed', 500);
         }
     }
 
     /**
-     * Delete a material transaction.
+     * Delete a goods transaction.
      */
     public function destroy($id)
     {
         try {
-            $data = MaterialTransaction::findOrFail($id);
+            $data = GoodsTransaction::findOrFail($id);
 
             DB::transaction(function () use ($data) {
                 $data->delete();
             });
 
-            return $this->responseSuccess(null, 'Material Transaction deleted successfully', 200);
+            return $this->responseSuccess(null, 'Goods Transaction deleted successfully', 200);
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $err) {
-            return $this->responseError(null, 'Material Transaction not found', 404);
+            return $this->responseError(null, 'Goods Transaction not found', 404);
         } catch (Exception $err) {
-            Log::error('Error while deleting Material Transaction data: '.$err->getMessage());
+            Log::error('Error while deleting Goods Transaction data: '.$err->getMessage());
 
-            return $this->responseError($err->getMessage(), 'Material Transaction deletion failed', 500);
+            return $this->responseError($err->getMessage(), 'Goods Transaction deletion failed', 500);
         }
     }
 
     /**
-     * Update material transaction stock state.
+     * Update goods transaction stock state.
      */
     public function updateState(Request $request, string $id)
     {
@@ -242,16 +242,16 @@ class MaterialTransactionController extends Controller
         $salesStates = ['draft', 'cancel', 'prepare', 'outbound_reserved', 'outbound_in_transit', 'outbound_delivered'];
 
         try {
-            $transaction = MaterialTransaction::with('materialTransactionDetails')->findOrFail((int) $id);
+            $transaction = GoodsTransaction::with('goodsTransactionDetails')->findOrFail((int) $id);
 
-            if (is_string($request->material_transaction_details)) {
-                $request->merge(['material_transaction_details' => json_decode($request->material_transaction_details, true)]);
+            if (is_string($request->goods_transaction_details)) {
+                $request->merge(['goods_transaction_details' => json_decode($request->goods_transaction_details, true)]);
             }
 
             $validated = $request->validate([
                 'stock_state' => 'required|string',
-                'material_transaction_details' => 'nullable|array',
-                'material_transaction_details.*' => 'integer|distinct|exists:material_transaction_details,id',
+                'goods_transaction_details' => 'nullable|array',
+                'goods_transaction_details.*' => 'integer|distinct|exists:goods_transaction_details,id',
             ]);
 
             $allowedStates = $transaction->type === 'purchase' ? $purchaseStates : $salesStates;
@@ -260,18 +260,18 @@ class MaterialTransactionController extends Controller
                 return $this->responseError(null, 'Invalid stock state for this transaction type', 422);
             }
 
-            if ($transaction->materialTransactionDetails->isEmpty()) {
+            if ($transaction->goodsTransactionDetails->isEmpty()) {
                 return $this->responseError(null, 'No transaction items found', 422);
             }
 
-            if (! empty($validated['material_transaction_details'])) {
-                $detailIds = array_unique($validated['material_transaction_details']);
+            if (! empty($validated['goods_transaction_details'])) {
+                $detailIds = array_unique($validated['goods_transaction_details']);
             } else {
-                $detailIds = $transaction->materialTransactionDetails->pluck('id')->toArray();
+                $detailIds = $transaction->goodsTransactionDetails->pluck('id')->toArray();
             }
 
-            $validDetails = \App\Models\MaterialTransactionDetail::whereIn('id', $detailIds)
-                ->where('material_transaction_id', $transaction->id)
+            $validDetails = \App\Models\GoodsTransactionDetail::whereIn('id', $detailIds)
+                ->where('goods_transaction_id', $transaction->id)
                 ->get();
 
             if ($validDetails->isEmpty()) {
@@ -284,14 +284,14 @@ class MaterialTransactionController extends Controller
 
                 switch ($validated['stock_state']) {
                     case 'inbound_incoming_goods':
-                        \App\Models\MaterialTransactionDetail::whereIn('id', $validDetails->pluck('id'))
+                        \App\Models\GoodsTransactionDetail::whereIn('id', $validDetails->pluck('id'))
                             ->update([
                                 'is_forecast' => true,
                             ]);
                         break;
 
                     case 'outbound_delivered':
-                        \App\Models\MaterialTransactionDetail::whereIn('id', $validDetails->pluck('id'))
+                        \App\Models\GoodsTransactionDetail::whereIn('id', $validDetails->pluck('id'))
                             ->update([
                                 'is_forecast' => true,
                             ]);
@@ -301,18 +301,18 @@ class MaterialTransactionController extends Controller
 
             return $this->responseSuccess(
                 $transaction->fresh()->load([
-                    'materialTransactionDetails'
+                    'goodsTransactionDetails'
                 ]),
-                'Material Transaction state updated successfully',
+                'Goods Transaction state updated successfully',
                 200
             );
 
         } catch (\Illuminate\Validation\ValidationException $e) {
             return $this->responseError($e->errors(), 'Validation failed', 422);
         } catch (Exception $err) {
-            Log::error('Error updating Material Transaction state: '.$err->getMessage());
+            Log::error('Error updating Goods Transaction state: '.$err->getMessage());
 
-            return $this->responseError($err->getMessage(), 'Material Transaction state update failed', 500);
+            return $this->responseError($err->getMessage(), 'Goods Transaction state update failed', 500);
         }
     }
 
@@ -323,7 +323,7 @@ class MaterialTransactionController extends Controller
         ]);
 
         try {
-            $transaction = MaterialTransaction::findOrFail((int) $id);
+            $transaction = GoodsTransaction::findOrFail((int) $id);
 
             $path = $this->updateFile(
                 $request->file('invoice_file'),
@@ -335,7 +335,7 @@ class MaterialTransactionController extends Controller
 
             return $this->responseSuccess(null, 'Invoice uploaded successfully', 200);
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $err) {
-            return $this->responseError(null, 'Material Transaction not found', 404);
+            return $this->responseError(null, 'Goods Transaction not found', 404);
         } catch (Exception $err) {
             Log::error('Error while uploading invoice: '.$err->getMessage());
 

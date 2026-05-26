@@ -45,9 +45,9 @@ use App\Http\Controllers\Transaction\DOInvoiceController;
 use App\Http\Controllers\Transaction\DOOrderListController;
 use App\Http\Controllers\Transaction\DOOrderListTarifController;
 use App\Http\Controllers\Transaction\DOOrderListTarifItemController;
-use App\Http\Controllers\Transaction\MaterialTransactionBillingController;
-use App\Http\Controllers\Transaction\MaterialTransactionController;
-use App\Http\Controllers\Transaction\MaterialTransactionDetailController;
+use App\Http\Controllers\Transaction\GoodsTransactionBillingController;
+use App\Http\Controllers\Transaction\GoodsTransactionController;
+use App\Http\Controllers\Transaction\GoodsTransactionDetailController;
 use App\Http\Controllers\Transaction\TransactionFlowController;
 use App\Http\Controllers\Transaction\UnitTransactionBillingController;
 use App\Http\Controllers\Transaction\UnitTransactionBillingHistoryController;
@@ -250,12 +250,12 @@ Route::group(
             Route::apiResource('vehicle-document', VehicleDocumentController::class);
             Route::apiResource('vehicle-registration', VehicleRegistrationController::class);
 
-            // Material Transaction API
-            Route::put('material-transaction/{id}/update-state', [MaterialTransactionController::class, 'updateState'])->name('material-transaction.update-state');
-            Route::post('material-transaction/{id}/upload-invoice', [MaterialTransactionController::class, 'uploadInvoice'])->name('material-transaction.upload-invoice');
-            Route::apiResource('material-transaction', MaterialTransactionController::class);
-            Route::apiResource('material-transaction-detail', MaterialTransactionDetailController::class);
-            Route::apiResource('material-transaction-billing', MaterialTransactionBillingController::class);
+            // Goods Transaction API
+            Route::put('goods-transaction/{id}/update-state', [GoodsTransactionController::class, 'updateState'])->name('goods-transaction.update-state');
+            Route::post('goods-transaction/{id}/upload-invoice', [GoodsTransactionController::class, 'uploadInvoice'])->name('goods-transaction.upload-invoice');
+            Route::apiResource('goods-transaction', GoodsTransactionController::class);
+            Route::apiResource('goods-transaction-detail', GoodsTransactionDetailController::class);
+            Route::apiResource('goods-transaction-billing', GoodsTransactionBillingController::class);
 
             // DO Transaction API    
             Route::group(['prefix' => 'do-invoice', 'as' => 'do-invoice.'], function() {

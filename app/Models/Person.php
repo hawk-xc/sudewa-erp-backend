@@ -44,6 +44,11 @@ class Person extends Model
         return $this->hasMany(UnitTransaction::class);
     }
 
+    public function goodsTransactions()
+    {
+        return $this->hasMany(GoodsTransaction::class);
+    }
+
     public function ownershipTransferFees()
     {
         return $this->hasMany(OwnershipTransferFee::class);

@@ -11,15 +11,11 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('material_transactions', function (Blueprint $table) {
+        Schema::create('goods_transaction_billings', function (Blueprint $table) {
             $table->id();
             $table->uuid('uuid')->unique();
-            $table->string('code')->unique();
-            $table->enum('type', ['purchase', 'sales']);
-            $table->string('supplier_name');
-            $table->date('transaction_date');
-            $table->text('description')->nullable();
-            $table->boolean('is_paid')->default(false)->nullable(false);
+            $table->string('code')->unique(true)->nullable(false);
+            $table->foreignId('goods_transaction_id')->constrained('goods_transactions')->onDelete('cascade');
             $table->timestamps();
         });
     }
@@ -29,6 +25,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('material_transactions');
+        Schema::dropIfExists('goods_transaction_billings');
     }
 };
