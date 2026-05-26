@@ -21,13 +21,16 @@ class DatabaseSeeder extends Seeder
         $this->call(CompanySeeder::class);
         $this->call(ModuleSeeder::class);
         $this->call(FeatureSeeder::class);
-
+        
         // app flow pivot
         $this->call(CompanyHasModuleSeeder::class);
         $this->call(ModuleHasFeatureSeeder::class);
-
+        
         // Dummy Data
         $this->call(BrandSeeder::class);
         $this->call(MainCompanyWarehouseSeeder::class);
+
+        // Default Group Account and Account Data
+        $this->call(DefaultAccountSeeder::class);
     }
 }

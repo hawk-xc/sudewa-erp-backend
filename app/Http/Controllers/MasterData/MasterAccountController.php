@@ -39,7 +39,7 @@ class MasterAccountController extends Controller
 
         $this->authRepository = $ar;
 
-        $this->accountTable = ['id', 'uuid', 'code', 'account_group_id', 'name', 'description', 'type', 'category', 'created_at'];
+        $this->accountTable = ['id', 'uuid', 'code', 'account_group_id', 'name', 'description', 'type', 'category', 'is_lock', 'created_at'];
     }
 
     /**
@@ -129,7 +129,7 @@ class MasterAccountController extends Controller
                 'name' => 'required|string|max:255',
                 'description' => 'nullable|string',
                 'type' => 'required|in:debet,credit',
-                'category' => 'sometimes|required|in:general_administration,current_assets,liabilities',
+                'category' => 'sometimes|required|in:general_administration,current_assets,liabilities,header,account',
             ]);
 
             $account = DB::transaction(function () use ($validated) {
@@ -155,14 +155,21 @@ class MasterAccountController extends Controller
             $account = Account::findOrFail((int) $id);
 
             if ($account) {
-                $validated = $request->validate([
-                    'account_group_id' => 'sometimes|integer|exists:account_groups,id',
-                    'code' => 'sometimes|required|string|max:50|unique:accounts,code,'.$id,
-                    'name' => 'sometimes|required|string|max:255',
-                    'description' => 'nullable|string',
-                    'type' => 'sometimes|required|in:debet,credit',
-                    'category' => 'sometimes|required|in:general_administration,current_assets,liabilities',
-                ]);
+                if ($account->is_lock) {
+                    $validated = $request->validate([
+                        'type' => 'sometimes|required|in:debet,credit',
+                        'category' => 'sometimes|required|in:general_administration,current_assets,liabilities,header,account',
+                    ]);
+                } else {
+                    $validated = $request->validate([
+                        'account_group_id' => 'sometimes|integer|exists:account_groups,id',
+                        'code' => 'sometimes|required|string|max:50|unique:accounts,code,'.$id,
+                        'name' => 'sometimes|required|string|max:255',
+                        'description' => 'nullable|string',
+                        'type' => 'sometimes|required|in:debet,credit',
+                        'category' => 'sometimes|required|in:general_administration,current_assets,liabilities,header,account',
+                    ]);
+                }
 
                 DB::transaction(function () use ($account, $validated) {
                     $account->update($validated);
@@ -195,20 +202,18 @@ class MasterAccountController extends Controller
                 'account_id' => 'required|array',
                 'account_id.*' => 'integer|distinct|exists:accounts,id',
                 'account_group_id' => 'sometimes|required|integer|exists:account_groups,id',
-                'category' => 'sometimes|required|in:general_administration,current_assets,liabilities',
+                'category' => 'sometimes|required|in:general_administration,current_assets,liabilities,header,account',
             ]);
 
             DB::transaction(function () use ($validated) {
-                $updateData = [];
-                if (isset($validated['account_group_id'])) {
-                    $updateData['account_group_id'] = $validated['account_group_id'];
-                }
                 if (isset($validated['category'])) {
-                    $updateData['category'] = $validated['category'];
+                    Account::whereIn('id', $validated['account_id'])->update(['category' => $validated['category']]);
                 }
 
-                if (!empty($updateData)) {
-                    Account::whereIn('id', $validated['account_id'])->update($updateData);
+                if (isset($validated['account_group_id'])) {
+                    Account::whereIn('id', $validated['account_id'])
+                        ->where('is_lock', false)
+                        ->update(['account_group_id' => $validated['account_group_id']]);
                 }
             });
 
@@ -229,6 +234,10 @@ class MasterAccountController extends Controller
     {
         try {
             $account = Account::findOrFail($id);
+
+            if ($account->is_lock) {
+                return $this->responseError('Locked accounts cannot be deleted.', 'Action Forbidden', 403);
+            }
 
             DB::transaction(function () use ($account) {
                 $account->delete();
