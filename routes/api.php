@@ -144,6 +144,7 @@ Route::group(
             Route::post('material/import', [MasterMaterialController::class, 'import']);
             Route::post('tarif/import', [MasterTarifController::class, 'import']);
             Route::post('vehicle-fleet/import', [VehicleFleetController::class, 'import']);
+            Route::post('vehicle-equipment/import', [MasterVehicleEquipmentController::class, 'import']);
 
             // Export
             Route::get('customer/export', [MasterCustomerController::class, 'export']);
@@ -157,6 +158,7 @@ Route::group(
             Route::get('unit-type/export', [MasterUnitTypeController::class, 'export']);
             Route::get('sparepart/export', [MasterSparepartController::class, 'export']);
             Route::get('tarif/export', [MasterTarifController::class, 'export']);
+            Route::get('vehicle-equipment/export', [MasterVehicleEquipmentController::class, 'export']);
             Route::get('vehicle-fleet/export', [VehicleFleetController::class, 'export']);
             // Route::get('material/export', [MasterMaterialController::class, 'export']);
     

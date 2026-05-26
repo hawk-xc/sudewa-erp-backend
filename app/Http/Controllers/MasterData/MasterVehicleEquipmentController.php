@@ -7,10 +7,13 @@ use App\Models\VehicleEquipment;
 use App\Repositories\AuthRepository;
 use App\Traits\ResponseTrait;
 use App\Traits\VehicleEquipmentTrait;
+use App\Exports\VehicleEquipmentExport;
+use App\Imports\VehicleEquipmentImport;
 use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Maatwebsite\Excel\Facades\Excel;
 
 /**
  * @group Master Data
@@ -28,8 +31,8 @@ class MasterVehicleEquipmentController extends Controller
 
     public function __construct(AuthRepository $ar)
     {
-        $this->middleware(['permission:master-data:list'])->only(['index', 'show']);
-        $this->middleware(['permission:master-data:create'])->only('store');
+        $this->middleware(['permission:master-data:list'])->only(['index', 'show', 'export']);
+        $this->middleware(['permission:master-data:create'])->only(['store', 'import']);
         $this->middleware(['permission:master-data:edit'])->only('update');
         $this->middleware(['permission:master-data:delete'])->only(['destroy']);
 
@@ -180,6 +183,49 @@ class MasterVehicleEquipmentController extends Controller
             Log::error('Error while trying to delete Vehicle Equipment data : '.$err->getMessage());
 
             return $this->responseError($err->getMessage(), 'Vehicle equipment deletion failed');
+        }
+    }
+
+    /**
+     * Import vehicle equipment from Excel.
+     */
+    public function import(Request $request)
+    {
+        $request->validate([
+            'file' => 'required|file|mimes:xlsx,xls',
+        ]);
+
+        try {
+            Excel::import(new VehicleEquipmentImport(), $request->file('file'));
+
+            return $this->responseSuccess(null, 'Vehicle Equipment imported successfully', 201);
+        } catch (Exception $err) {
+            Log::error('Vehicle Equipment import error', [
+                'message' => $err->getMessage(),
+            ]);
+
+            return $this->responseError($err->getMessage(), 'Vehicle Equipment import error', 500);
+        }
+    }
+
+    /**
+     * Export vehicle equipment to Excel.
+     */
+    public function export(Request $request)
+    {
+        try {
+            return Excel::download(
+                new VehicleEquipmentExport($request, $this->vehicleEquipmentTable),
+                'wajira_vehicle_equipment_data.xlsx'
+            );
+        } catch (Exception $err) {
+            Log::error('Error export vehicle equipment : '.$err->getMessage());
+    
+            return $this->responseError(
+                $err->getMessage(),
+                'Vehicle equipment export failed',
+                500
+            );
         }
     }
 }
