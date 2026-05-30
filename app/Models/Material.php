@@ -41,19 +41,7 @@ class Material extends Model
      */
     public function getRealStock(int $warehouseId)
     {
-        $purchased = $this->goodsTransactionDetails()
-            ->whereHas('goodsTransaction', function ($q) use ($warehouseId) {
-                $q->where('type', 'purchase')->where('warehouse_id', $warehouseId);
-            })
-            ->sum('qty');
-
-        $sold = $this->goodsTransactionDetails()
-            ->whereHas('goodsTransaction', function ($q) use ($warehouseId) {
-                $q->where('type', 'sales')->where('warehouse_id', $warehouseId);
-            })
-            ->sum('qty');
-
-        return $purchased - $sold;
+        return $this->getAvailableStock($warehouseId);
     }
 
     /**
@@ -61,6 +49,43 @@ class Material extends Model
      */
     public function getForecastStock(int $warehouseId)
     {
-        return $this->getRealStock($warehouseId);
+        return $this->getAvailableStock($warehouseId);
+    }
+
+    public function getAvailableStock(?int $warehouseId = null, $excludeDetailId = null, ?int $companyId = null)
+    {
+        $purchasedQuery = $this->goodsTransactionDetails()
+            ->whereHas('goodsTransaction', function ($q) use ($companyId) {
+                $q->where('type', 'receipt');
+                if ($companyId) {
+                    $q->where('company_id', $companyId);
+                }
+            });
+
+        $soldQuery = $this->goodsTransactionDetails()
+            ->whereHas('goodsTransaction', function ($q) use ($companyId) {
+                $q->where('type', 'issue');
+                if ($companyId) {
+                    $q->where('company_id', $companyId);
+                }
+            });
+
+        if ($warehouseId) {
+            $purchasedQuery->whereHas('goodsTransaction.company.warehouse', function ($q) use ($warehouseId) {
+                $q->where('id', $warehouseId);
+            });
+            $soldQuery->whereHas('goodsTransaction.company.warehouse', function ($q) use ($warehouseId) {
+                $q->where('id', $warehouseId);
+            });
+        }
+
+        if ($excludeDetailId) {
+            $soldQuery->where('id', '!=', $excludeDetailId);
+        }
+
+        $purchased = $purchasedQuery->sum('qty');
+        $sold = $soldQuery->sum('qty');
+
+        return $purchased - $sold;
     }
 }

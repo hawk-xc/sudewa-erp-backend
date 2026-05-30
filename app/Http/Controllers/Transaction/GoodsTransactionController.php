@@ -159,20 +159,29 @@ class GoodsTransactionController extends Controller
      */
     public function store(Request $request)
     {
+        $locationRule = 'nullable|string|max:255';
+        if ($request->company_id == 4 && $request->type === 'receipt') {
+            $locationRule = 'required|string|max:255';
+        }
+
         $validated = $request->validate([
             'type' => 'required|in:receipt,issue',
-            'category' => 'required_if:type,issue|in:maintenance,equipped',
+            'category' => $request->company_id == 4 ? 'required_if:type,issue|in:maintenance,equipped' : 'nullable',
             'company_id' => 'required|exists:companies,id',
             'supplier_id' => [
-                'required_if:type,receipt',
+                $request->company_id == 4 ? 'required_if:type,receipt' : 'nullable',
                 new RightPersonRule('supplier')
             ],
+            'customer_id' => [
+                $request->company_id == 4 ? 'nullable' : 'required_if:type,issue',
+                new RightPersonRule('customer')
+            ],
             'driver_id' => [
-                'required_if:type,issue',
+                $request->company_id == 4 ? 'required_if:type,issue' : 'nullable',
                 new RightPersonRule('driver'),
             ],
             'vehicle_fleet_id' => [
-                'required_if:type,issue',
+                $request->company_id == 4 ? 'required_if:type,issue' : 'nullable',
                 'exists:vehicle_fleets,id',
                 function ($attribute, $value, $fail) use ($request) {
                     if ($value) {
@@ -193,6 +202,7 @@ class GoodsTransactionController extends Controller
                         if ($request->type === 'issue' && $request->filled('transaction_date')) {
                             $exists = GoodsTransaction::where('type', 'issue')
                                 ->where('vehicle_fleet_id', $value)
+                                ->where('category', 'maintenance')
                                 ->whereDate('transaction_date', $request->transaction_date)
                                 ->exists();
                             if ($exists) {
@@ -203,7 +213,7 @@ class GoodsTransactionController extends Controller
                 }
             ],
             'transaction_date' => 'required|date',
-            'location' => 'required_if:type,receipt|string|max:255',
+            'location' => $locationRule,
             'description' => 'nullable|string'
         ], [
             'type.required' => 'The type is required.',
@@ -216,7 +226,7 @@ class GoodsTransactionController extends Controller
             'driver_id.exists' => 'The selected driver is invalid or must be of type driver.',
             'vehicle_fleet_id.required_if' => 'The vehicle fleet is required when the transaction type is issue.',
             'vehicle_fleet_id.exists' => 'The selected vehicle fleet is invalid or must be of type vehicle fleet.',
-            'location.required_if' => 'The location is required when the transaction type is receipt.',
+            'location.required' => 'The location is required.',
             'category.required_if' => 'The category is required when the transaction type is issue.',
         ]);
 
@@ -224,9 +234,17 @@ class GoodsTransactionController extends Controller
             $data = DB::transaction(function () use ($request, $validated) {
                 $typeState = $request->type == "receipt" ? "penerimaan" : "pengeluaran";
                 if ($request->type == 'receipt') {
-                    $validated['code'] = $this->code($this->companySlug, 'beli_penerimaan_perlengkapan');
+                    if ($request->company_id == 4) {
+                        $validated['code'] = $this->code($this->companySlug, 'beli_penerimaan_perlengkapan');
+                    } else {
+                        $validated['code'] = $this->code($this->companySlug, 'beli_penerimaan_material');
+                    }
                 } else {
-                    $validated['code'] = $this->code($this->companySlug, 'pengeluaran_perlengkapan');
+                    if ($request->company_id == 4) {
+                        $validated['code'] = $this->code($this->companySlug, 'pengeluaran_perlengkapan');
+                    } else {
+                        $validated['code'] = $this->code($this->companySlug, 'pengeluaran_material');
+                    }
                 }
                 
                 if (empty($validated['description'])) {
@@ -259,9 +277,11 @@ class GoodsTransactionController extends Controller
         try {
             $data = GoodsTransaction::with([
                 'goodsTransactionDetails:id,uuid,qty,type,price,goods_transaction_id,material_id,vehicle_equipment_id',
-                'goodsTransactionDetails.material', 
+                'goodsTransactionDetails.material:id,uuid,code,name,price,type', 
                 'goodsTransactionDetails.vehicleEquipment:id,uuid,code,name', 
-                'goodsTransactionBillings.payments.cash',
+                'goodsTransactionBillings:id,uuid,goods_transaction_id,is_paid,grand_total',
+                'goodsTransactionBillings.payments:id,uuid,goods_transaction_billing_id,cash_id,amount,transaction_date,description',
+                'goodsTransactionBillings.payments.cash:id,uuid,code,company_id,account_id,type',
                 'company:id,uuid,code,name,type',
                 'supplier:id,uuid,code,name,type',
                 'driver:id,uuid,code,name,type',
@@ -372,87 +392,6 @@ class GoodsTransactionController extends Controller
             Log::error('Error while deleting Goods Transaction data: '.$err->getMessage());
 
             return $this->responseError($err->getMessage(), 'Goods Transaction deletion failed', 500);
-        }
-    }
-
-    /**
-     * Update goods transaction stock state.
-     */
-    public function updateState(Request $request, string $id)
-    {
-        $purchaseStates = ['draft', 'cancel', 'rejected', 'prepare', 'inbound_purchase_order', 'inbound_incoming_goods', 'inbound_receipt'];
-        $salesStates = ['draft', 'cancel', 'prepare', 'outbound_reserved', 'outbound_in_transit', 'outbound_delivered'];
-
-        try {
-            $transaction = GoodsTransaction::with('goodsTransactionDetails')->findOrFail((int) $id);
-
-            if (is_string($request->goods_transaction_details)) {
-                $request->merge(['goods_transaction_details' => json_decode($request->goods_transaction_details, true)]);
-            }
-
-            $validated = $request->validate([
-                'stock_state' => 'required|string',
-                'goods_transaction_details' => 'nullable|array',
-                'goods_transaction_details.*' => 'integer|distinct|exists:goods_transaction_details,id',
-            ]);
-
-            $allowedStates = $transaction->type === 'receipt' ? $purchaseStates : $salesStates;
-
-            if (! in_array($validated['stock_state'], $allowedStates)) {
-                return $this->responseError(null, 'Invalid stock state for this transaction type', 422);
-            }
-
-            if ($transaction->goodsTransactionDetails->isEmpty()) {
-                return $this->responseError(null, 'No transaction items found', 422);
-            }
-
-            if (! empty($validated['goods_transaction_details'])) {
-                $detailIds = array_unique($validated['goods_transaction_details']);
-            } else {
-                $detailIds = $transaction->goodsTransactionDetails->pluck('id')->toArray();
-            }
-
-            $validDetails = GoodsTransactionDetail::whereIn('id', $detailIds)
-                ->where('goods_transaction_id', $transaction->id)
-                ->get();
-
-            if ($validDetails->isEmpty()) {
-                return $this->responseError(null, 'Selected details not found in this transaction', 422);
-            }
-
-            DB::transaction(function () use ($validated, $validDetails) {
-                // Since stock_state column was removed, we do not update $transaction->stock_state here.
-                switch ($validated['stock_state']) {
-                    case 'inbound_incoming_goods':
-                        GoodsTransactionDetail::whereIn('id', $validDetails->pluck('id'))
-                            ->update([
-                                'is_forecast' => true,
-                            ]);
-                        break;
-
-                    case 'outbound_delivered':
-                        GoodsTransactionDetail::whereIn('id', $validDetails->pluck('id'))
-                            ->update([
-                                'is_forecast' => true,
-                            ]);
-                        break;
-                }
-            });
-
-            return $this->responseSuccess(
-                $transaction->fresh()->load([
-                    'goodsTransactionDetails'
-                ]),
-                'Goods Transaction state updated successfully',
-                200
-            );
-
-        } catch (\Illuminate\Validation\ValidationException $e) {
-            return $this->responseError($e->errors(), 'Validation failed', 422);
-        } catch (Exception $err) {
-            Log::error('Error updating Goods Transaction state: '.$err->getMessage());
-
-            return $this->responseError($err->getMessage(), 'Goods Transaction state update failed', 500);
         }
     }
 

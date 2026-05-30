@@ -259,7 +259,6 @@ Route::group(
             Route::apiResource('vehicle-registration', VehicleRegistrationController::class);
 
             // Goods Transaction API
-            Route::put('goods-transaction/{id}/update-state', [GoodsTransactionController::class, 'updateState'])->name('goods-transaction.update-state');
             Route::post('goods-transaction/{id}/upload-invoice', [GoodsTransactionController::class, 'uploadInvoice'])->name('goods-transaction.upload-invoice');
             Route::apiResource('goods-transaction', GoodsTransactionController::class);
             Route::apiResource('goods-transaction-detail', GoodsTransactionDetailController::class);

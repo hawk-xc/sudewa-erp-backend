@@ -50,48 +50,75 @@ class MasterMaterialController extends Controller
      */
     public function index(Request $request)
     {
-        $query = Material::query();
+        $warehouseId = $request->warehouse_id;
+        $companyId = $request->company_id;
+        if ($request->filled('company_id')) {
+            $company = Company::with('warehouse')->find($request->company_id);
+            if ($company && $company->warehouse) {
+                $warehouseId = $company->warehouse->id;
+            }
+        }
 
-        $query->select($this->materialTable);
+        $query = Material::select(array_map(fn($col) => "materials.{$col}", $this->materialTable))
+            ->selectSub(function ($q) use ($warehouseId, $companyId) {
+                $q->from('goods_transaction_details')
+                    ->join('goods_transactions', 'goods_transaction_details.goods_transaction_id', '=', 'goods_transactions.id')
+                    ->whereColumn('goods_transaction_details.material_id', 'materials.id')
+                    ->where('goods_transactions.type', 'receipt');
+                
+                if ($companyId) {
+                    $q->where('goods_transactions.company_id', $companyId);
+                }
+                
+                if ($warehouseId) {
+                    $q->join('warehouse_movements', 'warehouse_movements.goods_transaction_detail_id', '=', 'goods_transaction_details.id')
+                      ->join('warehouse_activities', 'warehouse_movements.warehouse_activity_id', '=', 'warehouse_activities.id')
+                      ->where('warehouse_activities.warehouse_id', $warehouseId);
+                }
+                $q->selectRaw('COALESCE(SUM(goods_transaction_details.qty), 0)');
+            }, 'stock_in')
+            ->selectSub(function ($q) use ($warehouseId, $companyId) {
+                $q->from('goods_transaction_details')
+                    ->join('goods_transactions', 'goods_transaction_details.goods_transaction_id', '=', 'goods_transactions.id')
+                    ->whereColumn('goods_transaction_details.material_id', 'materials.id')
+                    ->where('goods_transactions.type', 'issue');
+                
+                if ($companyId) {
+                    $q->where('goods_transactions.company_id', $companyId);
+                }
+                
+                if ($warehouseId) {
+                    $q->join('warehouse_movements', 'warehouse_movements.goods_transaction_detail_id', '=', 'goods_transaction_details.id')
+                      ->join('warehouse_activities', 'warehouse_movements.warehouse_activity_id', '=', 'warehouse_activities.id')
+                      ->where('warehouse_activities.warehouse_id', $warehouseId);
+                }
+                $q->selectRaw('COALESCE(SUM(goods_transaction_details.qty), 0)');
+            }, 'stock_out')
+            ->selectSub(function ($q) use ($companyId) {
+                $q->from('goods_transaction_details')
+                    ->join('goods_transactions', 'goods_transaction_details.goods_transaction_id', '=', 'goods_transactions.id')
+                    ->whereColumn('goods_transaction_details.material_id', 'materials.id')
+                    ->where('goods_transactions.type', 'receipt');
+                
+                if ($companyId) {
+                    $q->where('goods_transactions.company_id', $companyId);
+                }
+                
+                $q->selectRaw('COALESCE(AVG(goods_transaction_details.price), 0)');
+            }, 'average_price');
 
         try {
-            if ($request->filled('warehouse_id')) {
-                $warehouseId = $request->warehouse_id;
-                
-                $query->withSum(['goodsTransactionDetails as total_purchase' => function ($q) use ($warehouseId) {
-                    $q->whereHas('goodsTransaction', fn($t) => $t->where('type', 'purchase')->where('warehouse_id', $warehouseId));
-                }], 'qty');
-
-                $query->withSum(['goodsTransactionDetails as total_sales' => function ($q) use ($warehouseId) {
-                    $q->whereHas('goodsTransaction', fn($t) => $t->where('type', 'sales')->where('warehouse_id', $warehouseId));
-                }], 'qty');
-            } else {
-                // Actual Stock
-                $query->withSum(['goodsTransactionDetails as total_purchase' => function ($q) {
-                    $q->whereHas('goodsTransaction', fn($t) => $t->where('type', 'purchase'));
-                }], 'qty');
-
-                $query->withSum(['goodsTransactionDetails as total_sales' => function ($q) {
-                    $q->whereHas('goodsTransaction', fn($t) => $t->where('type', 'sales'));
-                }], 'qty');
-            }
-
-            // Average Purchase Price
-            $query->withAvg(['goodsTransactionDetails as average_price' => function ($q) {
-                $q->whereHas('goodsTransaction', fn($t) => $t->where('type', 'purchase'));
-            }], 'price');
-
             if ($request->filled('search')) {
                 $search = $request->search;
                 $caseSensitive = $request->boolean('case_sensitive');
 
                 $query->where(function ($q) use ($search, $caseSensitive) {
                     if ($caseSensitive) {
-                        $q->where('name', 'LIKE BINARY', "%$search%")
-                            ->orWhere('code', 'LIKE BINARY', "%$search%");
+                        $q->where('materials.name', 'LIKE BINARY', "%$search%")
+                            ->orWhere('materials.code', 'LIKE BINARY', "%$search%");
                     } else {
-                        $q->where('name', 'like', "%$search%")
-                            ->orWhere('code', 'like', "%$search%");
+                        $q->where('materials.name', 'like', "%$search%")
+                            ->orWhere('materials.code', 'like', "%$search%");
                     }
                 });
             }
@@ -102,7 +129,16 @@ class MasterMaterialController extends Controller
 
             foreach ($this->materialTable as $field) {
                 if ($request->filled($field)) {
-                    $query->where($field, $request->$field);
+                    $query->where("materials.{$field}", $request->$field);
+                }
+            }
+
+            if ($request->has('is_stock')) {
+                $isStock = filter_var($request->is_stock, FILTER_VALIDATE_BOOLEAN);
+                if ($isStock) {
+                    $query->havingRaw('(COALESCE(stock_in, 0) - COALESCE(stock_out, 0)) > 0');
+                } else {
+                    $query->havingRaw('(COALESCE(stock_in, 0) - COALESCE(stock_out, 0)) <= 0');
                 }
             }
 
@@ -114,22 +150,23 @@ class MasterMaterialController extends Controller
 
             $sortOrder = $request->sort_order === 'asc' ? 'asc' : 'desc';
 
-            $query->orderBy($sortBy, $sortOrder);
+            $query->orderBy("materials.{$sortBy}", $sortOrder);
 
             $perPage = $request->per_page ?? 10;
 
-            $data = $query->paginate($perPage)
-                ->through(function ($item) {
-                    $item->stock = (int) $item->total_purchase - (int) $item->total_sales;
-                    
-                    $item->total_purchased = (int) $item->total_purchase;
-                    $item->total_sold = (int) $item->total_sales;
-                    $item->average_price = (float) $item->average_price;
+            $data = $query->paginate($perPage);
 
-                    unset($item->total_purchase, $item->total_sales);
-                    
-                    return $item;
-                });
+            $data->getCollection()->transform(function ($item) {
+                $item->available_stock = (int) $item->stock_in - (int) $item->stock_out;
+                $item->stock = $item->available_stock;
+                $item->total_purchased = (int) $item->stock_in;
+                $item->total_sold = (int) $item->stock_out;
+                $item->average_price = (float) $item->average_price;
+
+                unset($item->stock_in, $item->stock_out);
+                
+                return $item;
+            });
 
             return $this->responseSuccess($data, 'Material list retrieved successfully', 200);
         } catch (Exception $err) {
@@ -149,30 +186,43 @@ class MasterMaterialController extends Controller
 
             // Global stock info
             $material->total_purchase = (int) $material->goodsTransactionDetails()
-                ->whereHas('goodsTransaction', fn($t) => $t->where('type', 'purchase'))
+                ->whereHas('goodsTransaction', fn($t) => $t->where('type', 'receipt'))
                 ->sum('qty');
                 
             $material->total_sales = (int) $material->goodsTransactionDetails()
-                ->whereHas('goodsTransaction', fn($t) => $t->where('type', 'sales'))
+                ->whereHas('goodsTransaction', fn($t) => $t->where('type', 'issue'))
                 ->sum('qty');
 
-            $material->stock = $material->total_purchase - $material->total_sales;
+            $material->available_stock = $material->total_purchase - $material->total_sales;
+            $material->stock = $material->available_stock;
 
             $material->average_price = (float) $material->goodsTransactionDetails()
-                ->whereHas('goodsTransaction', fn($t) => $t->where('type', 'purchase'))
+                ->whereHas('goodsTransaction', fn($t) => $t->where('type', 'receipt'))
                 ->avg('price');
 
+            $warehouseId = $request->warehouse_id;
+            $companyId = $request->company_id;
             if ($request->filled('company_id')) {
                 $company = Company::with('warehouse')->findOrFail($request->company_id);
                 $warehouseId = $company->warehouse->id;
+            }
 
-                $material['available_stock_warehouse'] = $material->getRealStock($warehouseId);
+            if ($warehouseId || $companyId) {
+                $material['available_stock_warehouse'] = $material->getAvailableStock($warehouseId, null, $companyId);
 
                 $detailsQuery = GoodsTransactionDetail::with('goodsTransaction')
                     ->where('material_id', $material->id)
-                    ->whereHas('goodsTransaction', function ($q) use ($warehouseId) {
-                        $q->where('warehouse_id', $warehouseId);
+                    ->whereHas('goodsTransaction', function ($q) use ($companyId) {
+                        if ($companyId) {
+                            $q->where('company_id', $companyId);
+                        }
                     });
+
+                if ($warehouseId) {
+                    $detailsQuery->whereHas('goodsTransaction.company.warehouse', function ($q) use ($warehouseId) {
+                        $q->where('id', $warehouseId);
+                    });
+                }
 
                 $sortBy = $request->get('sort_by', 'id');
                 $sortDir = $request->get('sort_dir', 'desc');

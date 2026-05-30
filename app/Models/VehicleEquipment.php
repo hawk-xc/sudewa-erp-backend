@@ -24,16 +24,22 @@ class VehicleEquipment extends Model
         return $this->hasMany(GoodsTransactionDetail::class, 'vehicle_equipment_id', 'id');
     }
 
-    public function getAvailableStock(?int $warehouseId = null, $excludeDetailId = null)
+    public function getAvailableStock(?int $warehouseId = null, $excludeDetailId = null, ?int $companyId = null)
     {
         $purchasedQuery = $this->goodsTransactionDetails()
-            ->whereHas('goodsTransaction', function ($q) {
+            ->whereHas('goodsTransaction', function ($q) use ($companyId) {
                 $q->where('type', 'receipt');
+                if ($companyId) {
+                    $q->where('company_id', $companyId);
+                }
             });
 
         $soldQuery = $this->goodsTransactionDetails()
-            ->whereHas('goodsTransaction', function ($q) {
+            ->whereHas('goodsTransaction', function ($q) use ($companyId) {
                 $q->where('type', 'issue');
+                if ($companyId) {
+                    $q->where('company_id', $companyId);
+                }
             });
 
         if ($warehouseId) {
@@ -53,6 +59,22 @@ class VehicleEquipment extends Model
         $sold = $soldQuery->sum('qty');
 
         return $purchased - $sold;
+    }
+
+    /**
+     * Get real stock (finalized) for a specific warehouse.
+     */
+    public function getRealStock(int $warehouseId)
+    {
+        return $this->getAvailableStock($warehouseId);
+    }
+
+    /**
+     * Get forecast stock (including pending) for a specific warehouse.
+     */
+    public function getForecastStock(int $warehouseId)
+    {
+        return $this->getAvailableStock($warehouseId);
     }
 
     protected static function booted()

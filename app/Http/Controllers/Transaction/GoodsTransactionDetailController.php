@@ -3,20 +3,21 @@
 namespace App\Http\Controllers\Transaction;
 
 use App\Http\Controllers\Controller;
-use App\Models\Material;
 use App\Models\GoodsTransaction;
 use App\Models\GoodsTransactionDetail;
+use App\Models\Material;
+use App\Models\VehicleEquipment;
+use App\Models\WarehouseActivity;
+use App\Models\WarehouseMovement;
 use App\Traits\GlobalCodeNumberTrait;
 use App\Traits\ResponseTrait;
 use Exception;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
-use App\Models\WarehouseActivity;
-use App\Models\WarehouseMovement;
-use App\Models\VehicleEquipment;
-use Illuminate\Http\JsonResponse;
 
 class GoodsTransactionDetailController extends Controller
 {
@@ -150,11 +151,11 @@ class GoodsTransactionDetailController extends Controller
             $data = $query->paginate($perPage);
 
             return $this->responseSuccess($data, 'Goods Transaction Detail list retrieved successfully', 200);
-        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $err) {
+        } catch (ModelNotFoundException $err) {
             $model = class_basename($err->getModel() ?: 'Data');
             $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
             return $this->responseError(null, $friendlyModel . ' not found', 404);
-        } catch (\Exception $err) {
+        } catch (Exception $err) {
             Log::error('Error While retrieved Goods Transaction Detail data : '.$err->getMessage());
 
             return $this->responseError($err->getMessage(), 'Goods Transaction Detail list retrieved Failed', 500);
@@ -188,8 +189,8 @@ class GoodsTransactionDetailController extends Controller
                 }),
             ],
             'qty' => 'required|integer|min:1',
-            'type' => 'nullable|in:pcs,set,box',
-            'price' => $isReceipt ? 'required|numeric|min:0' : 'nullable|numeric|min:0',
+            'type' => $transaction->company_id == 4 ? 'nullable|in:pcs,set,box' : 'required|in:pcs,set,box',
+            'price' => $transaction->company_id == 4 ?  ($isReceipt ? 'required|numeric|min:0' : 'nullable|numeric|min:0') : 'required|numeric|min:0',
             'description' => 'nullable|string',
             'cash_id' => 'nullable|exists:cashes,id',
             'person_id' => 'nullable|exists:persons,id',
@@ -201,6 +202,14 @@ class GoodsTransactionDetailController extends Controller
         try {
             $transaction = GoodsTransaction::findOrFail($validated['goods_transaction_id']);
             $typeState = $transaction->type == 'receipt' ? 'penerimaan' : 'pengeluaran';
+
+            if ($request->filled('material_id')) {
+                $materialData = Material::findOrFail((int) $request->material_id);
+
+                if ($materialData->type !== $request->type) {
+                    return $this->responseError(null, 'Material type mismatch!', 422);
+                }
+            }
 
             if ($transaction->type == 'issue' || $transaction->type == 'sales') {
                 if (!empty($request->material_id)) {
@@ -265,11 +274,11 @@ class GoodsTransactionDetailController extends Controller
             });
 
             return $this->responseSuccess($data, 'Goods Transaction Detail created successfully', 201);
-        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $err) {
+        } catch (ModelNotFoundException $err) {
             $model = class_basename($err->getModel() ?: 'Data');
             $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
             return $this->responseError(null, $friendlyModel . ' not found', 404);
-        } catch (\Exception $err) {
+        } catch (Exception $err) {
             Log::error('Error while trying create Goods Transaction Detail Data : '.$err->getMessage());
 
             return $this->responseError($err->getMessage(), 'Goods Transaction Detail creation failed', 500);
@@ -282,16 +291,16 @@ class GoodsTransactionDetailController extends Controller
     public function show(string $id): JsonResponse
     {
         try {
-            $data = GoodsTransactionDetail::with(['goodsTransaction', 'material', 'vehicleEquipment'])
+            $data = GoodsTransactionDetail::with(['goodsTransaction', 'material:id,uuid,code,name,price,type', 'vehicleEquipment'])
                 ->select($this->goodsTransactionDetailTable)
                 ->findOrFail($id);
 
             return $this->responseSuccess($data, 'Goods Transaction Detail detail retrieved successfully', 200);
-        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $err) {
+        } catch (ModelNotFoundException $err) {
             $model = class_basename($err->getModel() ?: 'Data');
             $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
             return $this->responseError(null, $friendlyModel . ' not found', 404);
-        } catch (\Exception $err) {
+        } catch (Exception $err) {
             Log::error('Error While retrieved Goods Transaction Detail data : '.$err->getMessage());
 
             return $this->responseError($err->getMessage(), 'Goods Transaction Detail not found', 404);
@@ -425,11 +434,11 @@ class GoodsTransactionDetailController extends Controller
             });
 
             return $this->responseSuccess($detail->fresh(), 'Goods Transaction Detail updated successfully', 200);
-        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $err) {
+        } catch (ModelNotFoundException $err) {
             $model = class_basename($err->getModel() ?: 'Data');
             $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
             return $this->responseError(null, $friendlyModel . ' not found', 404);
-        } catch (\Exception $err) {
+        } catch (Exception $err) {
             Log::error('Error while trying update Goods Transaction Detail data : '.$err->getMessage());
 
             return $this->responseError($err->getMessage(), 'Goods Transaction Detail update failed', 500);
@@ -453,11 +462,11 @@ class GoodsTransactionDetailController extends Controller
             });
 
             return $this->responseSuccess(null, 'Goods Transaction Detail deleted successfully', 200);
-        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $err) {
+        } catch (ModelNotFoundException $err) {
             $model = class_basename($err->getModel() ?: 'Data');
             $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
             return $this->responseError(null, $friendlyModel . ' not found', 404);
-        } catch (\Exception $err) {
+        } catch (Exception $err) {
             Log::error('Error while trying delete Goods Transaction Detail data : '.$err->getMessage());
 
             return $this->responseError($err->getMessage(), 'Goods Transaction Detail deletion failed', 500);

@@ -48,13 +48,24 @@ class MasterVehicleEquipmentController extends Controller
     public function index(Request $request)
     {
         $warehouseId = $request->warehouse_id;
+        $companyId = $request->company_id;
+        if ($request->filled('company_id')) {
+            $company = \App\Models\Company::with('warehouse')->find($request->company_id);
+            if ($company && $company->warehouse) {
+                $warehouseId = $company->warehouse->id;
+            }
+        }
 
         $query = VehicleEquipment::select(array_map(fn($col) => "vehicle_equipments.{$col}", $this->vehicleEquipmentTable))
-            ->selectSub(function ($q) use ($warehouseId) {
+            ->selectSub(function ($q) use ($warehouseId, $companyId) {
                 $q->from('goods_transaction_details')
                     ->join('goods_transactions', 'goods_transaction_details.goods_transaction_id', '=', 'goods_transactions.id')
                     ->whereColumn('goods_transaction_details.vehicle_equipment_id', 'vehicle_equipments.id')
                     ->where('goods_transactions.type', 'receipt');
+                
+                if ($companyId) {
+                    $q->where('goods_transactions.company_id', $companyId);
+                }
                 
                 if ($warehouseId) {
                     $q->join('warehouse_movements', 'warehouse_movements.goods_transaction_detail_id', '=', 'goods_transaction_details.id')
@@ -63,11 +74,15 @@ class MasterVehicleEquipmentController extends Controller
                 }
                 $q->selectRaw('COALESCE(SUM(goods_transaction_details.qty), 0)');
             }, 'stock_in')
-            ->selectSub(function ($q) use ($warehouseId) {
+            ->selectSub(function ($q) use ($warehouseId, $companyId) {
                 $q->from('goods_transaction_details')
                     ->join('goods_transactions', 'goods_transaction_details.goods_transaction_id', '=', 'goods_transactions.id')
                     ->whereColumn('goods_transaction_details.vehicle_equipment_id', 'vehicle_equipments.id')
                     ->where('goods_transactions.type', 'issue');
+                
+                if ($companyId) {
+                    $q->where('goods_transactions.company_id', $companyId);
+                }
                 
                 if ($warehouseId) {
                     $q->join('warehouse_movements', 'warehouse_movements.goods_transaction_detail_id', '=', 'goods_transaction_details.id')
@@ -140,11 +155,56 @@ class MasterVehicleEquipmentController extends Controller
     /**
      * Get vehicle equipment details.
      */
-    public function show(string $id)
+    public function show(Request $request, string $id)
     {
         try {
             $equipment = VehicleEquipment::where('id', $id)->select($this->vehicleEquipmentTable)->firstOrFail();
- 
+
+            // Calculate global stock info
+            $equipment->total_purchase = (int) $equipment->goodsTransactionDetails()
+                ->whereHas('goodsTransaction', fn($t) => $t->where('type', 'receipt'))
+                ->sum('qty');
+                
+            $equipment->total_sales = (int) $equipment->goodsTransactionDetails()
+                ->whereHas('goodsTransaction', fn($t) => $t->where('type', 'issue'))
+                ->sum('qty');
+
+            $equipment->available_stock = $equipment->total_purchase - $equipment->total_sales;
+            $equipment->stock = $equipment->available_stock;
+
+            $warehouseId = $request->warehouse_id;
+            $companyId = $request->company_id;
+            if ($request->filled('company_id')) {
+                $company = \App\Models\Company::with('warehouse')->find($request->company_id);
+                if ($company && $company->warehouse) {
+                    $warehouseId = $company->warehouse->id;
+                }
+            }
+
+            if ($warehouseId || $companyId) {
+                $equipment['available_stock_warehouse'] = $equipment->getAvailableStock($warehouseId, null, $companyId);
+
+                $detailsQuery = \App\Models\GoodsTransactionDetail::with('goodsTransaction')
+                    ->where('vehicle_equipment_id', $equipment->id)
+                    ->whereHas('goodsTransaction', function ($q) use ($companyId) {
+                        if ($companyId) {
+                            $q->where('company_id', $companyId);
+                        }
+                    });
+
+                if ($warehouseId) {
+                    $detailsQuery->whereHas('goodsTransaction.company.warehouse', function ($q) use ($warehouseId) {
+                        $q->where('id', $warehouseId);
+                    });
+                }
+
+                $sortBy = $request->get('sort_by', 'id');
+                $sortDir = $request->get('sort_dir', 'desc');
+                $perPage = $request->get('per_page', 10);
+
+                $equipment['transaction_details'] = $detailsQuery->orderBy($sortBy, $sortDir)->paginate($perPage);
+            }
+
             return $this->responseSuccess($equipment, 'Vehicle equipment retrieved successfully', 200);
         } catch (ModelNotFoundException $err) {
             return $this->responseError('The requested resource could not be found.', 'Resource Not Found', 404);
