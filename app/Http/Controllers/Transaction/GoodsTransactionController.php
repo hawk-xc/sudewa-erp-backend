@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\GoodsTransaction;
 use App\Models\GoodsTransactionDetail;
 use App\Models\Person;
+use App\Models\VehicleFleet;
 use App\Rules\RightPersonRule;
 use App\Traits\FileTrait;
 use App\Traits\GlobalCodeNumberTrait;
@@ -175,7 +176,7 @@ class GoodsTransactionController extends Controller
                 'exists:vehicle_fleets,id',
                 function ($attribute, $value, $fail) use ($request) {
                     if ($value) {
-                        $fleet = \App\Models\VehicleFleet::find($value);
+                        $fleet = VehicleFleet::find($value);
                         if ($fleet) {
                             $now = now();
                             $stnkAge = $fleet->stnk_age ? \Carbon\Carbon::parse($fleet->stnk_age) : null;
@@ -190,7 +191,7 @@ class GoodsTransactionController extends Controller
                         }
 
                         if ($request->type === 'issue' && $request->filled('transaction_date')) {
-                            $exists = \App\Models\GoodsTransaction::where('type', 'issue')
+                            $exists = GoodsTransaction::where('type', 'issue')
                                 ->where('vehicle_fleet_id', $value)
                                 ->whereDate('transaction_date', $request->transaction_date)
                                 ->exists();
@@ -304,7 +305,7 @@ class GoodsTransactionController extends Controller
                     'exists:vehicle_fleets,id',
                     function ($attribute, $value, $fail) {
                         if ($value) {
-                            $fleet = \App\Models\VehicleFleet::find($value);
+                            $fleet = VehicleFleet::find($value);
                             if ($fleet) {
                                 $now = now();
                                 $stnkAge = $fleet->stnk_age ? \Carbon\Carbon::parse($fleet->stnk_age) : null;
