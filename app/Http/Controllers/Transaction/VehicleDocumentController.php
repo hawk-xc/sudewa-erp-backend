@@ -74,7 +74,11 @@ class VehicleDocumentController extends Controller
             $data = $query->orderBy($sortBy, $sortOrder)->paginate($request->per_page ?? 10);
 
             return $this->responseSuccess($data, 'Vehicle Documents retrieved successfully', 200);
-        } catch (Exception $err) {
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
+        } catch (\Exception $err) {
             Log::error('Error while retrieving Vehicle Documents: ' . $err->getMessage());
             return $this->responseError($err->getMessage(), 'Failed to retrieve Vehicle Documents', 500);
         }
@@ -148,7 +152,11 @@ class VehicleDocumentController extends Controller
             });
 
             return $this->responseSuccess($document, 'Vehicle Document created successfully', 201);
-        } catch (Exception $err) {
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
+        } catch (\Exception $err) {
             Log::error('Error while creating Vehicle Document: ' . $err->getMessage());
             return $this->responseError($err->getMessage(), 'Failed to create Vehicle Document', 500);
         }
@@ -174,7 +182,11 @@ class VehicleDocumentController extends Controller
             }
 
             return $this->responseSuccess($document, 'Vehicle Document retrieved successfully', 200);
-        } catch (Exception $err) {
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
+        } catch (\Exception $err) {
             Log::error('Error while retrieving Vehicle Document: ' . $err->getMessage());
             return $this->responseError($err->getMessage(), 'Failed to retrieve Vehicle Document', 500);
         }
@@ -232,7 +244,11 @@ class VehicleDocumentController extends Controller
             });
 
             return $this->responseSuccess($document, 'Vehicle Document updated successfully', 200);
-        } catch (Exception $err) {
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
+        } catch (\Exception $err) {
             Log::error('Error while updating Vehicle Document: ' . $err->getMessage());
             return $this->responseError($err->getMessage(), 'Failed to update Vehicle Document', 500);
         }
@@ -248,7 +264,11 @@ class VehicleDocumentController extends Controller
             $document->delete();
 
             return $this->responseSuccess([], 'Vehicle Document deleted successfully', 200);
-        } catch (Exception $err) {
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
+        } catch (\Exception $err) {
             Log::error('Error while deleting Vehicle Document: ' . $err->getMessage());
             return $this->responseError($err->getMessage(), 'Failed to delete Vehicle Document', 500);
         }

@@ -53,7 +53,11 @@ class BBNBillController extends Controller
             $data = $query->orderBy($sortBy, $sortOrder)->paginate($request->per_page ?? 10);
 
             return $this->responseSuccess($data, 'BBN Bill list retrieved successfully');
-        } catch (Exception $err) {
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
+        } catch (\Exception $err) {
             Log::error('Error retrieving BBN Bill: ' . $err->getMessage());
             return $this->responseError($err->getMessage(), 'Failed to retrieve BBN Bill list', 500);
         }
@@ -112,7 +116,11 @@ class BBNBillController extends Controller
             
             $data = BBNBill::create($validated);
             return $this->responseSuccess($data, 'BBN Bill created successfully', 201);
-        } catch (Exception $err) {
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
+        } catch (\Exception $err) {
             Log::error('Error creating BBN Bill: ' . $err->getMessage());
             return $this->responseError($err->getMessage(), 'BBN Bill creation failed', 500);
         }
@@ -138,7 +146,11 @@ class BBNBillController extends Controller
                 'bbnBillBillings.bbnBillBillingItems.cash'
             ]);
             return $this->responseSuccess($data, 'BBN Bill retrieved successfully');
-        } catch (Exception $err) {
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
+        } catch (\Exception $err) {
             Log::error('Error retrieving BBN Bill: ' . $err->getMessage());
             return $this->responseError($err->getMessage(), 'Internal Server Error', 500);
         }
@@ -192,7 +204,11 @@ class BBNBillController extends Controller
 
             $bbnBill->update($validated);
             return $this->responseSuccess($bbnBill->fresh(), 'BBN Bill updated successfully');
-        } catch (Exception $err) {
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
+        } catch (\Exception $err) {
             Log::error('Error updating BBN Bill: ' . $err->getMessage());
             return $this->responseError($err->getMessage(), 'BBN Bill update failed', 500);
         }
@@ -209,7 +225,11 @@ class BBNBillController extends Controller
 
             $bbnBill->delete();
             return $this->responseSuccess(null, 'BBN Bill deleted successfully');
-        } catch (Exception $err) {
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
+        } catch (\Exception $err) {
             Log::error('Error deleting BBN Bill: ' . $err->getMessage());
             return $this->responseError($err->getMessage(), 'BBN Bill deletion failed', 500);
         }

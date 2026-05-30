@@ -149,7 +149,11 @@ class GoodsTransactionDetailController extends Controller
             $data = $query->paginate($perPage);
 
             return $this->responseSuccess($data, 'Goods Transaction Detail list retrieved successfully', 200);
-        } catch (Exception $err) {
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
+        } catch (\Exception $err) {
             Log::error('Error While retrieved Goods Transaction Detail data : '.$err->getMessage());
 
             return $this->responseError($err->getMessage(), 'Goods Transaction Detail list retrieved Failed', 500);
@@ -260,7 +264,11 @@ class GoodsTransactionDetailController extends Controller
             });
 
             return $this->responseSuccess($data, 'Goods Transaction Detail created successfully', 201);
-        } catch (Exception $err) {
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
+        } catch (\Exception $err) {
             Log::error('Error while trying create Goods Transaction Detail Data : '.$err->getMessage());
 
             return $this->responseError($err->getMessage(), 'Goods Transaction Detail creation failed', 500);
@@ -278,7 +286,11 @@ class GoodsTransactionDetailController extends Controller
                 ->findOrFail($id);
 
             return $this->responseSuccess($data, 'Goods Transaction Detail detail retrieved successfully', 200);
-        } catch (Exception $err) {
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
+        } catch (\Exception $err) {
             Log::error('Error While retrieved Goods Transaction Detail data : '.$err->getMessage());
 
             return $this->responseError($err->getMessage(), 'Goods Transaction Detail not found', 404);
@@ -412,7 +424,11 @@ class GoodsTransactionDetailController extends Controller
             });
 
             return $this->responseSuccess($detail->fresh(), 'Goods Transaction Detail updated successfully', 200);
-        } catch (Exception $err) {
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
+        } catch (\Exception $err) {
             Log::error('Error while trying update Goods Transaction Detail data : '.$err->getMessage());
 
             return $this->responseError($err->getMessage(), 'Goods Transaction Detail update failed', 500);
@@ -436,7 +452,11 @@ class GoodsTransactionDetailController extends Controller
             });
 
             return $this->responseSuccess(null, 'Goods Transaction Detail deleted successfully', 200);
-        } catch (Exception $err) {
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
+        } catch (\Exception $err) {
             Log::error('Error while trying delete Goods Transaction Detail data : '.$err->getMessage());
 
             return $this->responseError($err->getMessage(), 'Goods Transaction Detail deletion failed', 500);

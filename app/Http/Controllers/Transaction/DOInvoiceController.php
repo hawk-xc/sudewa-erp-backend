@@ -53,7 +53,11 @@ class DOInvoiceController extends Controller
             });
 
             return $this->responseSuccess($data, 'DO Invoice list retrieved successfully');
-        } catch (Exception $err) {
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
+        } catch (\Exception $err) {
             Log::error('Error retrieving DO Invoice: ' . $err->getMessage());
             return $this->responseError($err->getMessage(), 'Failed to retrieve DO Invoice');
         }
@@ -115,7 +119,11 @@ class DOInvoiceController extends Controller
             }
 
             return $this->responseSuccess($createdInvoices, count($createdInvoices) . ' DO Invoice(s) created successfully', 201);
-        } catch (Exception $err) {
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
+        } catch (\Exception $err) {
             Log::error('Error creating DO Invoice: ' . $err->getMessage());
             return $this->responseError($err->getMessage(), 'Failed to create DO Invoice');
         }
@@ -132,7 +140,11 @@ class DOInvoiceController extends Controller
                 'order_list.expeditions.order_list_tarifs.tarif'
             ])->findOrFail($id);
             return $this->responseSuccess($invoice, 'DO Invoice details retrieved successfully');
-        } catch (Exception $err) {
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
+        } catch (\Exception $err) {
             return $this->responseError('DO Invoice not found', 'Not Found', 404);
         }
     }
@@ -174,7 +186,11 @@ class DOInvoiceController extends Controller
             $invoice = DOInvoice::findOrFail($id);
             $invoice->update($validated);
             return $this->responseSuccess($invoice, 'DO Invoice updated successfully');
-        } catch (Exception $err) {
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
+        } catch (\Exception $err) {
             Log::error('Error updating DO Invoice: ' . $err->getMessage());
             return $this->responseError($err->getMessage(), 'Failed to update DO Invoice');
         }
@@ -186,7 +202,11 @@ class DOInvoiceController extends Controller
             $invoice = DOInvoice::findOrFail($id);
             $invoice->delete();
             return $this->responseSuccess([], 'DO Invoice deleted successfully');
-        } catch (Exception $err) {
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
+        } catch (\Exception $err) {
             Log::error('Error deleting DO Invoice: ' . $err->getMessage());
             return $this->responseError($err->getMessage(), 'Failed to delete DO Invoice');
         }
@@ -212,7 +232,11 @@ class DOInvoiceController extends Controller
             $invoice->update(['is_already_print' => true]);
 
             return $this->responseSuccess($invoice, 'DO Invoice processed and printed successfully');
-        } catch (Exception $err) {
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
+        } catch (\Exception $err) {
             Log::error('Error processing DO Invoice: ' . $err->getMessage());
             return $this->responseError($err->getMessage(), 'Failed to process DO Invoice');
         }
@@ -237,7 +261,11 @@ class DOInvoiceController extends Controller
             $expedition->update(['is_printed' => true]);
 
             return $this->responseSuccess($expedition, 'DO Expedition processed and printed successfully');
-        } catch (Exception $err) {
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
+        } catch (\Exception $err) {
             Log::error('Error processing DO Expedition: ' . $err->getMessage());
             return $this->responseError($err->getMessage(), 'Failed to process DO Expedition');
         }

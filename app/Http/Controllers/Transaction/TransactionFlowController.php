@@ -79,7 +79,11 @@ class TransactionFlowController extends Controller
 
             return $this->responseSuccess($data, 'Transaction Flows retrieved successfully', 200);
 
-        } catch (Exception $err) {
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
+        } catch (\Exception $err) {
             Log::error('Error fetching Transaction Flows: '.$err->getMessage());
 
             return $this->responseError($err->getMessage(), 'Internal Server Error', 500);
@@ -95,7 +99,11 @@ class TransactionFlowController extends Controller
 
             return $this->responseSuccess($transactionFlow, 'Transaction Flow retrieved successfully', 200);
 
-        } catch (Exception $err) {
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
+        } catch (\Exception $err) {
             Log::error('Error fetching Transaction Flow: '.$err->getMessage());
 
             return $this->responseError($err->getMessage(), 'Transaction Flow not found', 404);
@@ -133,7 +141,11 @@ class TransactionFlowController extends Controller
 
             return $this->responseSuccess($transactionFlow, 'Transaction Flow created successfully', 201);
 
-        } catch (Exception $err) {
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
+        } catch (\Exception $err) {
             Log::error('Error creating Transaction Flow: '.$err->getMessage());
 
             return $this->responseError($err->getMessage(), 'Internal Server Error', 500);
@@ -178,7 +190,11 @@ class TransactionFlowController extends Controller
 
             return $this->responseSuccess($transactionFlow->fresh(), 'Transaction Flow updated successfully', 200);
 
-        } catch (Exception $errrr) {
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
+        } catch (\Exception $errrr) {
             Log::error('Error updating Transaction Flow: '.$errrr->getMessage());
 
             return $this->responseError($errrr->getMessage(), 'Internal Server Error', 500);
@@ -197,7 +213,11 @@ class TransactionFlowController extends Controller
 
             return $this->responseSuccess($transactionFlow, 'Transaction Flow deleted successfully', 200);
 
-        } catch (Exception $errrr) {
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
+        } catch (\Exception $errrr) {
             Log::error('Error deleting Transaction Flow: '.$errrr->getMessage());
 
             return $this->responseError($errrr->getMessage(), 'Internal Server Error', 500);

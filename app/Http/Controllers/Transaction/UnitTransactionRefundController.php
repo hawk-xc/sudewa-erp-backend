@@ -82,7 +82,11 @@ class UnitTransactionRefundController extends Controller
                 });
 
             return $this->responseSuccess($data, 'Unit transaction refunds retrieved successfully', 200);
-        } catch (Exception $err) {
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
+        } catch (\Exception $err) {
             Log::error('Error while retrieving unit transaction refunds: ' . $err->getMessage());
 
             return $this->responseError($err->getMessage(), 'Failed to retrieve unit transaction refunds', 500);
@@ -222,7 +226,11 @@ class UnitTransactionRefundController extends Controller
             });
 
             return $this->responseSuccess($refund, 'Unit transaction refund created successfully', 201);
-        } catch (Exception $err) {
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
+        } catch (\Exception $err) {
             Log::error('Error while creating unit transaction refund: ' . $err->getMessage());
 
             return $this->responseError($err->getMessage(), 'Failed to create unit transaction refund', 500);
@@ -247,7 +255,11 @@ class UnitTransactionRefundController extends Controller
             $refund->total_qty = $refund->unitTransactionItemDetails->count();
 
             return $this->responseSuccess($refund, 'Unit transaction refund retrieved successfully', 200);
-        } catch (Exception $err) {
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
+        } catch (\Exception $err) {
             Log::error('Error while retrieving unit transaction refund: ' . $err->getMessage());
 
             return $this->responseError($err->getMessage(), 'Failed to retrieve unit transaction refund', 404);
@@ -382,7 +394,11 @@ class UnitTransactionRefundController extends Controller
             });
 
             return $this->responseSuccess($refund, 'Unit transaction refund updated successfully', 200);
-        } catch (Exception $err) {
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
+        } catch (\Exception $err) {
             Log::error('Error while updating unit transaction refund: ' . $err->getMessage());
 
             return $this->responseError($err->getMessage(), 'Failed to update unit transaction refund', 500);
@@ -432,7 +448,11 @@ class UnitTransactionRefundController extends Controller
             });
 
             return $this->responseSuccess(null, 'Unit transaction refund deleted successfully', 200);
-        } catch (Exception $err) {
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
+        } catch (\Exception $err) {
             Log::error('Error while deleting unit transaction refund: ' . $err->getMessage());
 
             return $this->responseError($err->getMessage(), 'Failed to delete unit transaction refund', 500);

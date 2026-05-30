@@ -53,7 +53,11 @@ class UnitTransactionBillingHistoryController extends Controller
                 200
             );
 
-        } catch (Exception $err) {
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
+        } catch (\Exception $err) {
             Log::error($err->getMessage());
 
             return $this->responseError(null, 'Failed to retrieve data', 500);
@@ -69,7 +73,11 @@ class UnitTransactionBillingHistoryController extends Controller
 
             return $this->responseSuccess($data, 'Billing history retrieved successfully', 200);
 
-        } catch (Exception $err) {
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
+        } catch (\Exception $err) {
             return $this->responseError($err->getMessage(), 'Data not found', 404);
         }
     }
@@ -274,7 +282,11 @@ class UnitTransactionBillingHistoryController extends Controller
 
         } catch (ValidationException $err) {
             return $this->responseError($err->errors(), 'Validation failed', 422);
-        } catch (Exception $err) {
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
+        } catch (\Exception $err) {
             Log::error($err->getMessage());
 
             return $this->responseError($err->getMessage(), 'Create failed', 500);
@@ -372,7 +384,11 @@ class UnitTransactionBillingHistoryController extends Controller
 
         } catch (ValidationException $err) {
             return $this->responseError($err->errors(), 'Validation failed', 422);
-        } catch (Exception $err) {
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
+        } catch (\Exception $err) {
             Log::error($err->getMessage());
 
             return $this->responseError($err->getMessage(), 'Update failed', 500);
@@ -426,7 +442,11 @@ class UnitTransactionBillingHistoryController extends Controller
 
             return $this->responseSuccess([], 'History deleted successfully', 200);
 
-        } catch (Exception $err) {
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
+        } catch (\Exception $err) {
             Log::error($err->getMessage());
 
             return $this->responseError($err->getMessage(), 'Delete failed', 500);

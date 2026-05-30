@@ -29,7 +29,11 @@ class DOOrderListTarifController extends Controller
             $data = $query->latest()->paginate($request->per_page ?? 10);
 
             return $this->responseSuccess($data, 'DO Order List Tarif list retrieved successfully');
-        } catch (Exception $err) {
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
+        } catch (\Exception $err) {
             Log::error('Error retrieving DO Order List Tarif: ' . $err->getMessage());
             return $this->responseError($err->getMessage(), 'Failed to retrieve DO Order List Tarif');
         }
@@ -48,7 +52,11 @@ class DOOrderListTarifController extends Controller
         try {
             $item = DOOrderListTarif::with(['tarif', 'do_order_list', 'doOrderListTarifItems'])->findOrFail($id);
             return $this->responseSuccess($item, 'DO Order List Tarif details retrieved successfully');
-        } catch (Exception $err) {
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
+        } catch (\Exception $err) {
             return $this->responseError('DO Order List Tarif not found', 'Not Found', 404);
         }
     }
@@ -84,7 +92,11 @@ class DOOrderListTarifController extends Controller
             $expedition->order_list_tarifs()->attach($item->id);
 
             return $this->responseSuccess($item->load('tarif'), 'Tarif item added to order list successfully', 201);
-        } catch (Exception $err) {
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
+        } catch (\Exception $err) {
             Log::error('Error adding DO Order List Tarif: ' . $err->getMessage());
             return $this->responseError($err->getMessage(), 'Failed to add tarif item');
         }
@@ -106,7 +118,11 @@ class DOOrderListTarifController extends Controller
             $item->update($validated);
 
             return $this->responseSuccess($item->load('tarif'), 'Tarif item updated successfully');
-        } catch (Exception $err) {
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
+        } catch (\Exception $err) {
             Log::error('Error updating DO Order List Tarif: ' . $err->getMessage());
             return $this->responseError($err->getMessage(), 'Failed to update tarif item');
         }
@@ -122,7 +138,11 @@ class DOOrderListTarifController extends Controller
             $item->delete();
 
             return $this->responseSuccess([], 'Tarif item removed from order list successfully');
-        } catch (Exception $err) {
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
+        } catch (\Exception $err) {
             Log::error('Error deleting DO Order List Tarif: ' . $err->getMessage());
             return $this->responseError($err->getMessage(), 'Failed to remove tarif item');
         }

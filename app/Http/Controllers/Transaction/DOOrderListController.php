@@ -68,7 +68,11 @@ class DOOrderListController extends Controller
             $data->getCollection()->makeHidden(['tarifs', 'expeditions']);
 
             return $this->responseSuccess($data, 'DO Order List retrieved successfully');
-        } catch (Exception $err) {
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
+        } catch (\Exception $err) {
             Log::error('Error retrieving DO Order List: ' . $err->getMessage());
             return $this->responseError($err->getMessage(), 'Failed to retrieve DO Order List');
         }
@@ -100,7 +104,11 @@ class DOOrderListController extends Controller
             ]);
 
             return $this->responseSuccess($orderList, 'DO Order List created successfully', 201);
-        } catch (Exception $err) {
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
+        } catch (\Exception $err) {
             Log::error('Error creating DO Order List: ' . $err->getMessage());
             return $this->responseError($err->getMessage(), 'Failed to create DO Order List');
         }
@@ -117,7 +125,11 @@ class DOOrderListController extends Controller
                 'expeditions.order_list_tarifs.doOrderListTarifItems'
             ])->findOrFail($id);
             return $this->responseSuccess($orderList, 'DO Order List details retrieved successfully');
-        } catch (Exception $err) {
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
+        } catch (\Exception $err) {
             return $this->responseError('DO Order List not found', 'Not Found', 404);
         }
     }
@@ -145,7 +157,11 @@ class DOOrderListController extends Controller
             $orderList->update($validated);
 
             return $this->responseSuccess($orderList->load('customer'), 'DO Order List updated successfully');
-        } catch (Exception $err) {
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
+        } catch (\Exception $err) {
             Log::error('Error updating DO Order List: ' . $err->getMessage());
             return $this->responseError($err->getMessage(), 'Failed to update DO Order List');
         }
@@ -157,7 +173,11 @@ class DOOrderListController extends Controller
             $orderList = DOOrderList::findOrFail($id);
             $orderList->delete();
             return $this->responseSuccess([], 'DO Order List deleted successfully');
-        } catch (Exception $err) {
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
+        } catch (\Exception $err) {
             Log::error('Error deleting DO Order List: ' . $err->getMessage());
             return $this->responseError($err->getMessage(), 'Failed to delete DO Order List');
         }

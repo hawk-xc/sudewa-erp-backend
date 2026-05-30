@@ -88,7 +88,11 @@ class UnitTransactionItemSalesController extends Controller
 
             return $this->responseSuccess($data, 'Unit Transaction Item Sales retrieved successfully', 200);
 
-        } catch (Exception $err) {
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
+        } catch (\Exception $err) {
             return $this->responseError($err->getMessage(), 'Failed to retrieve data', 500);
         }
     }
@@ -149,7 +153,11 @@ class UnitTransactionItemSalesController extends Controller
                 201
             );
 
-        } catch (Exception $err) {
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
+        } catch (\Exception $err) {
             return $this->responseError(
                 $err->getMessage(),
                 'Validation failed',
@@ -187,7 +195,11 @@ class UnitTransactionItemSalesController extends Controller
 
             return $this->responseSuccess($result, 'Unit Transaction Item Sales retrieved successfully!', 200);
 
-        } catch (Exception $err) {
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
+        } catch (\Exception $err) {
             Log::error('Error while showing Unit Transaction Item Sales '.$err->getMessage());
             return $this->responseError($err->getMessage(), 'Failed Showing Unit Transaction Item Sales Data', 500);
         }
@@ -250,7 +262,11 @@ class UnitTransactionItemSalesController extends Controller
                 200
             );
 
-        } catch (Exception $err) {
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
+        } catch (\Exception $err) {
             return $this->responseError(
                 $err->getMessage(),
                 'Update failed',
@@ -269,7 +285,11 @@ class UnitTransactionItemSalesController extends Controller
             });
 
             return $this->responseSuccess([], 'Unit Transaction Item Detail successfully Deleted', 200);
-        } catch (Exception $err) {
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
+        } catch (\Exception $err) {
             Log::error('Error While deleting Unit Transaction Item Sales data : '.$err->getMessage());
 
             return $this->responseError(

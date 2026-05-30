@@ -80,7 +80,11 @@ class VehicleDataController extends Controller
             $data = $query->orderBy($sortBy, $sortOrder)->paginate($request->per_page ?? 10);
 
             return $this->responseSuccess($data, 'Vehicle Data list retrieved successfully', 200);
-        } catch (Exception $err) {
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
+        } catch (\Exception $err) {
             Log::error('Error while retrieving Vehicle Data: ' . $err->getMessage());
             return $this->responseError($err->getMessage(), 'Vehicle Data list retrieved Failed', 500);
         }
@@ -99,7 +103,11 @@ class VehicleDataController extends Controller
             }
 
             return $this->responseSuccess($vehicleData, 'Vehicle Data retrieved successfully', 200);
-        } catch (Exception $err) {
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
+        } catch (\Exception $err) {
             Log::error('Error while retrieving Vehicle Data: ' . $err->getMessage());
             return $this->responseError($err->getMessage(), 'Vehicle Data retrieved Failed', 500);
         }
@@ -163,7 +171,11 @@ class VehicleDataController extends Controller
             });
 
             return $this->responseSuccess($vehicleData, 'Vehicle Data created successfully', 201);
-        } catch (Exception $err) {
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
+        } catch (\Exception $err) {
             Log::error('Error while creating Vehicle Data: ' . $err->getMessage());
             return $this->responseError($err->getMessage(), 'Error while trying to create Vehicle Data', 500);
         }
@@ -239,7 +251,11 @@ class VehicleDataController extends Controller
             });
 
             return $this->responseSuccess($registrations, 'Vehicle registrations assigned successfully', 201);
-        } catch (Exception $err) {
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
+        } catch (\Exception $err) {
             Log::error('Error while assigning Vehicle Registration: ' . $err->getMessage());
             return $this->responseError($err->getMessage(), 'Error while trying to assign Vehicle Registration', 500);
         }
@@ -307,7 +323,11 @@ class VehicleDataController extends Controller
             });
 
             return $this->responseSuccess($vehicleData, 'Vehicle Data updated successfully', 200);
-        } catch (Exception $err) {
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
+        } catch (\Exception $err) {
             Log::error('Error while updating Vehicle Data: ' . $err->getMessage());
             return $this->responseError($err->getMessage(), 'Error while trying to update Vehicle Data', 500);
         }
@@ -324,7 +344,11 @@ class VehicleDataController extends Controller
             $vehicleData->delete();
 
             return $this->responseSuccess([], 'Vehicle Data deleted successfully', 200);
-        } catch (Exception $err) {
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
+        } catch (\Exception $err) {
             Log::error('Error while deleting Vehicle Data: ' . $err->getMessage());
             return $this->responseError($err->getMessage(), 'Vehicle Data deletion failed', 500);
         }
@@ -370,7 +394,11 @@ class VehicleDataController extends Controller
             ]));
 
             return $this->responseSuccess($registration->fresh(), 'Vehicle Registration updated successfully');
-        } catch (Exception $err) {
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
+        } catch (\Exception $err) {
             Log::error('Error while updating Vehicle Registration Data: ' . $err->getMessage());
             return $this->responseError($err->getMessage(), 'Failed to update Vehicle Registration Data', 500);
         }

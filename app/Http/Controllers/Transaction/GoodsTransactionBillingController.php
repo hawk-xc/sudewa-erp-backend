@@ -65,7 +65,11 @@ class GoodsTransactionBillingController extends Controller
             $data = $query->paginate($perPage);
 
             return $this->responseSuccess($data, 'Goods Transaction Billing list retrieved successfully', 200);
-        } catch (Exception $err) {
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
+        } catch (\Exception $err) {
             Log::error('Error While retrieved Goods Transaction Billing data : '.$err->getMessage());
 
             return $this->responseError($err->getMessage(), 'Goods Transaction Billing list retrieved Failed', 500);
@@ -98,7 +102,11 @@ class GoodsTransactionBillingController extends Controller
             });
 
             return $this->responseSuccess($data, 'Goods Transaction Billing created successfully', 201);
-        } catch (Exception $err) {
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
+        } catch (\Exception $err) {
             Log::error('Error while trying create Goods Transaction Billing Data : '.$err->getMessage());
 
             return $this->responseError($err->getMessage(), 'Goods Transaction Billing creation failed', 500);
@@ -120,7 +128,11 @@ class GoodsTransactionBillingController extends Controller
             }
 
             return $this->responseSuccess($data, 'Goods Transaction Billing detail retrieved successfully', 200);
-        } catch (Exception $err) {
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
+        } catch (\Exception $err) {
             Log::error('Error While retrieved Goods Transaction Billing data : '.$err->getMessage());
 
             return $this->responseError($err->getMessage(), 'Goods Transaction Billing not found', 404);
@@ -140,7 +152,11 @@ class GoodsTransactionBillingController extends Controller
             });
 
             return $this->responseSuccess(null, 'Goods Transaction Billing deleted successfully', 200);
-        } catch (Exception $err) {
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
+        } catch (\Exception $err) {
             Log::error('Error while trying delete Goods Transaction Billing data : '.$err->getMessage());
 
             return $this->responseError($err->getMessage(), 'Goods Transaction Billing deletion failed', 500);

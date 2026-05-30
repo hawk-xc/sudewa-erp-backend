@@ -82,7 +82,11 @@ class VehicleRegistrationController extends Controller
             $data = $query->orderBy($sortBy, $sortOrder)->paginate($request->per_page ?? 10);
 
             return $this->responseSuccess($data, 'Vehicle Registrations retrieved successfully');
-        } catch (Exception $err) {
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
+        } catch (\Exception $err) {
             Log::error('Error while retrieving Vehicle Registrations: ' . $err->getMessage());
             return $this->responseError($err->getMessage(), 'Failed to retrieve Vehicle Registrations', 500);
         }
@@ -153,7 +157,11 @@ class VehicleRegistrationController extends Controller
             });
 
             return $this->responseSuccess($registration, 'Vehicle Registration updated successfully');
-        } catch (Exception $err) {
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
+        } catch (\Exception $err) {
             Log::error('Error while updating Vehicle Registration: ' . $err->getMessage());
             return $this->responseError($err->getMessage(), 'Failed to update Vehicle Registration', 500);
         }
@@ -167,7 +175,11 @@ class VehicleRegistrationController extends Controller
         try {
             $registration = VehicleRegistration::with(['vendor', 'vehicleData'])->findOrFail($id);
             return $this->responseSuccess($registration, 'Vehicle Registration retrieved successfully');
-        } catch (Exception $err) {
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
+        } catch (\Exception $err) {
             Log::error('Error while retrieving Vehicle Registration: ' . $err->getMessage());
             return $this->responseError($err->getMessage(), 'Failed to retrieve Vehicle Registration', 500);
         }

@@ -83,7 +83,11 @@ class GoodsTransactionBillingPaymentController extends Controller
             $data = $query->paginate($perPage);
 
             return $this->responseSuccess($data, 'Goods Transaction Billing Payment list retrieved successfully', 200);
-        } catch (Exception $err) {
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
+        } catch (\Exception $err) {
             Log::error('Error While retrieved Goods Transaction Billing Payment data : '.$err->getMessage());
 
             return $this->responseError($err->getMessage(), 'Goods Transaction Billing Payment list retrieved Failed', 500);
@@ -146,7 +150,11 @@ class GoodsTransactionBillingPaymentController extends Controller
             ]);
 
             return $this->responseSuccess($responseData, 'Goods Transaction Billing Payment created successfully', 201);
-        } catch (Exception $err) {
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
+        } catch (\Exception $err) {
             Log::error('Error while trying create Goods Transaction Billing Payment Data : '.$err->getMessage());
 
             return $this->responseError($err->getMessage(), 'Goods Transaction Billing Payment creation failed', 500);
@@ -164,7 +172,11 @@ class GoodsTransactionBillingPaymentController extends Controller
                 ->findOrFail($id);
 
             return $this->responseSuccess($data, 'Goods Transaction Billing Payment detail retrieved successfully', 200);
-        } catch (Exception $err) {
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
+        } catch (\Exception $err) {
             Log::error('Error While retrieved Goods Transaction Billing Payment data : '.$err->getMessage());
 
             return $this->responseError($err->getMessage(), 'Goods Transaction Billing Payment not found', 404);
@@ -234,7 +246,11 @@ class GoodsTransactionBillingPaymentController extends Controller
             ]);
 
             return $this->responseSuccess($responseData, 'Goods Transaction Billing Payment updated successfully', 200);
-        } catch (Exception $err) {
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
+        } catch (\Exception $err) {
             Log::error('Error while trying update Goods Transaction Billing Payment data : '.$err->getMessage());
 
             return $this->responseError($err->getMessage(), 'Goods Transaction Billing Payment update failed', 500);
@@ -266,7 +282,11 @@ class GoodsTransactionBillingPaymentController extends Controller
             });
 
             return $this->responseSuccess(null, 'Goods Transaction Billing Payment deleted successfully', 200);
-        } catch (Exception $err) {
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
+        } catch (\Exception $err) {
             Log::error('Error while trying delete Goods Transaction Billing Payment data : '.$err->getMessage());
 
             return $this->responseError($err->getMessage(), 'Goods Transaction Billing Payment deletion failed', 500);
