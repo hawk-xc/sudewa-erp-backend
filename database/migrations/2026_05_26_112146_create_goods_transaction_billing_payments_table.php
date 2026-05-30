@@ -14,9 +14,8 @@ return new class extends Migration
         Schema::create('goods_transaction_billing_payments', function (Blueprint $table) {
             $table->id();
             $table->uuid();
-            $table->string('code')->nullable(false)->unique(true);
-            $table->foreignId('goods_transaction_billing_id')->constrained('goods_transaction_billings')->nullOnDelete();
-            $table->foreignId('cash_id')->constrained('cashes')->nullOnDelete();
+            $table->foreignId('goods_transaction_billing_id')->nullable()->constrained('goods_transaction_billings', 'id', 'gtbp_billing_foreign')->nullOnDelete();
+            $table->foreignId('cash_id')->nullable()->constrained('cashes')->nullOnDelete();
             $table->decimal('amount', 15, 2)->default(0);
             $table->date('transaction_date')->nullable(true);
             $table->text('description')->nullable(true);

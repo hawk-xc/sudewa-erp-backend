@@ -14,8 +14,9 @@ return new class extends Migration
         Schema::create('goods_transaction_billings', function (Blueprint $table) {
             $table->id();
             $table->uuid('uuid')->unique();
-            $table->string('code')->unique(true)->nullable(false);
             $table->foreignId('goods_transaction_id')->constrained('goods_transactions')->onDelete('cascade');
+            $table->boolean('is_paid')->default(false)->nullable(false);
+            $table->decimal('grand_total', 15, 2)->default(0)->nullable(false);
             $table->timestamps();
         });
     }

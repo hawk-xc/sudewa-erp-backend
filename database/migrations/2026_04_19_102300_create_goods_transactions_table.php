@@ -15,10 +15,11 @@ return new class extends Migration
             $table->id();
             $table->uuid('uuid')->unique();
             $table->string('code')->unique();
-            $table->foreignId('company_id')->constrained('companies')->nullable(true)->onDelete('cascade');
-            $table->foreignId('supplier_id')->constrained('persons')->nullable(true)->onDelete('cascade');
-            $table->foreignId('driver_id')->constrained('persons')->nullable(true)->onDelete('cascade');
-            $table->foreignId('vehicle_fleet_id')->constrained('vehicle_fleets')->nullable(true)->onDelete('cascade');
+            $table->foreignId('company_id')->nullable(true)->constrained('companies')->onDelete('cascade');
+            $table->foreignId('customer_id')->nullable(true)->constrained('persons')->onDelete('cascade');
+            $table->foreignId('supplier_id')->nullable(true)->constrained('persons')->onDelete('cascade');
+            $table->foreignId('driver_id')->nullable(true)->constrained('persons')->onDelete('cascade');
+            $table->foreignId('vehicle_fleet_id')->nullable(true)->constrained('vehicle_fleets')->onDelete('cascade');
             $table->enum('category', ['maintenance', 'equipped'])->nullable(true);
             $table->enum('type', ['receipt', 'issue'])->nullable(false);
             $table->date('transaction_date')->nullable(true);

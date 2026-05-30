@@ -19,8 +19,8 @@ return new class extends Migration
         });
 
         Schema::table('warehouse_movements', function (Blueprint $table) {
-            $table->foreignId('goods_transaction_id')->nullable()->constrained('goods_transactions')->cascadeOnDelete();
-            $table->foreignId('goods_transaction_detail_id')->nullable()->constrained('goods_transaction_details')->cascadeOnDelete();
+            $table->foreignId('goods_transaction_id')->after('unit_transaction_item_detail_id')->nullable()->constrained('goods_transactions')->cascadeOnDelete();
+            $table->foreignId('goods_transaction_detail_id')->after('goods_transaction_id')->nullable()->constrained('goods_transaction_details')->cascadeOnDelete();
         });
     }
 

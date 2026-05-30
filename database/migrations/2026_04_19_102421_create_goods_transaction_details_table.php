@@ -14,10 +14,8 @@ return new class extends Migration
         Schema::create('goods_transaction_details', function (Blueprint $table) {
             $table->id();
             $table->uuid('uuid')->unique();
-            $table->string('code')->unique(true)->nullable(false);
             $table->foreignId('goods_transaction_id')->constrained('goods_transactions')->onDelete('cascade');
             $table->foreignId('material_id')->nullable(true)->constrained('materials')->onDelete('cascade');
-            $table->foreignId('vehicle_equipment_id')->nullable(true)->constrained('vehicle_equipments')->onDelete('cascade');
             $table->boolean('in_stock')->default(false);
             $table->boolean('is_forecast')->default(true);
             $table->integer('qty')->default(1);

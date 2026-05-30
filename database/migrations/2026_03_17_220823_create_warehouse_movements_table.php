@@ -15,10 +15,10 @@ return new class extends Migration
             $table->id();
             $table->uuid();
             $table->string('serial_number')->unique()->nullable(false);
-            $table->foreignId('warehouse_activity_id')->nullable()->constrained('warehouse_activities')->cascadeOnDelete();
+            $table->foreignId('warehouse_activity_id')->nullable(true)->constrained('warehouse_activities')->cascadeOnDelete();
             $table->foreignId('unit_transaction_id')->nullable(true)->constrained('unit_transactions')->nullOnDelete();
-            $table->foreignId('unit_transaction_item_detail_id')->constrained('unit_transaction_item_details')->cascadeOnDelete();
-            $table->enum('status', ['in', 'out']);
+            $table->foreignId('unit_transaction_item_detail_id')->nullable(true)->constrained('unit_transaction_item_details')->cascadeOnDelete();
+            $table->enum('status', ['in', 'out'])->nullable(false);
             $table->timestamps();
 
             $table->index('status');
