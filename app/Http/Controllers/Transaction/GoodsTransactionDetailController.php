@@ -12,13 +12,17 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
+use App\Models\WarehouseActivity;
+use App\Models\WarehouseMovement;
+use App\Models\VehicleEquipment;
+use Illuminate\Http\JsonResponse;
 
 class GoodsTransactionDetailController extends Controller
 {
     use ResponseTrait;
 
     // projection
-    protected $goodsTransactionDetailTable;
+    protected array $goodsTransactionDetailTable;
 
     public function __construct()
     {
@@ -30,10 +34,11 @@ class GoodsTransactionDetailController extends Controller
         $this->goodsTransactionDetailTable = [
             'id',
             'uuid',
-            'order_code',
             'goods_transaction_id',
             'material_id',
+            'vehicle_equipment_id',
             'qty',
+            'type',
             'price',
             'in_stock',
             'is_forecast',
@@ -47,7 +52,7 @@ class GoodsTransactionDetailController extends Controller
      */
     public function index(Request $request)
     {   
-        $query = GoodsTransactionDetail::with(['goodsTransaction', 'material']);
+        $query = GoodsTransactionDetail::with(['goodsTransaction', 'material', 'vehicleEquipment']);
 
         $query->select($this->goodsTransactionDetailTable);
 
@@ -55,6 +60,36 @@ class GoodsTransactionDetailController extends Controller
             if ($request->filled('type')) {
                 $query->whereHas('goodsTransaction', function ($q) use ($request) {
                     $q->where('type', $request->type);
+                });
+            }
+
+            if ($request->filled('category')) {
+                $query->whereHas('goodsTransaction', function ($q) use ($request) {
+                    $q->where('category', $request->category);
+                });
+            }
+
+            if ($request->filled('company_id')) {
+                $query->whereHas('goodsTransaction', function ($q) use ($request) {
+                    $q->where('company_id', $request->company_id);
+                });
+            }
+
+            if ($request->filled('supplier_id')) {
+                $query->whereHas('goodsTransaction', function ($q) use ($request) {
+                    $q->where('supplier_id', $request->supplier_id);
+                });
+            }
+
+            if ($request->filled('driver_id')) {
+                $query->whereHas('goodsTransaction', function ($q) use ($request) {
+                    $q->where('driver_id', $request->driver_id);
+                });
+            }
+
+            if ($request->filled('vehicle_fleet_id')) {
+                $query->whereHas('goodsTransaction', function ($q) use ($request) {
+                    $q->where('vehicle_fleet_id', $request->vehicle_fleet_id);
                 });
             }
 
@@ -69,9 +104,12 @@ class GoodsTransactionDetailController extends Controller
                                 $mq->where('name', 'LIKE BINARY', "%$search%")
                                     ->orWhere('code', 'LIKE BINARY', "%$search%");
                             })
+                            ->orWhereHas('vehicleEquipment', function ($veq) use ($search) {
+                                $veq->where('name', 'LIKE BINARY', "%$search%")
+                                    ->orWhere('code', 'LIKE BINARY', "%$search%");
+                            })
                             ->orWhereHas('goodsTransaction', function ($tq) use ($search) {
-                                $tq->where('code', 'LIKE BINARY', "%$search%")
-                                    ->orWhere('supplier_name', 'LIKE BINARY', "%$search%");
+                                $tq->where('code', 'LIKE BINARY', "%$search%");
                             });
                     } else {
                         $q->where('description', 'like', "%$search%")
@@ -79,9 +117,12 @@ class GoodsTransactionDetailController extends Controller
                                 $mq->where('name', 'like', "%$search%")
                                     ->orWhere('code', 'like', "%$search%");
                             })
+                            ->orWhereHas('vehicleEquipment', function ($veq) use ($search) {
+                                $veq->where('name', 'like', "%$search%")
+                                    ->orWhere('code', 'like', "%$search%");
+                            })
                             ->orWhereHas('goodsTransaction', function ($tq) use ($search) {
-                                $tq->where('code', 'like', "%$search%")
-                                    ->orWhere('supplier_name', 'like', "%$search%");
+                                $tq->where('code', 'like', "%$search%");
                             });
                     }
                 });
@@ -115,50 +156,107 @@ class GoodsTransactionDetailController extends Controller
         }
     }
 
-    /**
-     * Store a new goods transaction detail.
-     */
     public function store(Request $request)
     {
+        $transactionId = $request->input('goods_transaction_id');
+        $transaction = $transactionId ? GoodsTransaction::find($transactionId) : null;
+        $isReceipt = $transaction && ($transaction->type == 'receipt' || $transaction->type == 'purchase');
+
         $validated = $request->validate([
             'goods_transaction_id' => 'required|exists:goods_transactions,id',
-            'order_code' => 'required|unique:goods_transaction_details,order_code',
             'material_id' => [
-                'required',
+                'required_without:vehicle_equipment_id',
+                'nullable',
                 'exists:materials,id',
                 Rule::unique('goods_transaction_details')->where(function ($query) use ($request) {
-                    return $query->where('goods_transaction_id', $request->goods_transaction_id);
+                    return $query->where('goods_transaction_id', $request->goods_transaction_id)
+                        ->whereNotNull('material_id');
+                }),
+            ],
+            'vehicle_equipment_id' => [
+                'required_without:material_id',
+                'nullable',
+                'exists:vehicle_equipments,id',
+                Rule::unique('goods_transaction_details')->where(function ($query) use ($request) {
+                    return $query->where('goods_transaction_id', $request->goods_transaction_id)
+                        ->whereNotNull('vehicle_equipment_id');
                 }),
             ],
             'qty' => 'required|integer|min:1',
-            'price' => 'required|numeric|min:0',
+            'type' => 'nullable|in:pcs,set,box',
+            'price' => $isReceipt ? 'required|numeric|min:0' : 'nullable|numeric|min:0',
             'description' => 'nullable|string',
+            'cash_id' => 'nullable|exists:cashes,id',
+            'person_id' => 'nullable|exists:persons,id',
         ], [
             'material_id.unique' => 'This material already exists in this transaction.',
+            'vehicle_equipment_id.unique' => 'This vehicle equipment already exists in this transaction.',
         ]);
 
         try {
             $transaction = GoodsTransaction::findOrFail($validated['goods_transaction_id']);
+            $typeState = $transaction->type == 'receipt' ? 'penerimaan' : 'pengeluaran';
 
-            if ($transaction->type == 'sales') {
-                $availableStock = $this->getAvailableStock($request->material_id);
+            if ($transaction->type == 'issue' || $transaction->type == 'sales') {
+                if (!empty($request->material_id)) {
+                    $availableStock = $this->getAvailableStock($request->material_id);
 
-                if ($request->qty > $availableStock) {
-                    return $this->responseError(null, 'Material stock qty not enough of capacity!', 422);
+                    if ($request->qty > $availableStock) {
+                        return $this->responseError(null, 'Material stock qty not enough of capacity!', 422);
+                    }
+                }
+
+                if (!empty($request->vehicle_equipment_id)) {
+                    $availableStock = $this->getAvailableVehicleEquipmentStock($request->vehicle_equipment_id);
+
+                    if ($request->qty > $availableStock) {
+                        return $this->responseError(null, 'Vehicle Equipment stock qty not enough of capacity!', 422);
+                    }
                 }
             }
 
-            if ($transaction->goodsTransactionBillings()->where('is_paid', true)->exists()) {
-                return $this->responseError(null, 'Cannot add items to a transaction that has already have payments!', 422);
+            if ($transaction->goodsTransactionBillingPayments()->exists()) {
+                return $this->responseError(null, 'Cannot add items to a transaction that already has payments!', 422);
             }
 
-            $data = DB::transaction(function () use ($request, $validated, $transaction) {
+            $data = DB::transaction(function () use ($validated, $typeState, $transaction) {
                 if (empty($validated['description'])) {
-                    $typeState = $transaction->type == "purchase" ? "pembelian" : "penjualan";
-                    $validated['description'] = "Pembayaran " . $typeState . " material ke " . $transaction->supplier_name;
+                    $validated['description'] = "Penambahahan " . $typeState . " barang";
                 }
 
-                return GoodsTransactionDetail::create($validated);
+                $detail = GoodsTransactionDetail::create($validated);
+                $warehouseId = $transaction->company->warehouse->id;
+
+                if ($warehouseId) {
+                    $existingMovement = WarehouseMovement::where('goods_transaction_id', $transaction->id)->first();
+                    
+                    if ($existingMovement && $existingMovement->warehouse_activity_id) {
+                        $activity = WarehouseActivity::find($existingMovement->warehouse_activity_id);
+                    }
+                    
+                    if (!isset($activity) || !$activity) {
+                        $activity = WarehouseActivity::create([
+                            'warehouse_id' => $warehouseId,
+                            'activity_type' => $transaction->type,
+                            'activity_date' => $transaction->transaction_date ?? now(),
+                            'description' => 'Automatic ' . $transaction->type . ' from Goods Transaction',
+                        ]);
+                    }
+
+                    WarehouseMovement::create([
+                        'warehouse_activity_id' => $activity->id,
+                        'goods_transaction_id' => $transaction->id,
+                        'goods_transaction_detail_id' => $detail->id,
+                        'status' => $transaction->type == 'receipt' ? 'in' : 'out',
+                    ]);
+
+                    $detail->update([
+                        'in_stock' => $transaction->type == 'receipt',
+                        'is_forecast' => false
+                    ]);
+                }
+
+                return $detail;
             });
 
             return $this->responseSuccess($data, 'Goods Transaction Detail created successfully', 201);
@@ -172,10 +270,10 @@ class GoodsTransactionDetailController extends Controller
     /**
      * Get goods transaction detail.
      */
-    public function show($id)
+    public function show(string $id): JsonResponse
     {
         try {
-            $data = GoodsTransactionDetail::with(['goodsTransaction', 'material'])
+            $data = GoodsTransactionDetail::with(['goodsTransaction', 'material', 'vehicleEquipment'])
                 ->select($this->goodsTransactionDetailTable)
                 ->findOrFail($id);
 
@@ -197,26 +295,40 @@ class GoodsTransactionDetailController extends Controller
         $request->validate([
             'material_id' => [
                 'sometimes',
-                'required',
+                'nullable',
                 'exists:materials,id',
                 Rule::unique('goods_transaction_details')->where(function ($query) use ($request, $detail) {
                     $goodsTransactionId = $request->goods_transaction_id ?? $detail->goods_transaction_id;
-                    return $query->where('goods_transaction_id', $goodsTransactionId);
+                    return $query->where('goods_transaction_id', $goodsTransactionId)->whereNotNull('material_id');
                 })->ignore($id),
             ],
-            'order_code' => 'sometimes|unique:goods_transaction_details,order_code,' . $id,
+            'vehicle_equipment_id' => [
+                'sometimes',
+                'nullable',
+                'exists:vehicle_equipments,id',
+                Rule::unique('goods_transaction_details')->where(function ($query) use ($request, $detail) {
+                    $goodsTransactionId = $request->goods_transaction_id ?? $detail->goods_transaction_id;
+                    return $query->where('goods_transaction_id', $goodsTransactionId)->whereNotNull('vehicle_equipment_id');
+                })->ignore($id),
+            ],
+            'code' => 'sometimes|unique:goods_transaction_details,code,' . $id,
             'qty' => 'sometimes|required|integer|min:1',
+            'type' => 'sometimes|nullable|in:pcs,set,box',
             'price' => 'sometimes|required|numeric|min:0',
             'in_stock' => 'nullable|boolean',
             'is_forecast' => 'nullable|boolean',
             'description' => 'nullable|string',
+            'warehouse_id' => 'sometimes|required|exists:warehouses,id',
+            'cash_id' => 'sometimes|nullable|exists:cashes,id',
+            'person_id' => 'sometimes|nullable|exists:persons,id',
         ], [
             'material_id.unique' => 'This material already exists in this transaction.',
+            'vehicle_equipment_id.unique' => 'This vehicle equipment already exists in this transaction.',
         ]);
 
         try {
             $data = array_filter(
-                $request->only(['goods_transaction_id', 'material_id', 'qty', 'price', 'in_stock', 'is_forecast', 'description']),
+                $request->only(['goods_transaction_id', 'material_id', 'vehicle_equipment_id', 'code', 'qty', 'type', 'price', 'in_stock', 'is_forecast', 'description']),
                 fn ($val) => ! is_null($val) && $val !== ''
             );
 
@@ -230,20 +342,73 @@ class GoodsTransactionDetailController extends Controller
 
             $transaction = GoodsTransaction::findOrFail($goodsTransactionId);
 
-            if ($transaction->goodsTransactionBillings()->where('is_paid', true)->exists()) {
-                return $this->responseError(null, 'Cannot update items in a transaction that has already have payments.', 422);
+            if ($transaction->goodsTransactionBillingPayments()->exists()) {
+                return $this->responseError(null, 'Cannot update items in a transaction that already has payments.', 422);
             }
 
-            // Validation for sales: check stock
-            if ($transaction->type == 'sales') {
-                $availableStock = $this->getAvailableStock($materialId, $detail->id);
-                if ($qty > $availableStock) {
-                    return $this->responseError(null, "Insufficient stock. Available: {$availableStock}", 422);
+            // Validation for issue / sales: check stock
+            if ($transaction->type == 'issue' || $transaction->type == 'sales') {
+                if ($materialId) {
+                    $availableStock = $this->getAvailableStock($materialId, $detail->id);
+                    if ($qty > $availableStock) {
+                        return $this->responseError(null, "Insufficient stock. Available: {$availableStock}", 422);
+                    }
+                }
+
+                $vehicleEquipmentId = $data['vehicle_equipment_id'] ?? $detail->vehicle_equipment_id;
+                if ($vehicleEquipmentId) {
+                    $availableStock = $this->getAvailableVehicleEquipmentStock($vehicleEquipmentId, $detail->id);
+                    if ($qty > $availableStock) {
+                        return $this->responseError(null, "Insufficient stock. Available: {$availableStock}", 422);
+                    }
                 }
             }
 
-            DB::transaction(function () use ($data, $detail) {
+            DB::transaction(function () use ($data, $detail, $transaction, $request) {
                 $detail->update($data);
+
+                if ($request->has('warehouse_id')) {
+                    $movement = WarehouseMovement::where('goods_transaction_detail_id', $detail->id)->first();
+                    $personId = $request->person_id ?? $transaction->supplier_id ?? $transaction->driver_id ?? $transaction->customer_id ?? 1;
+
+                    if ($movement) {
+                        $activity = $movement->warehouseActivity;
+                        if ($activity) {
+                            $activity->update([
+                                'person_id' => $personId,
+                                'cash_id' => $request->cash_id,
+                                'warehouse_id' => $request->warehouse_id,
+                            ]);
+                        }
+                    } else {
+                        $existingMovement = WarehouseMovement::where('goods_transaction_id', $transaction->id)->first();
+                        
+                        if ($existingMovement && $existingMovement->warehouse_activity_id) {
+                            $activity = WarehouseActivity::find($existingMovement->warehouse_activity_id);
+                        } else {
+                            $activity = WarehouseActivity::create([
+                                'person_id' => $personId,
+                                'cash_id' => $request->cash_id,
+                                'warehouse_id' => $request->warehouse_id,
+                                'activity_type' => $transaction->type,
+                                'activity_date' => $transaction->transaction_date ?? now(),
+                                'description' => 'Automatic ' . $transaction->type . ' from Goods Transaction',
+                            ]);
+                        }
+
+                        WarehouseMovement::create([
+                            'warehouse_activity_id' => $activity->id,
+                            'goods_transaction_id' => $transaction->id,
+                            'goods_transaction_detail_id' => $detail->id,
+                            'status' => $transaction->type == 'receipt' ? 'in' : 'out',
+                        ]);
+                    }
+
+                    $detail->update([
+                        'in_stock' => $transaction->type == 'receipt',
+                        'is_forecast' => false
+                    ]);
+                }
             });
 
             return $this->responseSuccess($detail->fresh(), 'Goods Transaction Detail updated successfully', 200);
@@ -262,8 +427,8 @@ class GoodsTransactionDetailController extends Controller
         try {
             $data = GoodsTransactionDetail::findOrFail($id);
 
-            if ($data->goodsTransaction->goodsTransactionBillings()->where('is_paid', true)->exists()) {
-                return $this->responseError(null, 'Cannot delete items from a transaction that has already have payments.', 422);
+            if ($data->goodsTransaction->goodsTransactionBillingPayments()->exists()) {
+                return $this->responseError(null, 'Cannot delete items from a transaction that already has payments.', 422);
             }
 
             DB::transaction(function () use ($data) {
@@ -285,13 +450,13 @@ class GoodsTransactionDetailController extends Controller
     {
         $purchased = GoodsTransactionDetail::where('material_id', $materialId)
             ->whereHas('goodsTransaction', function ($q) {
-                $q->where('type', 'purchase');
+                $q->where('type', 'receipt');
             })
             ->sum('qty');
 
         $soldQuery = GoodsTransactionDetail::where('material_id', $materialId)
             ->whereHas('goodsTransaction', function ($q) {
-                $q->where('type', 'sales');
+                $q->where('type', 'issue');
             });
 
         if ($excludeDetailId) {
@@ -301,5 +466,11 @@ class GoodsTransactionDetailController extends Controller
         $sold = $soldQuery->sum('qty');
 
         return $purchased - $sold;
+    }
+
+    private function getAvailableVehicleEquipmentStock($vehicleEquipmentId, $excludeDetailId = null)
+    {
+        $equipment = VehicleEquipment::findOrFail($vehicleEquipmentId);
+        return $equipment->getAvailableStock(null, $excludeDetailId);
     }
 }
