@@ -173,7 +173,7 @@ class GoodsTransactionController extends Controller
             'vehicle_fleet_id' => [
                 'required_if:type,issue',
                 'exists:vehicle_fleets,id',
-                function ($attribute, $value, $fail) {
+                function ($attribute, $value, $fail) use ($request) {
                     if ($value) {
                         $fleet = \App\Models\VehicleFleet::find($value);
                         if ($fleet) {
@@ -186,6 +186,16 @@ class GoodsTransactionController extends Controller
                             }
                             if (!$kirAge || !$kirAge->lessThan($now)) {
                                 $fail('The vehicle fleet kir_age must be less than now.');
+                            }
+                        }
+
+                        if ($request->type === 'issue' && $request->filled('transaction_date')) {
+                            $exists = \App\Models\GoodsTransaction::where('type', 'issue')
+                                ->where('vehicle_fleet_id', $value)
+                                ->whereDate('transaction_date', $request->transaction_date)
+                                ->exists();
+                            if ($exists) {
+                                $fail('The selected vehicle fleet already has an issue transaction on the same day.');
                             }
                         }
                     }
@@ -283,20 +293,11 @@ class GoodsTransactionController extends Controller
                 'company_id' => 'sometimes|exists:companies,id',
                 'supplier_id' => [
                     'sometimes',
-                    'nullable',
-                    Rule::exists('persons', 'id')->where(function ($q) use ($request, $transaction) {
-                        $type = $request->type ?? $transaction->type;
-                        if ($type === 'receipt') {
-                            $q->where('type', 'supplier');
-                        } elseif ($type === 'issue') {
-                            $q->where('type', 'customer');
-                        }
-                    }),
+                    new RightPersonRule(($request->type ?? $transaction->type) === 'receipt' ? 'supplier' : 'customer')
                 ],
                 'driver_id' => [
                     'sometimes',
-                    'nullable',
-                    Rule::exists('persons', 'id')->where('type', 'driver'),
+                    new RightPersonRule('driver')
                 ],
                 'vehicle_fleet_id' => [
                     'sometimes',
