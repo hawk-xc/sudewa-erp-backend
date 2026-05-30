@@ -218,6 +218,7 @@ Route::group(
 
             // Goods Stock
             Route::get('goods-transaction-stock', [GoodsTransactionStockController::class, 'index']);
+            Route::get('goods-transaction-stock-material', [GoodsTransactionStockController::class, 'indexMaterial']);
         });
 
         // Transaction API
