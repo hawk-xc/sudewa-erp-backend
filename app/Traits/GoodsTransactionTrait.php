@@ -13,7 +13,7 @@ trait GoodsTransactionTrait
      */
     public function generateMaterialCode(string $type): ?string
     {
-        if (! in_array($type, ['purchase', 'sales'], true)) {
+        if (! in_array($type, ['receipt', 'issue'], true)) {
             return null;
         }
 
