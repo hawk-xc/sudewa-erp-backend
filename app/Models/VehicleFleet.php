@@ -29,6 +29,11 @@ class VehicleFleet extends Model
         return $this->hasOne(VehicleFleetEquipment::class);
     }
 
+    public function goodsTransactions()
+    {
+        return $this->hasMany(GoodsTransaction::class, 'vehicle_fleet_id', 'id');
+    }
+
     protected static function booted()
     {
         static::creating(function ($model) {

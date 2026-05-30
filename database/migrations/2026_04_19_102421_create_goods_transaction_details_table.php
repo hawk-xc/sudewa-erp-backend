@@ -11,15 +11,16 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('material_transaction_details', function (Blueprint $table) {
+        Schema::create('goods_transaction_details', function (Blueprint $table) {
             $table->id();
             $table->uuid('uuid')->unique();
-            $table->foreignId('material_transaction_id')->constrained('material_transactions')->onDelete('cascade');
-            $table->foreignId('material_id')->constrained('materials')->onDelete('cascade');
+            $table->foreignId('goods_transaction_id')->constrained('goods_transactions')->onDelete('cascade');
+            $table->foreignId('material_id')->nullable(true)->constrained('materials')->onDelete('cascade');
             $table->boolean('in_stock')->default(false);
             $table->boolean('is_forecast')->default(true);
-            $table->integer('qty');
-            $table->decimal('price', 15, 2);
+            $table->integer('qty')->default(1);
+            $table->enum('type', ['pcs', 'set', 'box'])->nullable(true);
+            $table->decimal('price', 15, 2)->default(0);
             $table->text('description')->nullable();
             $table->timestamps();
         });
@@ -30,6 +31,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('material_transaction_details');
+        Schema::dropIfExists('goods_transaction_details');
     }
 };

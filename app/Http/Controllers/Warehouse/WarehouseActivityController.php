@@ -5,7 +5,7 @@ namespace App\Http\Controllers\Warehouse;
 use App\Http\Controllers\Controller;
 use App\Models\Person;
 use App\Models\UnitTransactionItemDetail;
-use App\Models\MaterialTransactionDetail;
+use App\Models\GoodsTransactionDetail;
 use App\Models\WarehouseActivity;
 use App\Models\WarehouseMovement;
 use App\Repositories\AuthRepository;
@@ -249,17 +249,17 @@ class WarehouseActivityController extends Controller
                         );
                     }
 
-                    if (! $billing) {
-                        throw new Exception(
-                            "Transaction for detail ID {$detail->id} has no billing yet"
-                        );
-                    }
+                    // if (! $billing) {
+                    //     throw new Exception(
+                    //         "Transaction for detail ID {$detail->id} has no billing yet"
+                    //     );
+                    // }
 
-                    if (! $billing->is_paid) {
-                        throw new Exception(
-                            "Transaction for detail ID {$detail->id} has no paid billing yet"
-                        );
-                    }
+                    // if (! $billing->is_paid) {
+                    //     throw new Exception(
+                    //         "Transaction for detail ID {$detail->id} has no paid billing yet"
+                    //     );
+                    // }
 
                     if ($detail->in_stock) {
                         throw new Exception(
@@ -340,17 +340,17 @@ class WarehouseActivityController extends Controller
 
                     $billing = $transaction->unitTransactionBilling;
 
-                    if (! $billing) {
-                        throw new Exception(
-                            "Transaction for detail ID {$detail->id} has no billing yet"
-                        );
-                    }
+                    // if (! $billing) {
+                    //     throw new Exception(
+                    //         "Transaction for detail ID {$detail->id} has no billing yet"
+                    //     );
+                    // }
 
-                    if (! $detail->in_stock) {
-                        throw new Exception(
-                            "Detail ID {$detail->id} is not available in stock"
-                        );
-                    }
+                    // if (! $detail->in_stock) {
+                    //     throw new Exception(
+                    //         "Detail ID {$detail->id} is not available in stock"
+                    //     );
+                    // }
 
                     $detail->update(['in_stock' => false]);
 
@@ -538,15 +538,15 @@ class WarehouseActivityController extends Controller
     }
     public function receiptMaterialStock(Request $request, string $activityId)
     {
-        if (is_string($request->material_transaction_details)) {
+        if (is_string($request->goods_transaction_details)) {
             $request->merge([
-                'material_transaction_details' => json_decode($request->material_transaction_details, true),
+                'goods_transaction_details' => json_decode($request->goods_transaction_details, true),
             ]);
         }
 
         $validated = $request->validate([
-            'material_transaction_details' => 'required|array|min:1',
-            'material_transaction_details.*' => 'integer|exists:material_transaction_details,id',
+            'goods_transaction_details' => 'required|array|min:1',
+            'goods_transaction_details.*' => 'integer|exists:goods_transaction_details,id',
         ]);
 
         try {
@@ -558,36 +558,36 @@ class WarehouseActivityController extends Controller
 
             $person = Person::findOrFail($activity->person_id);
 
-            $allowedDetailIds = $person->materialTransactions()
-                ->with('materialTransactionDetails:id,material_transaction_id')
+            $allowedDetailIds = $person->goodsTransactions()
+                ->with('goodsTransactionDetails:id,goods_transaction_id')
                 ->get()
-                ->flatMap(fn ($trx) => $trx->materialTransactionDetails)
+                ->flatMap(fn ($trx) => $trx->goodsTransactionDetails)
                 ->pluck('id')
                 ->toArray();
 
-            $invalidIds = array_diff($validated['material_transaction_details'], $allowedDetailIds);
+            $invalidIds = array_diff($validated['goods_transaction_details'], $allowedDetailIds);
 
             if (! empty($invalidIds)) {
                 return $this->responseError(
                     $invalidIds,
-                    'Some material transaction details do not belong to this person',
+                    'Some goods transaction details do not belong to this person',
                     422
                 );
             }
 
-            $materialTransactionDetailList = [];
+            $goodsTransactionDetailList = [];
 
-            DB::transaction(function () use ($validated, $activity, &$materialTransactionDetailList) {
-                $details = MaterialTransactionDetail::with([
-                    'materialTransaction.materialTransactionBillings',
-                ])->whereIn('id', $validated['material_transaction_details'])->get();
+            DB::transaction(function () use ($validated, $activity, &$goodsTransactionDetailList) {
+                $details = GoodsTransactionDetail::with([
+                    'goodsTransaction.goodsTransactionBillings',
+                ])->whereIn('id', $validated['goods_transaction_details'])->get();
 
                 foreach ($details as $detail) {
 
-                    $transaction = $detail->materialTransaction;
+                    $transaction = $detail->goodsTransaction;
 
                     $stockState = $transaction->stock_state;
-                    $billing = $transaction->materialTransactionBillings->first(); // or handle differently if multiple billings
+                    $billing = $transaction->goodsTransactionBillings->first(); // or handle differently if multiple billings
 
                     if (! in_array($stockState, ['inbound_incoming_goods', 'inbound_receipt'])) {
                         throw new Exception(
@@ -601,7 +601,7 @@ class WarehouseActivityController extends Controller
                         );
                     }
 
-                    // Check if it's paid - wait, is_paid is on MaterialTransaction or billing? 
+                    // Check if it's paid - wait, is_paid is on GoodsTransaction or billing? 
                     // Actually $transaction->is_paid exists. Or we check the transaction directly.
                     if (! $transaction->is_paid) {
                         throw new Exception(
@@ -618,18 +618,18 @@ class WarehouseActivityController extends Controller
                     $detail->update(['in_stock' => true, 'is_forecast' => false]);
                     $detail->receiptStock((int) $activity->warehouse_id);
 
-                    $materialTransactionDetailList[] = $detail;
+                    $goodsTransactionDetailList[] = $detail;
                 }
             });
 
             $responseData = [
                 'activity' => $activity,
-                'material_transaction_details' => $materialTransactionDetailList,
+                'goods_transaction_details' => $goodsTransactionDetailList,
             ];
 
             return $this->responseSuccess(
                 (object) $responseData,
-                'Receipt material stock processed successfully'
+                'Receipt goods stock processed successfully'
             );
 
         } catch (Exception $e) {
@@ -643,15 +643,15 @@ class WarehouseActivityController extends Controller
 
     public function dispatchMaterialStock(Request $request, string $activityId)
     {
-        if (is_string($request->material_transaction_details)) {
+        if (is_string($request->goods_transaction_details)) {
             $request->merge([
-                'material_transaction_details' => json_decode($request->material_transaction_details, true),
+                'goods_transaction_details' => json_decode($request->goods_transaction_details, true),
             ]);
         }
 
         $validated = $request->validate([
-            'material_transaction_details' => 'required|array|min:1',
-            'material_transaction_details.*' => 'integer|exists:material_transaction_details,id',
+            'goods_transaction_details' => 'required|array|min:1',
+            'goods_transaction_details.*' => 'integer|exists:goods_transaction_details,id',
         ]);
 
         try {
@@ -661,16 +661,16 @@ class WarehouseActivityController extends Controller
                 return $this->responseError(null, 'Invalid activity type for dispatch', 422);
             }
 
-            $materialTransactionDetailList = [];
+            $goodsTransactionDetailList = [];
 
-            DB::transaction(function () use ($validated, &$materialTransactionDetailList) {
+            DB::transaction(function () use ($validated, &$goodsTransactionDetailList) {
 
-                $details = MaterialTransactionDetail::with([
-                    'materialTransaction',
-                ])->whereIn('id', $validated['material_transaction_details'])->get();
+                $details = GoodsTransactionDetail::with([
+                    'goodsTransaction',
+                ])->whereIn('id', $validated['goods_transaction_details'])->get();
 
                 foreach ($details as $detail) {
-                    $transaction = $detail->materialTransaction;
+                    $transaction = $detail->goodsTransaction;
 
                     if (! $transaction->is_paid) {
                         throw new Exception(
@@ -688,18 +688,18 @@ class WarehouseActivityController extends Controller
 
                     $detail->dispatchStock();
 
-                    $materialTransactionDetailList[] = $detail;
+                    $goodsTransactionDetailList[] = $detail;
                 }
             });
 
             $responseData = [
                 'activity' => $activity,
-                'material_transaction_details' => $materialTransactionDetailList,
+                'goods_transaction_details' => $goodsTransactionDetailList,
             ];
 
             return $this->responseSuccess(
                 (object) $responseData,
-                'Dispatch material stock processed successfully'
+                'Dispatch goods stock processed successfully'
             );
 
         } catch (Exception $e) {
@@ -713,37 +713,37 @@ class WarehouseActivityController extends Controller
 
     public function refundMaterialStock(Request $request)
     {
-        if (is_string($request->material_transaction_details)) {
+        if (is_string($request->goods_transaction_details)) {
             $request->merge([
-                'material_transaction_details' => json_decode($request->material_transaction_details, true),
+                'goods_transaction_details' => json_decode($request->goods_transaction_details, true),
             ]);
         }
 
         $validated = $request->validate([
-            'material_transaction_details' => 'required|array|min:1',
-            'material_transaction_details.*' => 'integer|exists:material_transaction_details,id',
+            'goods_transaction_details' => 'required|array|min:1',
+            'goods_transaction_details.*' => 'integer|exists:goods_transaction_details,id',
         ]);
 
         try {
-            $materialTransactionDetailList = [];
+            $goodsTransactionDetailList = [];
 
-            DB::transaction(function () use ($validated, &$materialTransactionDetailList) {
-                $details = MaterialTransactionDetail::with(['materialTransaction'])
-                    ->whereIn('id', $validated['material_transaction_details'])
+            DB::transaction(function () use ($validated, &$goodsTransactionDetailList) {
+                $details = GoodsTransactionDetail::with(['goodsTransaction'])
+                    ->whereIn('id', $validated['goods_transaction_details'])
                     ->get();
 
                 foreach ($details as $detail) {
-                    if ($detail->materialTransaction->type !== 'sales') {
+                    if ($detail->goodsTransaction->type !== 'sales') {
                         throw new Exception("Detail ID {$detail->id} is not a sales transaction");
                     }
                     $detail->refundStock();
-                    $materialTransactionDetailList[] = $detail;
+                    $goodsTransactionDetailList[] = $detail;
                 }
             });
 
             return $this->responseSuccess(
-                $materialTransactionDetailList,
-                'Refund material stock processed successfully'
+                $goodsTransactionDetailList,
+                'Refund goods stock processed successfully'
             );
 
         } catch (Exception $e) {
@@ -757,37 +757,37 @@ class WarehouseActivityController extends Controller
 
     public function returnMaterialStock(Request $request)
     {
-        if (is_string($request->material_transaction_details)) {
+        if (is_string($request->goods_transaction_details)) {
             $request->merge([
-                'material_transaction_details' => json_decode($request->material_transaction_details, true),
+                'goods_transaction_details' => json_decode($request->goods_transaction_details, true),
             ]);
         }
 
         $validated = $request->validate([
-            'material_transaction_details' => 'required|array|min:1',
-            'material_transaction_details.*' => 'integer|exists:material_transaction_details,id',
+            'goods_transaction_details' => 'required|array|min:1',
+            'goods_transaction_details.*' => 'integer|exists:goods_transaction_details,id',
         ]);
 
         try {
-            $materialTransactionDetailList = [];
+            $goodsTransactionDetailList = [];
 
-            DB::transaction(function () use ($validated, &$materialTransactionDetailList) {
-                $details = MaterialTransactionDetail::with(['materialTransaction'])
-                    ->whereIn('id', $validated['material_transaction_details'])
+            DB::transaction(function () use ($validated, &$goodsTransactionDetailList) {
+                $details = GoodsTransactionDetail::with(['goodsTransaction'])
+                    ->whereIn('id', $validated['goods_transaction_details'])
                     ->get();
 
                 foreach ($details as $detail) {
-                    if ($detail->materialTransaction->type !== 'purchase') {
+                    if ($detail->goodsTransaction->type !== 'purchase') {
                         throw new Exception("Detail ID {$detail->id} is not a purchase transaction");
                     }
                     $detail->returnStock();
-                    $materialTransactionDetailList[] = $detail;
+                    $goodsTransactionDetailList[] = $detail;
                 }
             });
 
             return $this->responseSuccess(
-                $materialTransactionDetailList,
-                'Return material stock processed successfully'
+                $goodsTransactionDetailList,
+                'Return goods stock processed successfully'
             );
 
         } catch (Exception $e) {

@@ -19,11 +19,13 @@ class Account extends Model
         'name',
         'description',
         'type',
-        'category'
+        'category',
+        'is_lock'
     ];
 
     protected $casts = [
-        'account_group_id' => 'integer'
+        'account_group_id' => 'integer',
+        'is_lock' => 'boolean'
     ];
 
     public function accountGroup()

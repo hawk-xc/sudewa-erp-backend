@@ -2,23 +2,23 @@
 
 namespace App\Traits;
 
-use App\Models\MaterialTransaction;
+use App\Models\GoodsTransaction;
 use Illuminate\Support\Facades\DB;
 
-trait MaterialTransactionTrait
+trait GoodsTransactionTrait
 {
     /**
-     * Generate transaction code for material transactions
+     * Generate transaction code for goods transactions
      * Format: TMU-0001HSA
      */
     public function generateMaterialCode(string $type): ?string
     {
-        if (! in_array($type, ['purchase', 'sales'], true)) {
+        if (! in_array($type, ['receipt', 'issue'], true)) {
             return null;
         }
 
         return DB::transaction(function () {
-            $lastTransaction = MaterialTransaction::where('code', 'like', 'TMU-%HSA')
+            $lastTransaction = GoodsTransaction::where('code', 'like', 'TMU-%HSA')
                 ->lockForUpdate()
                 ->orderByDesc('id')
                 ->first();

@@ -6,7 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Imports\MaterialImport;
 use App\Models\Company;
 use App\Models\Material;
-use App\Models\MaterialTransactionDetail;
+use App\Models\GoodsTransactionDetail;
 use App\Traits\ResponseTrait;
 use Exception;
 use Illuminate\Http\Request;
@@ -57,27 +57,27 @@ class MasterMaterialController extends Controller
             if ($request->filled('warehouse_id')) {
                 $warehouseId = $request->warehouse_id;
                 
-                $query->withSum(['materialTransactionDetails as total_purchase' => function ($q) use ($warehouseId) {
-                    $q->whereHas('materialTransaction', fn($t) => $t->where('type', 'purchase')->where('warehouse_id', $warehouseId));
+                $query->withSum(['goodsTransactionDetails as total_purchase' => function ($q) use ($warehouseId) {
+                    $q->whereHas('goodsTransaction', fn($t) => $t->where('type', 'purchase')->where('warehouse_id', $warehouseId));
                 }], 'qty');
 
-                $query->withSum(['materialTransactionDetails as total_sales' => function ($q) use ($warehouseId) {
-                    $q->whereHas('materialTransaction', fn($t) => $t->where('type', 'sales')->where('warehouse_id', $warehouseId));
+                $query->withSum(['goodsTransactionDetails as total_sales' => function ($q) use ($warehouseId) {
+                    $q->whereHas('goodsTransaction', fn($t) => $t->where('type', 'sales')->where('warehouse_id', $warehouseId));
                 }], 'qty');
             } else {
                 // Actual Stock
-                $query->withSum(['materialTransactionDetails as total_purchase' => function ($q) {
-                    $q->whereHas('materialTransaction', fn($t) => $t->where('type', 'purchase'));
+                $query->withSum(['goodsTransactionDetails as total_purchase' => function ($q) {
+                    $q->whereHas('goodsTransaction', fn($t) => $t->where('type', 'purchase'));
                 }], 'qty');
 
-                $query->withSum(['materialTransactionDetails as total_sales' => function ($q) {
-                    $q->whereHas('materialTransaction', fn($t) => $t->where('type', 'sales'));
+                $query->withSum(['goodsTransactionDetails as total_sales' => function ($q) {
+                    $q->whereHas('goodsTransaction', fn($t) => $t->where('type', 'sales'));
                 }], 'qty');
             }
 
             // Average Purchase Price
-            $query->withAvg(['materialTransactionDetails as average_price' => function ($q) {
-                $q->whereHas('materialTransaction', fn($t) => $t->where('type', 'purchase'));
+            $query->withAvg(['goodsTransactionDetails as average_price' => function ($q) {
+                $q->whereHas('goodsTransaction', fn($t) => $t->where('type', 'purchase'));
             }], 'price');
 
             if ($request->filled('search')) {
@@ -96,7 +96,7 @@ class MasterMaterialController extends Controller
             }
 
             if ($request->boolean('has_transaction')) {
-                $query->whereHas('materialTransactionDetails');
+                $query->whereHas('goodsTransactionDetails');
             }
 
             foreach ($this->materialTable as $field) {
@@ -147,18 +147,18 @@ class MasterMaterialController extends Controller
             $material = Material::findOrFail($id);
 
             // Global stock info
-            $material->total_purchase = (int) $material->materialTransactionDetails()
-                ->whereHas('materialTransaction', fn($t) => $t->where('type', 'purchase'))
+            $material->total_purchase = (int) $material->goodsTransactionDetails()
+                ->whereHas('goodsTransaction', fn($t) => $t->where('type', 'purchase'))
                 ->sum('qty');
                 
-            $material->total_sales = (int) $material->materialTransactionDetails()
-                ->whereHas('materialTransaction', fn($t) => $t->where('type', 'sales'))
+            $material->total_sales = (int) $material->goodsTransactionDetails()
+                ->whereHas('goodsTransaction', fn($t) => $t->where('type', 'sales'))
                 ->sum('qty');
 
             $material->stock = $material->total_purchase - $material->total_sales;
 
-            $material->average_price = (float) $material->materialTransactionDetails()
-                ->whereHas('materialTransaction', fn($t) => $t->where('type', 'purchase'))
+            $material->average_price = (float) $material->goodsTransactionDetails()
+                ->whereHas('goodsTransaction', fn($t) => $t->where('type', 'purchase'))
                 ->avg('price');
 
             if ($request->filled('company_id')) {
@@ -167,9 +167,9 @@ class MasterMaterialController extends Controller
 
                 $material['available_stock_warehouse'] = $material->getRealStock($warehouseId);
 
-                $detailsQuery = MaterialTransactionDetail::with('materialTransaction')
+                $detailsQuery = GoodsTransactionDetail::with('goodsTransaction')
                     ->where('material_id', $material->id)
-                    ->whereHas('materialTransaction', function ($q) use ($warehouseId) {
+                    ->whereHas('goodsTransaction', function ($q) use ($warehouseId) {
                         $q->where('warehouse_id', $warehouseId);
                     });
 
@@ -259,9 +259,9 @@ class MasterMaterialController extends Controller
     public function destroy(string $id)
     {
         try {
-            $material = Material::withCount('materialTransactionDetails')->findOrFail($id);
+            $material = Material::withCount('goodsTransactionDetails')->findOrFail($id);
 
-            if ($material->material_transaction_details_count > 0) {
+            if ($material->goods_transaction_details_count > 0) {
                 return $this->responseError('Cannot delete material because it has associated transactions.', 'Deletion Restricted', 422);
             }
 

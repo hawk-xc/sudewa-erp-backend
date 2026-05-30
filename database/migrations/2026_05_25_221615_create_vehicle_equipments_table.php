@@ -11,8 +11,12 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('material_transactions', function (Blueprint $table) {
-            $table->string('invoice_file')->nullable(true)->after('is_refunded');
+        Schema::create('vehicle_equipments', function (Blueprint $table) {
+            $table->id();
+            $table->uuid();
+            $table->string('code')->nullable(false);
+            $table->string('name')->nullable(false);
+            $table->timestamps();
         });
     }
 
@@ -21,8 +25,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('material_transactions', function (Blueprint $table) {
-            $table->dropColumn('invoice_file');
-        });
+        Schema::dropIfExists('vehicle_equipments');
     }
 };

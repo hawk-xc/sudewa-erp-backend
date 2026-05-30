@@ -31,9 +31,9 @@ class Material extends Model
         });
     }
 
-    public function materialTransactionDetails()
+    public function goodsTransactionDetails()
     {
-        return $this->hasMany(MaterialTransactionDetail::class);
+        return $this->hasMany(GoodsTransactionDetail::class);
     }
 
     /**
@@ -41,14 +41,14 @@ class Material extends Model
      */
     public function getRealStock(int $warehouseId)
     {
-        $purchased = $this->materialTransactionDetails()
-            ->whereHas('materialTransaction', function ($q) use ($warehouseId) {
+        $purchased = $this->goodsTransactionDetails()
+            ->whereHas('goodsTransaction', function ($q) use ($warehouseId) {
                 $q->where('type', 'purchase')->where('warehouse_id', $warehouseId);
             })
             ->sum('qty');
 
-        $sold = $this->materialTransactionDetails()
-            ->whereHas('materialTransaction', function ($q) use ($warehouseId) {
+        $sold = $this->goodsTransactionDetails()
+            ->whereHas('goodsTransaction', function ($q) use ($warehouseId) {
                 $q->where('type', 'sales')->where('warehouse_id', $warehouseId);
             })
             ->sum('qty');

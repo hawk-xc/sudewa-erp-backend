@@ -29,6 +29,7 @@ use App\Http\Controllers\MasterData\MasterSupplierController;
 use App\Http\Controllers\MasterData\MasterTarifController;
 use App\Http\Controllers\MasterData\MasterUnitTypeController;
 use App\Http\Controllers\MasterData\MasterUnitTypePriceArchiveController;
+use App\Http\Controllers\MasterData\MasterVehicleEquipmentController;
 use App\Http\Controllers\MasterData\MasterVendorController;
 use App\Http\Controllers\MasterData\VehicleFleetController;
 use App\Http\Controllers\Permission\PermissionController;
@@ -44,9 +45,10 @@ use App\Http\Controllers\Transaction\DOInvoiceController;
 use App\Http\Controllers\Transaction\DOOrderListController;
 use App\Http\Controllers\Transaction\DOOrderListTarifController;
 use App\Http\Controllers\Transaction\DOOrderListTarifItemController;
-use App\Http\Controllers\Transaction\MaterialTransactionBillingController;
-use App\Http\Controllers\Transaction\MaterialTransactionController;
-use App\Http\Controllers\Transaction\MaterialTransactionDetailController;
+use App\Http\Controllers\Transaction\GoodsTransactionBillingController;
+use App\Http\Controllers\Transaction\GoodsTransactionBillingPaymentController;
+use App\Http\Controllers\Transaction\GoodsTransactionController;
+use App\Http\Controllers\Transaction\GoodsTransactionDetailController;
 use App\Http\Controllers\Transaction\TransactionFlowController;
 use App\Http\Controllers\Transaction\UnitTransactionBillingController;
 use App\Http\Controllers\Transaction\UnitTransactionBillingHistoryController;
@@ -60,6 +62,8 @@ use App\Http\Controllers\Transaction\VehicleDataController;
 use App\Http\Controllers\Transaction\VehicleDocumentController;
 use App\Http\Controllers\Transaction\VehicleRegistrationController;
 use App\Http\Controllers\User\UserController;
+use App\Http\Controllers\Warehouse\GoodsTransactionStockController;
+use App\Http\Controllers\Warehouse\VehicleEquipmentTransactionController;
 use App\Http\Controllers\Warehouse\WarehouseActivityController;
 use App\Http\Controllers\Warehouse\WarehouseController;
 use Illuminate\Support\Facades\Route;
@@ -142,6 +146,7 @@ Route::group(
             Route::post('material/import', [MasterMaterialController::class, 'import']);
             Route::post('tarif/import', [MasterTarifController::class, 'import']);
             Route::post('vehicle-fleet/import', [VehicleFleetController::class, 'import']);
+            Route::post('vehicle-equipment/import', [MasterVehicleEquipmentController::class, 'import']);
 
             // Export
             Route::get('customer/export', [MasterCustomerController::class, 'export']);
@@ -155,6 +160,7 @@ Route::group(
             Route::get('unit-type/export', [MasterUnitTypeController::class, 'export']);
             Route::get('sparepart/export', [MasterSparepartController::class, 'export']);
             Route::get('tarif/export', [MasterTarifController::class, 'export']);
+            Route::get('vehicle-equipment/export', [MasterVehicleEquipmentController::class, 'export']);
             Route::get('vehicle-fleet/export', [VehicleFleetController::class, 'export']);
             // Route::get('material/export', [MasterMaterialController::class, 'export']);
     
@@ -178,6 +184,7 @@ Route::group(
             Route::apiResource('material', MasterMaterialController::class);
             Route::apiResource('vendor', MasterVendorController::class);
             Route::apiResource('tarif', MasterTarifController::class);
+            Route::apiResource('vehicle-equipment', MasterVehicleEquipmentController::class);
             Route::apiResource('vehicle-fleet', VehicleFleetController::class);
         });
 
@@ -202,8 +209,15 @@ Route::group(
             Route::post('warehouse-activity/refund-material-stock', [WarehouseActivityController::class, 'refundMaterialStock']);
             Route::post('warehouse-activity/return-material-stock', [WarehouseActivityController::class, 'returnMaterialStock']);
 
+            // Warehouse Stock Flow
             Route::apiResource('warehouse-activity', WarehouseActivityController::class);
             Route::apiResource('warehouse-data', WarehouseController::class);
+
+            // Vehicle Stock status
+            Route::get('good-transaction-maintenance', [GoodsTransactionController::class, 'maintenance']);
+
+            // Goods Stock
+            Route::get('goods-transaction-stock', [GoodsTransactionStockController::class, 'index']);
         });
 
         // Transaction API
@@ -244,12 +258,17 @@ Route::group(
             Route::apiResource('vehicle-document', VehicleDocumentController::class);
             Route::apiResource('vehicle-registration', VehicleRegistrationController::class);
 
-            // Material Transaction API
-            Route::put('material-transaction/{id}/update-state', [MaterialTransactionController::class, 'updateState'])->name('material-transaction.update-state');
-            Route::post('material-transaction/{id}/upload-invoice', [MaterialTransactionController::class, 'uploadInvoice'])->name('material-transaction.upload-invoice');
-            Route::apiResource('material-transaction', MaterialTransactionController::class);
-            Route::apiResource('material-transaction-detail', MaterialTransactionDetailController::class);
-            Route::apiResource('material-transaction-billing', MaterialTransactionBillingController::class);
+            // Goods Transaction API
+            Route::put('goods-transaction/{id}/update-state', [GoodsTransactionController::class, 'updateState'])->name('goods-transaction.update-state');
+            Route::post('goods-transaction/{id}/upload-invoice', [GoodsTransactionController::class, 'uploadInvoice'])->name('goods-transaction.upload-invoice');
+            Route::apiResource('goods-transaction', GoodsTransactionController::class);
+            Route::apiResource('goods-transaction-detail', GoodsTransactionDetailController::class);
+            Route::apiResource('goods-transaction-billing', GoodsTransactionBillingController::class);
+            Route::apiResource('goods-transaction-billing-payment', GoodsTransactionBillingPaymentController::class, [
+                'parameters' => [
+                    'goods-transaction-billing-payment' => 'payment'
+                ]
+            ]);
 
             // DO Transaction API    
             Route::group(['prefix' => 'do-invoice', 'as' => 'do-invoice.'], function() {
