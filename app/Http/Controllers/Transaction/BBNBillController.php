@@ -6,25 +6,27 @@ use App\Http\Controllers\Controller;
 use App\Models\BBNBill;
 use App\Models\Person;
 use App\Models\VehicleData;
+use App\Rules\RightPersonRule;
 use App\Traits\GlobalCodeNumberTrait;
 use App\Traits\ResponseTrait;
 use Exception;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
-
+ 
 class BBNBillController extends Controller
 {
     use ResponseTrait, GlobalCodeNumberTrait;
-
+ 
     protected $bbnBillTable;
-
+ 
     public function __construct()
     {
         $this->middleware(['permission:transaction:list'])->only(['index', 'show']);
         $this->middleware(['permission:transaction:create'])->only('store');
         $this->middleware(['permission:transaction:edit'])->only('update');
         $this->middleware(['permission:transaction:delete'])->only(['destroy']);
-
+ 
         $this->bbnBillTable = [
             'id',
             'uuid',
@@ -35,51 +37,51 @@ class BBNBillController extends Controller
             'created_at',
         ];
     }
-
+ 
     public function index(Request $request)
     {
         $query = BBNBill::with(['dealer:id,name']);
-
+ 
         try {
             foreach ($this->bbnBillTable as $field) {
                 if ($request->filled($field)) {
                     $query->where($field, $request->$field);
                 }
             }
-
+ 
             $sortBy = in_array($request->sort_by, $this->bbnBillTable) ? $request->sort_by : 'id';
             $sortOrder = $request->sort_order === 'asc' ? 'asc' : 'desc';
-
+ 
             $data = $query->orderBy($sortBy, $sortOrder)->paginate($request->per_page ?? 10);
-
+ 
             return $this->responseSuccess($data, 'BBN Bill list retrieved successfully');
-        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $err) {
+        } catch (ModelNotFoundException $err) {
             $model = class_basename($err->getModel() ?: 'Data');
             $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
             return $this->responseError(null, $friendlyModel . ' not found', 404);
-        } catch (\Exception $err) {
+        } catch (Exception $err) {
             Log::error('Error retrieving BBN Bill: ' . $err->getMessage());
             return $this->responseError($err->getMessage(), 'Failed to retrieve BBN Bill list', 500);
         }
     }
-
+ 
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'dealer_id' => 'required|exists:persons,id',
+            'dealer_id' => [
+                'required',
+                new RightPersonRule('dealer')
+            ],
             'bill_date' => 'nullable|date',
             'paid_date' => 'nullable|date',
         ]);
-
+ 
         $dealer = Person::findOrFail($validated['dealer_id']);
-        if ($dealer->type !== 'dealer') {
-            return $this->responseError('The selected person is not a dealer', 'Validation failed', 422);
-        }
-
+ 
         if (!$request->filled('bill_date')) {
             $validated['bill_date'] = now()->toDateTimeString();
         }
-
+ 
         $totalVehicleData = VehicleData::where('dealer_id', (int) $validated['dealer_id'])->count();
         if ($totalVehicleData == 0) {
             return $this->responseError('No vehicle data found for this dealer', 'Data not found', 404);
@@ -117,11 +119,11 @@ class BBNBillController extends Controller
             
             $data = BBNBill::create($validated);
             return $this->responseSuccess($data, 'BBN Bill created successfully', 201);
-        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $err) {
+        } catch (ModelNotFoundException $err) {
             $model = class_basename($err->getModel() ?: 'Data');
             $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
             return $this->responseError(null, $friendlyModel . ' not found', 404);
-        } catch (\Exception $err) {
+        } catch (Exception $err) {
             Log::error('Error creating BBN Bill: ' . $err->getMessage());
             return $this->responseError($err->getMessage(), 'BBN Bill creation failed', 500);
         }
@@ -147,11 +149,11 @@ class BBNBillController extends Controller
                 'bbnBillBillings.bbnBillBillingItems.cash'
             ]);
             return $this->responseSuccess($data, 'BBN Bill retrieved successfully');
-        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $err) {
+        } catch (ModelNotFoundException $err) {
             $model = class_basename($err->getModel() ?: 'Data');
             $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
             return $this->responseError(null, $friendlyModel . ' not found', 404);
-        } catch (\Exception $err) {
+        } catch (Exception $err) {
             Log::error('Error retrieving BBN Bill: ' . $err->getMessage());
             return $this->responseError($err->getMessage(), 'Internal Server Error', 500);
         }
@@ -160,20 +162,21 @@ class BBNBillController extends Controller
     public function update(Request $request, $id)
     {
         $validated = $request->validate([
-            'dealer_id' => 'sometimes|required|exists:persons,id',
+            'dealer_id' => [
+                'sometimes',
+                'required',
+                new RightPersonRule('dealer'),
+            ],
             'bill_date' => 'sometimes|required|date',
             'paid_date' => 'nullable|date',
         ]);
-
+ 
         try {
             $bbnBill = BBNBill::findOrFail($id);
-
+ 
             if ($request->filled('dealer_id')) {
                 $dealer = Person::findOrFail($validated['dealer_id']);
-                if ($dealer->type !== 'dealer') {
-                    return $this->responseError('The selected person is not a dealer', 'Validation failed', 422);
-                }
-
+ 
                 $unprocessedIds = VehicleData::where('dealer_id', $validated['dealer_id'])
                     ->where(function ($q) {
                         $q->whereDoesntHave('vehicleRegistration')
@@ -205,11 +208,11 @@ class BBNBillController extends Controller
 
             $bbnBill->update($validated);
             return $this->responseSuccess($bbnBill->fresh(), 'BBN Bill updated successfully');
-        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $err) {
+        } catch (ModelNotFoundException $err) {
             $model = class_basename($err->getModel() ?: 'Data');
             $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
             return $this->responseError(null, $friendlyModel . ' not found', 404);
-        } catch (\Exception $err) {
+        } catch (Exception $err) {
             Log::error('Error updating BBN Bill: ' . $err->getMessage());
             return $this->responseError($err->getMessage(), 'BBN Bill update failed', 500);
         }
@@ -226,11 +229,11 @@ class BBNBillController extends Controller
 
             $bbnBill->delete();
             return $this->responseSuccess(null, 'BBN Bill deleted successfully');
-        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $err) {
+        } catch (ModelNotFoundException $err) {
             $model = class_basename($err->getModel() ?: 'Data');
             $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
             return $this->responseError(null, $friendlyModel . ' not found', 404);
-        } catch (\Exception $err) {
+        } catch (Exception $err) {
             Log::error('Error deleting BBN Bill: ' . $err->getMessage());
             return $this->responseError($err->getMessage(), 'BBN Bill deletion failed', 500);
         }

@@ -12,6 +12,7 @@ use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
+use App\Rules\RightPersonRule;
 
 class DOInvoiceController extends Controller
 {
@@ -68,9 +69,7 @@ class DOInvoiceController extends Controller
         $validated = $request->validate([
             'customer_id' => [
                 'required',
-                Rule::exists('persons', 'id')->where(function ($query) {
-                    $query->where('type', 'customer');
-                }),
+                new RightPersonRule('customer'),
             ],
             'date' => 'nullable|date',
             'subject' => 'nullable|string',
@@ -160,9 +159,7 @@ class DOInvoiceController extends Controller
             'customer_id' => [
                 'sometimes',
                 'required',
-                Rule::exists('persons', 'id')->where(function ($query) {
-                    $query->where('type', 'customer');
-                }),
+                new RightPersonRule('customer'),
             ],
             'date' => 'sometimes|required|date',
             'subject' => 'sometimes|nullable|string',

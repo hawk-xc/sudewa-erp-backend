@@ -16,6 +16,8 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
 use Maatwebsite\Excel\Facades\Excel;
 
+use App\Rules\RightPersonRule;
+ 
 class DOExpeditionController extends Controller
 {
     use ResponseTrait, GlobalCodeNumberTrait;
@@ -109,9 +111,7 @@ class DOExpeditionController extends Controller
             'driver_id' => [
                 'sometimes',
                 'required',
-                Rule::exists('persons', 'id')->where(function ($query) {
-                    $query->where('type', 'driver');
-                }),
+                new RightPersonRule('driver'),
             ],
             'is_printed' => 'sometimes|boolean',
         ], $messages);

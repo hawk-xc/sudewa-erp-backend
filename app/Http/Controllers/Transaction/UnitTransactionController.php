@@ -14,6 +14,7 @@ use App\Models\UnitType;
 use App\Traits\FileTrait;
 use App\Traits\ResponseTrait;
 use App\Traits\GlobalCodeNumberTrait;
+use App\Rules\RightPersonRule;
 use Exception;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\Request;
@@ -221,12 +222,16 @@ class UnitTransactionController extends Controller
         try {
             $validated = $request->validate([
                 'company_id' => 'required|integer|exists:companies,id',
-                'person_id' => 'required|integer|exists:persons,id',
+                'person_id' => [
+                    'required',
+                    'integer',
+                    new RightPersonRule($request->type === 'purchase' ? 'supplier' : 'customer')
+                ],
                 'code' => 'sometimes|string|max:255|unique:unit_transactions,code',
                 'type' => 'required|string|in:purchase,sales',
                 'max_capacity' => 'required|numeric|min:0|max:100',
                 'stock_state' => 'required|string',
-
+ 
                 // optional item
                 'unit_type_id' => 'nullable|integer|exists:unit_types,id',
                 'sparepart_id' => 'nullable|integer|exists:spareparts,id',
@@ -235,7 +240,7 @@ class UnitTransactionController extends Controller
                 'bbn_price' => 'nullable|numeric',
                 'other_fee' => 'nullable|numeric',
             ]);
-
+ 
             if ($request->filled('unit_type_id') && $request->filled('sparepart_id')) {
                 return $this->responseError(
                     'Please select either unit_type_id or sparepart_id',
@@ -243,7 +248,7 @@ class UnitTransactionController extends Controller
                     422
                 );
             }
-
+ 
             $warehouseData = Company::findOrFail($request->company_id)
                 ->warehouse()
                 ->firstOrCreate(
@@ -254,20 +259,8 @@ class UnitTransactionController extends Controller
                         'description' => 'Default Warehouse',
                     ]
                 );
-
+ 
             $personData = Person::findOrFail($request->person_id);
-
-            if ($request->type === 'purchase' && $personData->type !== 'supplier') {
-                throw ValidationException::withMessages([
-                    'person_id' => 'Must be supplier',
-                ]);
-            }
-
-            if ($request->type === 'sales' && $personData->type !== 'customer') {
-                throw ValidationException::withMessages([
-                    'person_id' => 'Must be customer',
-                ]);
-            }
 
             $warehouseForecastCapacity = $warehouseData->capacity - $warehouseData->getWarehouseCapacityUsage();
 

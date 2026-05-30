@@ -15,7 +15,6 @@ use App\Models\UnitTransaction;
 use App\Models\UnitTransactionRefund;
 use App\Models\VehicleDocument;
 use App\Models\VehicleEquipment;
-use App\Models\VehicleEquipmentTransaction;
 use App\Models\VehicleFleet;
 use App\Models\WarehouseActivity;
 use Illuminate\Support\Facades\DB;

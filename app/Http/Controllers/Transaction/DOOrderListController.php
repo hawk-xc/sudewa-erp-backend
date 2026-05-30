@@ -11,6 +11,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
 
+use App\Rules\RightPersonRule;
+ 
 class DOOrderListController extends Controller
 {
     use ResponseTrait, GlobalCodeNumberTrait;
@@ -83,9 +85,7 @@ class DOOrderListController extends Controller
         $validated = $request->validate([
             'customer_id' => [
                 'required',
-                Rule::exists('persons', 'id')->where(function ($query) {
-                    $query->where('type', 'customer');
-                }),
+                new RightPersonRule('customer'),
             ],
             'status' => 'sometimes|in:deliver,process,pending,reject',
             'vehicle_type' => 'required|in:fuso,cdd,towing',
@@ -145,9 +145,7 @@ class DOOrderListController extends Controller
             'customer_id' => [
                 'sometimes',
                 'required',
-                Rule::exists('persons', 'id')->where(function ($query) {
-                    $query->where('type', 'customer');
-                }),
+                new RightPersonRule('customer'),
             ],
             'status' => 'sometimes|required|in:deliver,process,pending,reject',
             'vehicle_type' => 'sometimes|in:cdd,fuso,towing',

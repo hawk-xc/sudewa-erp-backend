@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
+use App\Rules\RightPersonRule;
 
 /**
  * @group Transaction
@@ -96,23 +97,23 @@ class VehicleDocumentController extends Controller
         }
 
         $validator = Validator::make($request->all(), [
-            'vendor_id' => 'required|integer|exists:persons,id',
+            'vendor_id' => [
+                'required',
+                'integer',
+                new RightPersonRule('vendor')
+            ],
             'receipt_date' => 'required|date',
             'description' => 'nullable|string',
         ], [
             'receipt_date.unique' => 'A vehicle document for this vendor on this receipt date already exists.',
         ], []);
-
+ 
         if ($validator->fails()) {
             return $this->responseError($validator->errors(), 'Validation failed', 422);
         }
-
+ 
         // Check if vendor is valid and has registrations
         $vendor = Person::findOrFail($request->vendor_id);
-
-        if ($vendor->type !== 'vendor') {
-            return $this->responseError((object) ['message' => 'The selected person is not a vendor.'], 'Validation failed', 422);
-        }
 
         if ($vendor->vehicleRegistrations()->count() == 0) {
             return $this->responseError((object) ['message' => 'The selected vendor has no vehicle registrations data.'], 'Validation failed', 422);
@@ -202,7 +203,11 @@ class VehicleDocumentController extends Controller
     public function update(Request $request, string $id)
     {
         $validator = Validator::make($request->all(), [
-            'vendor_id' => 'sometimes|integer|exists:persons,id',
+            'vendor_id' => [
+                'sometimes',
+                'integer',
+                new RightPersonRule('vendor')
+            ],
             'receipt_date' => 'sometimes|date',
             'description' => 'sometimes|nullable|string',
         ]);

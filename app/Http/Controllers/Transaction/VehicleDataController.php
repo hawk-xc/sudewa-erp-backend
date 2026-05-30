@@ -14,6 +14,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
+use App\Rules\RightPersonRule;
 
 /**
  * @group Transaction
@@ -24,8 +25,7 @@ class VehicleDataController extends Controller
 {
     use ResponseTrait, VehicleTrait, GlobalCodeNumberTrait;
 
-
-    protected $vehicleDataTable;
+    protected array $vehicleDataTable;
 
     public function __construct()
     {
@@ -120,7 +120,11 @@ class VehicleDataController extends Controller
     public function store(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'dealer_id' => 'required|integer|exists:persons,id',
+            'dealer_id' => [
+                'required',
+                'integer',
+                new RightPersonRule('dealer')
+            ],
             'region_id' => 'required|integer|exists:regions,id',
             'invoice_number' => 'required|string|max:249',
             'invoice_date' => 'required|date',
@@ -154,17 +158,12 @@ class VehicleDataController extends Controller
             'srut_number' => 'sometimes|string|max:249',
             'fuel_type' => 'sometimes|string|max:249',
         ]);
-
+ 
         if ($validator->fails()) {
             return $this->responseError($validator->errors(), 'Validation failed', 422);
         }
-
+ 
         $validated = $validator->validated();
-
-        $dealer = Person::findOrFail($validated['dealer_id']);
-        if ($dealer->type !== 'dealer') {
-            return $this->responseError('Selected person is not a dealer.', 'Invalid Person Type', 422);
-        }
 
         try {
             $vehicleData = DB::transaction(function () use ($validated) {
@@ -194,16 +193,20 @@ class VehicleDataController extends Controller
         }
 
         $validator = Validator::make($request->all(), [
-            'vendor_id' => 'required|integer|exists:persons,id',
+            'vendor_id' => [
+                'required',
+                'integer',
+                new RightPersonRule('vendor')
+            ],
             'process_date' => 'required|date',
             'vehicle_data_ids' => 'required|array|min:1',
             'vehicle_data_ids.*' => 'required|integer|exists:vehicle_datas,id',
         ]);
-
+ 
         $validator->after(function ($validator) use ($request) {
             $ids = $request->input('vehicle_data_ids');
             if (empty($ids) || !is_array($ids)) return;
-
+ 
             $alreadyProcessed = VehicleRegistration::whereIn('vehicle_data_id', $ids)
                 ->where(function($q) {
                     $q->where('is_already_processed', true)
@@ -212,21 +215,16 @@ class VehicleDataController extends Controller
                 })
                 ->pluck('vehicle_data_id')
                 ->toArray();
-
+ 
             if (!empty($alreadyProcessed)) {
                 foreach ($alreadyProcessed as $id) {
                     $validator->errors()->add('vehicle_data_ids', "Vehicle with ID $id has already been processed and cannot be re-assigned.");
                 }
             }
         });
-
+ 
         if ($validator->fails()) {
             return $this->responseError($validator->errors(), 'Validation failed', 422);
-        }
-
-        $vendor = Person::findOrFail($request->vendor_id);
-        if ($vendor->type !== 'vendor') {
-            return $this->responseError('Selected person is not a vendor.', 'Invalid Person Type', 422);
         }
 
         try {
@@ -269,7 +267,11 @@ class VehicleDataController extends Controller
     public function update(Request $request, string $id)
     {
         $validator = Validator::make($request->all(), [
-            'dealer_id' => 'sometimes|integer|exists:persons,id',
+            'dealer_id' => [
+                'sometimes',
+                'integer',
+                new RightPersonRule('dealer')
+            ],
             'region_id' => 'sometimes|integer|exists:regions,id',
             'invoice_number' => 'sometimes|string|max:249',
             'invoice_date' => 'sometimes|date',
@@ -306,13 +308,6 @@ class VehicleDataController extends Controller
 
         if ($validator->fails()) {
             return $this->responseError($validator->errors(), 'Validation failed', 422);
-        }
-
-        if ($request->filled('dealer_id')) {
-            $dealer = Person::findOrFail($request->dealer_id);
-            if ($dealer->type !== 'dealer') {
-                return $this->responseError('Selected person is not a dealer.', 'Invalid Person Type', 422);
-            }
         }
 
         try {
