@@ -14,7 +14,6 @@ class GoodsTransactionDetail extends Model
 
     protected $fillable = [
         'uuid',
-        'code',
         'goods_transaction_id',
         'material_id',
         'vehicle_equipment_id',

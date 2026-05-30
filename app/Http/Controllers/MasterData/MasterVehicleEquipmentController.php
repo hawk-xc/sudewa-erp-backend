@@ -10,6 +10,7 @@ use App\Traits\VehicleEquipmentTrait;
 use App\Exports\VehicleEquipmentExport;
 use App\Imports\VehicleEquipmentImport;
 use Exception;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -27,7 +28,7 @@ class MasterVehicleEquipmentController extends Controller
     protected AuthRepository $authRepository;
 
     // projection
-    protected $vehicleEquipmentTable;
+    protected array $vehicleEquipmentTable;
 
     public function __construct(AuthRepository $ar)
     {
@@ -46,9 +47,35 @@ class MasterVehicleEquipmentController extends Controller
      */
     public function index(Request $request)
     {
-        $query = VehicleEquipment::query();
+        $warehouseId = $request->warehouse_id;
 
-        $query->select($this->vehicleEquipmentTable);
+        $query = VehicleEquipment::select(array_map(fn($col) => "vehicle_equipments.{$col}", $this->vehicleEquipmentTable))
+            ->selectSub(function ($q) use ($warehouseId) {
+                $q->from('goods_transaction_details')
+                    ->join('goods_transactions', 'goods_transaction_details.goods_transaction_id', '=', 'goods_transactions.id')
+                    ->whereColumn('goods_transaction_details.vehicle_equipment_id', 'vehicle_equipments.id')
+                    ->where('goods_transactions.type', 'receipt');
+                
+                if ($warehouseId) {
+                    $q->join('warehouse_movements', 'warehouse_movements.goods_transaction_detail_id', '=', 'goods_transaction_details.id')
+                      ->join('warehouse_activities', 'warehouse_movements.warehouse_activity_id', '=', 'warehouse_activities.id')
+                      ->where('warehouse_activities.warehouse_id', $warehouseId);
+                }
+                $q->selectRaw('COALESCE(SUM(goods_transaction_details.qty), 0)');
+            }, 'stock_in')
+            ->selectSub(function ($q) use ($warehouseId) {
+                $q->from('goods_transaction_details')
+                    ->join('goods_transactions', 'goods_transaction_details.goods_transaction_id', '=', 'goods_transactions.id')
+                    ->whereColumn('goods_transaction_details.vehicle_equipment_id', 'vehicle_equipments.id')
+                    ->where('goods_transactions.type', 'issue');
+                
+                if ($warehouseId) {
+                    $q->join('warehouse_movements', 'warehouse_movements.goods_transaction_detail_id', '=', 'goods_transaction_details.id')
+                      ->join('warehouse_activities', 'warehouse_movements.warehouse_activity_id', '=', 'warehouse_activities.id')
+                      ->where('warehouse_activities.warehouse_id', $warehouseId);
+                }
+                $q->selectRaw('COALESCE(SUM(goods_transaction_details.qty), 0)');
+            }, 'stock_out');
 
         try {
             if ($request->filled('search')) {
@@ -57,18 +84,27 @@ class MasterVehicleEquipmentController extends Controller
 
                 $query->where(function ($q) use ($search, $caseSensitive) {
                     if ($caseSensitive) {
-                        $q->where('name', 'LIKE BINARY', "%$search%")
-                            ->orWhere('code', 'LIKE BINARY', "%$search%");
+                        $q->where('vehicle_equipments.name', 'LIKE BINARY', "%$search%")
+                            ->orWhere('vehicle_equipments.code', 'LIKE BINARY', "%$search%");
                     } else {
-                        $q->where('name', 'like', "%$search%")
-                            ->orWhere('code', 'like', "%$search%");
+                        $q->where('vehicle_equipments.name', 'like', "%$search%")
+                            ->orWhere('vehicle_equipments.code', 'like', "%$search%");
                     }
                 });
             }
 
             foreach ($this->vehicleEquipmentTable as $field) {
                 if ($request->filled($field)) {
-                    $query->where($field, $request->$field);
+                    $query->where("vehicle_equipments.{$field}", $request->$field);
+                }
+            }
+
+            if ($request->has('is_stock')) {
+                $isStock = filter_var($request->is_stock, FILTER_VALIDATE_BOOLEAN);
+                if ($isStock) {
+                    $query->havingRaw('(COALESCE(stock_in, 0) - COALESCE(stock_out, 0)) > 0');
+                } else {
+                    $query->havingRaw('(COALESCE(stock_in, 0) - COALESCE(stock_out, 0)) <= 0');
                 }
             }
 
@@ -80,11 +116,18 @@ class MasterVehicleEquipmentController extends Controller
 
             $sortOrder = $request->sort_order === 'asc' ? 'asc' : 'desc';
 
-            $query->orderBy($sortBy, $sortOrder);
+            $query->orderBy("vehicle_equipments.{$sortBy}", $sortOrder);
 
             $perPage = $request->per_page ?? 10;
 
             $data = $query->paginate($perPage);
+
+            $data->getCollection()->transform(function ($item) {
+                $item->available_stock = (int)$item->stock_in - (int)$item->stock_out;
+                unset($item->stock_in);
+                unset($item->stock_out);
+                return $item;
+            });
 
             return $this->responseSuccess($data, 'Vehicle equipment list retrieved successfully', 200);
         } catch (Exception $err) {
@@ -100,13 +143,11 @@ class MasterVehicleEquipmentController extends Controller
     public function show(string $id)
     {
         try {
-            $equipment = VehicleEquipment::where('id', $id)->select($this->vehicleEquipmentTable)->first();
-
-            if (! $equipment) {
-                return $this->responseError('The requested resource could not be found.', 'Resource Not Found', 404);
-            }
-
+            $equipment = VehicleEquipment::where('id', $id)->select($this->vehicleEquipmentTable)->firstOrFail();
+ 
             return $this->responseSuccess($equipment, 'Vehicle equipment retrieved successfully', 200);
+        } catch (ModelNotFoundException $err) {
+            return $this->responseError('The requested resource could not be found.', 'Resource Not Found', 404);
         } catch (Exception $err) {
             Log::error('Error while retrieving Vehicle Equipment data : '.$err->getMessage());
 
@@ -162,9 +203,11 @@ class MasterVehicleEquipmentController extends Controller
             });
 
             return $this->responseSuccess($equipment, 'Vehicle equipment updated successfully', 200);
+        } catch (ModelNotFoundException $err) {
+            return $this->responseError(null, 'Vehicle Equipment not found', 404);
         } catch (Exception $err) {
             Log::error('Error while trying to update Vehicle Equipment data : '.$err->getMessage());
-
+ 
             return $this->responseError($err->getMessage(), 'Error while trying to update Vehicle Equipment data', 500);
         }
     }
@@ -179,9 +222,11 @@ class MasterVehicleEquipmentController extends Controller
             $equipment->delete();
 
             return $this->responseSuccess([], 'Vehicle equipment deleted successfully', 200);
+        } catch (ModelNotFoundException $err) {
+            return $this->responseError(null, 'Vehicle Equipment not found', 404);
         } catch (Exception $err) {
             Log::error('Error while trying to delete Vehicle Equipment data : '.$err->getMessage());
-
+ 
             return $this->responseError($err->getMessage(), 'Vehicle equipment deletion failed');
         }
     }

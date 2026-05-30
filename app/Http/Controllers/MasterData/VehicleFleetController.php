@@ -23,8 +23,8 @@ class VehicleFleetController extends Controller
 {
     use ResponseTrait;
 
-    protected $vehicleFleetTable;
-    protected $equipmentFields;
+    protected array $vehicleFleetTable;
+    protected array $equipmentFields;
 
     public function __construct()
     {

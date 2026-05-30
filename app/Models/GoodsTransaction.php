@@ -17,6 +17,7 @@ class GoodsTransaction extends Model
         'code',
         'company_id',
         'supplier_id',
+        'customer_id',
         'driver_id',
         'vehicle_fleet_id',
         'category', // maintenance, equipped
@@ -27,6 +28,15 @@ class GoodsTransaction extends Model
         'invoice_file',
     ];
 
+    protected $casts = [
+        'company_id' => 'integer',
+        'supplier_id' => 'integer',
+        'customer_id' => 'integer',
+        'driver_id' => 'integer',
+        'vehicle_fleet_id' => 'integer',
+        'transaction_date' => 'date',
+    ];
+
     protected $appends = [
         'total_brutto',
     ];
@@ -35,14 +45,6 @@ class GoodsTransaction extends Model
     {
         return $this->getTotalAmount();
     }
-
-    protected $casts = [
-        'company_id' => 'integer',
-        'supplier_id' => 'integer',
-        'driver_id' => 'integer',
-        'vehicle_fleet_id' => 'integer',
-        'transaction_date' => 'date',
-    ];
 
     public function company()
     {
@@ -66,7 +68,7 @@ class GoodsTransaction extends Model
 
     public function goodsTransactionBillings()
     {
-        return $this->hasMany(GoodsTransactionBilling::class);
+        return $this->hasOne(GoodsTransactionBilling::class);
     }
 
     public function goodsTransactionDetails()

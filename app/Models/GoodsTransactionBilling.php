@@ -14,12 +14,15 @@ class GoodsTransactionBilling extends Model
 
     protected $fillable = [
         'uuid',
-        'code',
         'goods_transaction_id',
+        'is_paid',
+        'grand_total',
     ];
 
     protected $casts = [
         'goods_transaction_id' => 'integer',
+        'is_paid' => 'boolean',
+        'grand_total' => 'integer',
     ];
 
     public function goodsTransaction()

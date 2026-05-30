@@ -14,7 +14,6 @@ class GoodsTransactionBillingPayment extends Model
 
     protected $fillable = [
         'uuid',
-        'code',
         'goods_transaction_billing_id',
         'cash_id',
         'amount',

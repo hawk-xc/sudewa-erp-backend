@@ -20,7 +20,17 @@ class WarehouseMovement extends Model
         'serial_number',
         'unit_transaction_id',
         'unit_transaction_item_detail_id',
+        'goods_transaction_id',
+        'goods_transaction_detail_id',
         'status',
+    ];
+
+    protected $casts = [
+        'warehouse_activity_id' => 'integer',
+        'unit_transaction_id' => 'integer',
+        'unit_transaction_item_detail_id' => 'integer',
+        'goods_transaction_id' => 'integer',
+        'goods_transaction_detail_id' => 'integer',
     ];
 
     public function unitTransaction()
@@ -36,6 +46,16 @@ class WarehouseMovement extends Model
     public function unitTransactionItemDetail()
     {
         return $this->belongsTo(UnitTransactionItemDetail::class, 'unit_transaction_item_detail_id', 'id');
+    }
+
+    public function goodsTransaction()
+    {
+        return $this->belongsTo(GoodsTransaction::class, 'goods_transaction_id', 'id');
+    }
+
+    public function goodsTransactionItemDetail()
+    {
+        return $this->belongsTo(GoodsTransactionDetail::class, 'goods_transaction_detail_id', 'id');
     }
 
     protected static function boot()

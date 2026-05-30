@@ -26,8 +26,9 @@ class WarehouseActivity extends Model
     ];
 
     protected $casts = [
-        'person_id' => 'int',
-        'warehouse_id' => 'int',
+        'person_id' => 'integer',
+        'cash_id' => 'integer',
+        'warehouse_id' => 'integer',
     ];
 
     public function warehouse()
