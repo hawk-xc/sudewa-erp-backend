@@ -46,6 +46,7 @@ use App\Http\Controllers\Transaction\DOOrderListController;
 use App\Http\Controllers\Transaction\DOOrderListTarifController;
 use App\Http\Controllers\Transaction\DOOrderListTarifItemController;
 use App\Http\Controllers\Transaction\GoodsTransactionBillingController;
+use App\Http\Controllers\Transaction\GoodsTransactionBillingPaymentController;
 use App\Http\Controllers\Transaction\GoodsTransactionController;
 use App\Http\Controllers\Transaction\GoodsTransactionDetailController;
 use App\Http\Controllers\Transaction\TransactionFlowController;
@@ -61,6 +62,7 @@ use App\Http\Controllers\Transaction\VehicleDataController;
 use App\Http\Controllers\Transaction\VehicleDocumentController;
 use App\Http\Controllers\Transaction\VehicleRegistrationController;
 use App\Http\Controllers\User\UserController;
+use App\Http\Controllers\Warehouse\GoodsTransactionStockController;
 use App\Http\Controllers\Warehouse\VehicleEquipmentTransactionController;
 use App\Http\Controllers\Warehouse\WarehouseActivityController;
 use App\Http\Controllers\Warehouse\WarehouseController;
@@ -207,9 +209,15 @@ Route::group(
             Route::post('warehouse-activity/refund-material-stock', [WarehouseActivityController::class, 'refundMaterialStock']);
             Route::post('warehouse-activity/return-material-stock', [WarehouseActivityController::class, 'returnMaterialStock']);
 
-            Route::apiResource('vehicle-equipment-transaction', VehicleEquipmentTransactionController::class);
+            // Warehouse Stock Flow
             Route::apiResource('warehouse-activity', WarehouseActivityController::class);
             Route::apiResource('warehouse-data', WarehouseController::class);
+
+            // Vehicle Stock status
+            Route::get('good-transaction-maintenance', [GoodsTransactionController::class, 'maintenance']);
+
+            // Goods Stock
+            Route::get('goods-transaction-stock', [GoodsTransactionStockController::class, 'index']);
         });
 
         // Transaction API
@@ -256,6 +264,11 @@ Route::group(
             Route::apiResource('goods-transaction', GoodsTransactionController::class);
             Route::apiResource('goods-transaction-detail', GoodsTransactionDetailController::class);
             Route::apiResource('goods-transaction-billing', GoodsTransactionBillingController::class);
+            Route::apiResource('goods-transaction-billing-payment', GoodsTransactionBillingPaymentController::class, [
+                'parameters' => [
+                    'goods-transaction-billing-payment' => 'payment'
+                ]
+            ]);
 
             // DO Transaction API    
             Route::group(['prefix' => 'do-invoice', 'as' => 'do-invoice.'], function() {
