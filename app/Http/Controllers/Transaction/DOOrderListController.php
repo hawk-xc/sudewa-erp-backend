@@ -4,7 +4,7 @@ namespace App\Http\Controllers\Transaction;
 
 use App\Http\Controllers\Controller;
 use App\Models\DOOrderList;
-use App\Traits\DOTrait;
+use App\Traits\GlobalCodeNumberTrait;
 use App\Traits\ResponseTrait;
 use Exception;
 use Illuminate\Http\Request;
@@ -13,7 +13,7 @@ use Illuminate\Validation\Rule;
 
 class DOOrderListController extends Controller
 {
-    use ResponseTrait, DOTrait;
+    use ResponseTrait, GlobalCodeNumberTrait;
 
     public function __construct()
     {
@@ -93,15 +93,20 @@ class DOOrderListController extends Controller
         ]);
 
         try {
-            $orderList = DOOrderList::create([
-                'code' => $this->generateDOCode('order_list'),
-                'customer_id' => $validated['customer_id'],
-                'status' => $validated['status'] ?? 'pending',
-                'bill_invoice' => $validated['bill_invoice'] ?? null,
-                'vehicle_type' => $validated['vehicle_type'] ?? null,
-                // ppn calculation
-                'ppn' => $validated['bill_invoice'] ? (1.1 * $validated['bill_invoice'] / 100) : 0,
-            ]);
+            $orderList = \Illuminate\Support\Facades\DB::transaction(function () use ($validated) {
+                $customer = \App\Models\Person::find($validated['customer_id']);
+                $companySlug = $customer?->company?->slug ?? '';
+
+                return DOOrderList::create([
+                    'code' => $this->code($companySlug, 'order_list'),
+                    'customer_id' => $validated['customer_id'],
+                    'status' => $validated['status'] ?? 'pending',
+                    'bill_invoice' => $validated['bill_invoice'] ?? null,
+                    'vehicle_type' => $validated['vehicle_type'] ?? null,
+                    // ppn calculation
+                    'ppn' => $validated['bill_invoice'] ? (1.1 * $validated['bill_invoice'] / 100) : 0,
+                ]);
+            });
 
             return $this->responseSuccess($orderList, 'DO Order List created successfully', 201);
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $err) {

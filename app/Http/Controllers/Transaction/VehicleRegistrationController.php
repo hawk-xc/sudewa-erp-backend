@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Transaction;
 
 use App\Http\Controllers\Controller;
 use App\Models\VehicleRegistration;
+use App\Traits\GlobalCodeNumberTrait;
 use App\Traits\ResponseTrait;
 use App\Traits\VehicleTrait;
 use Exception;
@@ -19,7 +20,7 @@ use Illuminate\Support\Facades\Validator;
  */
 class VehicleRegistrationController extends Controller
 {
-    use ResponseTrait, VehicleTrait;
+    use ResponseTrait, VehicleTrait, GlobalCodeNumberTrait;
 
     protected $fillable;
 

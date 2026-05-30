@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Material;
 use App\Models\GoodsTransaction;
 use App\Models\GoodsTransactionDetail;
+use App\Traits\GlobalCodeNumberTrait;
 use App\Traits\ResponseTrait;
 use Exception;
 use Illuminate\Http\Request;
@@ -19,7 +20,7 @@ use Illuminate\Http\JsonResponse;
 
 class GoodsTransactionDetailController extends Controller
 {
-    use ResponseTrait;
+    use ResponseTrait, GlobalCodeNumberTrait;
 
     // projection
     protected array $goodsTransactionDetailTable;

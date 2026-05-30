@@ -9,7 +9,7 @@ use App\Models\UnitTransaction;
 use App\Models\UnitTransactionItemDetail;
 use App\Models\WarehouseActivity;
 use App\Models\WarehouseMovement;
-use App\Traits\RefundTrait;
+use App\Traits\GlobalCodeNumberTrait;
 use App\Traits\ResponseTrait;
 use Exception;
 use Illuminate\Http\Request;
@@ -18,7 +18,7 @@ use Illuminate\Support\Facades\Log;
 
 class UnitTransactionRefundController extends Controller
 {
-    use ResponseTrait, RefundTrait;
+    use ResponseTrait, GlobalCodeNumberTrait;
 
     protected $refundTable;
 
@@ -166,8 +166,10 @@ class UnitTransactionRefundController extends Controller
 
         try {
             $refund = DB::transaction(function () use ($request) {
-                // Generate refund code using RefundTrait
-                $code = $this->generateRefundCode();
+                $unitTransaction = UnitTransaction::findOrFail($request->unit_transaction_id);
+                $companySlug = $unitTransaction->person?->company?->slug ?? '';
+                $feature = $unitTransaction->type === 'purchase' ? 'refund_beli' : 'refund_jual';
+                $code = $this->code($companySlug, $feature);
 
                 $refund = UnitTransactionRefund::create([
                     'unit_transaction_id' => $request->unit_transaction_id,

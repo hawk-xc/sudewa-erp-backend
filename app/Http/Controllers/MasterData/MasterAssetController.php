@@ -115,7 +115,7 @@ class MasterAssetController extends Controller
     {
         $validated = $request->validate([
             'company_id' => 'required|integer|exists:companies,id',
-            'code' => 'required|string|unique:assets,code',
+            'code' => 'nullable|string|unique:assets,code',
             'serial_number' => 'required|string|unique:assets,serial_number',
             'name' => 'required|string|max:255',
             'purchase_date' => 'nullable|date',
@@ -125,6 +125,10 @@ class MasterAssetController extends Controller
 
         try {
             $asset = DB::transaction(function () use ($validated) {
+                if (empty($validated['code'])) {
+                    $companySlug = \App\Models\Company::where('id', $validated['company_id'])->value('slug') ?? '';
+                    $validated['code'] = $this->code($companySlug, 'asset');
+                }
                 return Asset::create($validated);
             });
 

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Transaction;
 use App\Http\Controllers\Controller;
 use App\Models\TransactionFlow;
 use App\Repositories\AuthRepository;
+use App\Traits\GlobalCodeNumberTrait;
 use App\Traits\FileTrait;
 use App\Traits\ResponseTrait;
 use Exception;
@@ -14,7 +15,7 @@ use Illuminate\Support\Facades\Log;
 
 class TransactionFlowController extends Controller
 {
-    use FileTrait, ResponseTrait;
+    use FileTrait, ResponseTrait, GlobalCodeNumberTrait;
 
     protected AuthRepository $authRepository;
 

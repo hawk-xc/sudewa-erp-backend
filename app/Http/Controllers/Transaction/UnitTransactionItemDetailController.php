@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Imports\UnitTransactionItemDetailImport;
 use App\Models\UnitTransactionItem;
 use App\Models\UnitTransactionItemDetail;
+use App\Traits\GlobalCodeNumberTrait;
 use App\Traits\ResponseTrait;
 use Exception;
 use Illuminate\Http\Request;
@@ -15,7 +16,7 @@ use Maatwebsite\Excel\Facades\Excel;
 
 class UnitTransactionItemDetailController extends Controller
 {
-    use ResponseTrait;
+    use ResponseTrait, GlobalCodeNumberTrait;
 
     protected $unitTransactionItemDetailTable;
 

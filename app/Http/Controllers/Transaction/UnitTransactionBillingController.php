@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\UnitTransaction;
 use App\Models\UnitTransactionBilling;
 use App\Models\FinanceBilling;
+use App\Traits\GlobalCodeNumberTrait;
 use App\Traits\ResponseTrait;
 use Exception;
 use Illuminate\Http\Request;
@@ -15,7 +16,7 @@ use Illuminate\Validation\ValidationException;
 
 class UnitTransactionBillingController extends Controller
 {
-    use ResponseTrait;
+    use ResponseTrait, GlobalCodeNumberTrait;
 
     protected $unitTransactionBillingTable;
 

@@ -10,6 +10,7 @@ use App\Models\TransactionFlow;
 use App\Models\UnitTransactionBilling;
 use App\Models\UnitTransactionBillingHistory;
 use App\Models\UnitTypeDetailPpn;
+use App\Traits\GlobalCodeNumberTrait;
 use App\Traits\FileTrait;
 use App\Traits\ResponseTrait;
 use Exception;
@@ -20,7 +21,7 @@ use Illuminate\Validation\ValidationException;
 
 class UnitTransactionBillingHistoryController extends Controller
 {
-    use FileTrait, ResponseTrait;
+    use FileTrait, ResponseTrait, GlobalCodeNumberTrait;
 
     public function __construct()
     {

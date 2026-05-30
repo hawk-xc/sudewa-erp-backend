@@ -6,7 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\DOInvoice;
 use App\Models\DOExpedition;
 use App\Models\DOOrderList;
-use App\Traits\DOTrait;
+use App\Traits\GlobalCodeNumberTrait;
 use App\Traits\ResponseTrait;
 use Exception;
 use Illuminate\Http\Request;
@@ -15,7 +15,7 @@ use Illuminate\Validation\Rule;
 
 class DOInvoiceController extends Controller
 {
-    use ResponseTrait, DOTrait;
+    use ResponseTrait, GlobalCodeNumberTrait;
 
     public function __construct()
     {
@@ -93,26 +93,31 @@ class DOInvoiceController extends Controller
                 return $this->responseError('Customer does not have any order lists', 'Validation Error', 422);
             }
 
-            $createdInvoices = [];
+            $createdInvoices = DB::transaction(function () use ($validated, $orderLists) {
+                $customer = \App\Models\Person::find($validated['customer_id']);
+                $companySlug = $customer?->company?->slug ?? '';
+                
+                $invoices = [];
+                foreach ($orderLists as $order) {
+                    // Check if this specific order list already has an invoice
+                    $existingInvoice = DOInvoice::where('do_order_list_id', $order->id)->exists();
+                    if ($existingInvoice) {
+                        continue;
+                    }
 
-            foreach ($orderLists as $order) {
-                // Check if this specific order list already has an invoice
-                $existingInvoice = DOInvoice::where('do_order_list_id', $order->id)->exists();
-                if ($existingInvoice) {
-                    continue;
+                    $invoices[] = DOInvoice::create([
+                        'code' => $this->code($companySlug, 'invoice'),
+                        'customer_id' => $validated['customer_id'],
+                        'do_order_list_id' => $order->id,
+                        'date' => $validated['date'] ?? null,
+                        'subject' => $validated['subject'] ?? null,
+                        'letter_content' => $validated['letter_content'] ?? null,
+                        'description' => $validated['description'] ?? null,
+                        'is_already_print' => false,
+                    ]);
                 }
-
-                $createdInvoices[] = DOInvoice::create([
-                    'code' => $this->generateDOCode('invoice'),
-                    'customer_id' => $validated['customer_id'],
-                    'do_order_list_id' => $order->id,
-                    'date' => $validated['date'] ?? null,
-                    'subject' => $validated['subject'] ?? null,
-                    'letter_content' => $validated['letter_content'] ?? null,
-                    'description' => $validated['description'] ?? null,
-                    'is_already_print' => false,
-                ]);
-            }
+                return $invoices;
+            });
 
             if (empty($createdInvoices)) {
                 return $this->responseError('All order lists for this customer already have invoices', 'Conflict', 409);

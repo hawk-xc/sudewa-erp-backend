@@ -6,7 +6,7 @@ use App\Exports\DOExpeditionExport;
 use App\Http\Controllers\Controller;
 use App\Models\DOExpedition;
 use App\Models\DOOrderList;
-use App\Traits\DOTrait;
+use App\Traits\GlobalCodeNumberTrait;
 use App\Traits\ResponseTrait;
 use Exception;
 use Illuminate\Http\JsonResponse;
@@ -18,7 +18,7 @@ use Maatwebsite\Excel\Facades\Excel;
 
 class DOExpeditionController extends Controller
 {
-    use ResponseTrait, DOTrait;
+    use ResponseTrait, GlobalCodeNumberTrait;
 
     public function __construct()
     {
@@ -146,7 +146,7 @@ class DOExpeditionController extends Controller
     public function checkDOCode()
     {
         try {
-            $nextCode = $this->generateDOCode('expedition');
+            $nextCode = $this->code('wjt', 'do_ekspedisi');
 
             return $this->responseSuccess([
                 'next_code' => $nextCode

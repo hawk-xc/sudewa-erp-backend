@@ -13,7 +13,7 @@ use App\Models\UnitTransactionItemDetail;
 use App\Models\UnitType;
 use App\Traits\FileTrait;
 use App\Traits\ResponseTrait;
-use App\Traits\TransactionTrait;
+use App\Traits\GlobalCodeNumberTrait;
 use Exception;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\Request;
@@ -24,7 +24,7 @@ use Maatwebsite\Excel\Facades\Excel;
 
 class UnitTransactionController extends Controller
 {
-    use FileTrait, ResponseTrait, TransactionTrait;
+    use FileTrait, ResponseTrait, GlobalCodeNumberTrait;
 
     protected array $unitTransactionTable;
 
@@ -280,7 +280,9 @@ class UnitTransactionController extends Controller
             $validated['warehouse_id'] = $warehouseData->id;
 
             if (! $request->filled('code')) {
-                $validated['code'] = $this->generateCode($request->type);
+                $companySlug = $personData->company?->slug ?? '';
+                $feature = $request->type === 'purchase' ? 'pembelian' : 'sales';
+                $validated['code'] = $this->code($companySlug, $feature);
             }
 
             $data = DB::transaction(function () use ($validated, $request) {

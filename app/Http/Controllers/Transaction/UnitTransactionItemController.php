@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\UnitTransaction;
 use App\Models\UnitTransactionItem;
 use App\Models\UnitType;
+use App\Traits\GlobalCodeNumberTrait;
 use App\Traits\ResponseTrait;
 use Exception;
 use Illuminate\Http\Request;
@@ -14,7 +15,7 @@ use Illuminate\Support\Facades\Log;
 
 class UnitTransactionItemController extends Controller
 {
-    use ResponseTrait;
+    use ResponseTrait, GlobalCodeNumberTrait;
 
     protected $unitTransactionItemTable;
 

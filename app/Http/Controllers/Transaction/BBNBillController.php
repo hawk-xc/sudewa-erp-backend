@@ -6,7 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\BBNBill;
 use App\Models\Person;
 use App\Models\VehicleData;
-use App\Traits\BBNBillTrait;
+use App\Traits\GlobalCodeNumberTrait;
 use App\Traits\ResponseTrait;
 use Exception;
 use Illuminate\Http\Request;
@@ -14,7 +14,7 @@ use Illuminate\Support\Facades\Log;
 
 class BBNBillController extends Controller
 {
-    use ResponseTrait, BBNBillTrait;
+    use ResponseTrait, GlobalCodeNumberTrait;
 
     protected $bbnBillTable;
 
@@ -112,7 +112,8 @@ class BBNBillController extends Controller
         }
  
         try {
-            $validated['code'] = $this->generateBBNBillCode();
+            $companySlug = $dealer->company?->slug ?? '';
+            $validated['code'] = $this->code($companySlug, 'tagihan_bbn');
             
             $data = BBNBill::create($validated);
             return $this->responseSuccess($data, 'BBN Bill created successfully', 201);

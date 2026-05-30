@@ -5,7 +5,7 @@ namespace App\Http\Controllers\Transaction;
 use App\Http\Controllers\Controller;
 use App\Models\DOExpedition;
 use App\Models\DOOrderListTarif;
-use App\Traits\DOTrait;
+use App\Traits\GlobalCodeNumberTrait;
 use App\Traits\ResponseTrait;
 use Exception;
 use Illuminate\Http\Request;
@@ -15,7 +15,7 @@ use Illuminate\Support\Str;
 
 class DOOrderListTarifController extends Controller
 {
-    use ResponseTrait, DOTrait;
+    use ResponseTrait, GlobalCodeNumberTrait;
 
     public function index(Request $request)
     {
@@ -83,8 +83,10 @@ class DOOrderListTarifController extends Controller
             ]);
             
             // DO Expedition trigger
+            $orderList = \App\Models\DOOrderList::with('customer.company')->find($validated['do_orderlist_id']);
+            $companySlug = $orderList?->customer?->company?->slug ?? '';
             $expedition = DOExpedition::create([
-                'code' => $this->generateDOCode('expedition'),
+                'code' => $this->code($companySlug, 'do_ekspedisi'),
                 'do_order_list_id' => $validated['do_orderlist_id'],
             ]);
 

@@ -7,7 +7,7 @@ use App\Models\Person;
 use App\Models\VehicleDocument;
 use App\Models\VehicleDocumentItem;
 use App\Traits\ResponseTrait;
-use App\Traits\VehicleTrait;
+use App\Traits\GlobalCodeNumberTrait;
 use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -22,7 +22,7 @@ use Illuminate\Validation\Rule;
  */
 class VehicleDocumentController extends Controller
 {
-    use ResponseTrait, VehicleTrait;
+    use ResponseTrait, GlobalCodeNumberTrait;
 
     protected $vehicleDocumentTable;
 
@@ -141,8 +141,12 @@ class VehicleDocumentController extends Controller
 
         try {
             $document = DB::transaction(function () use ($request) {
+                $vendor = Person::find($request->vendor_id);
+                $companySlug = $vendor?->company?->slug ?? '';
+                $code = $this->code($companySlug, 'penerimaan_input_stnk_bpkb');
+
                 $document = VehicleDocument::create([
-                    'code' => $this->generateRegistrationCode(),
+                    'code' => $code,
                     'vendor_id' => $request->vendor_id,
                     'receipt_date' => $request->receipt_date,
                     'description' => $request->description,
