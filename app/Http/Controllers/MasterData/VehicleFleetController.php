@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\MasterData;
 
+use App\Traits\GlobalCodeNumberTrait;
 use App\Exports\VehicleFleetExport;
 use App\Imports\VehicleFleetImport;
 use App\Http\Controllers\Controller;
@@ -21,7 +22,7 @@ use Maatwebsite\Excel\Facades\Excel;
  */
 class VehicleFleetController extends Controller
 {
-    use ResponseTrait;
+    use ResponseTrait, GlobalCodeNumberTrait;
 
     protected array $vehicleFleetTable;
     protected array $equipmentFields;

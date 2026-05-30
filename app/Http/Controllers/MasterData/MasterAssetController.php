@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\MasterData;
 
+use App\Traits\GlobalCodeNumberTrait;
 use App\Exports\AssetExport;
 use App\Http\Controllers\Controller;
 use App\Imports\AssetImport;
@@ -20,7 +21,7 @@ use Maatwebsite\Excel\Facades\Excel;
  */
 class MasterAssetController extends Controller
 {
-    use ResponseTrait;
+    use ResponseTrait, GlobalCodeNumberTrait;
 
     protected $assetTable;
 
@@ -34,21 +35,7 @@ class MasterAssetController extends Controller
         $this->assetTable = ['id', 'uuid', 'company_id', 'code', 'serial_number', 'purchase_date', 'name', 'type', 'price', 'created_at', 'updated_at'];
     }
 
-    private function generateCode(): string
-    {
-        $prefix = 'AST';
-        $lastAsset = Asset::whereNotNull('code')->orderByDesc('id')->first();
-        
-        if (! $lastAsset) {
-            return $prefix.'-001';
-        }
-
-        $lastNumber = (int) substr($lastAsset->code, -3);
-        $newNumber = $lastNumber + 1;
-        $formattedNumber = str_pad($newNumber, 3, '0', STR_PAD_LEFT);
-
-        return $prefix.'-'.$formattedNumber;
-    }
+    
 
     /**
      * List all assets.

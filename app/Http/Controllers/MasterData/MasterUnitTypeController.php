@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\MasterData;
 
+use App\Traits\GlobalCodeNumberTrait;
 use App\Exports\UnitTypeExport;
 use App\Http\Controllers\Controller;
 use App\Imports\UnitTypeImport;
@@ -23,7 +24,7 @@ use Maatwebsite\Excel\Facades\Excel;
  */
 class MasterUnitTypeController extends Controller
 {
-    use ResponseTrait;
+    use ResponseTrait, GlobalCodeNumberTrait;
 
     protected $unitTypeTable;
 

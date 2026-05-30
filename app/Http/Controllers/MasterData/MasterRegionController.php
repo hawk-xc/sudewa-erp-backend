@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\MasterData;
 
+use App\Traits\GlobalCodeNumberTrait;
 use App\Http\Controllers\Controller;
 use App\Exports\RegionExport;
 use App\Imports\RegionImport;
@@ -21,7 +22,7 @@ use Maatwebsite\Excel\Facades\Excel;
  */
 class MasterRegionController extends Controller
 {
-    use ResponseTrait;
+    use ResponseTrait, GlobalCodeNumberTrait;
 
     protected $RegionTable;
 

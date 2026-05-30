@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\MasterData;
 
+use App\Traits\GlobalCodeNumberTrait;
 use App\Http\Controllers\Controller;
 use App\Models\Brand;
 use App\Models\UnitType;
@@ -22,7 +23,7 @@ use Intervention\Image\ImageManager;
  */
 class MasterBrandController extends Controller
 {
-    use ResponseTrait;
+    use ResponseTrait, GlobalCodeNumberTrait;
 
     protected $brandTable;
 

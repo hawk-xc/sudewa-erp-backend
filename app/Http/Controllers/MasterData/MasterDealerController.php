@@ -2,12 +2,12 @@
 
 namespace App\Http\Controllers\MasterData;
 
+use App\Traits\GlobalCodeNumberTrait;
 use App\Http\Controllers\Controller;
 use App\Imports\PersonImport;
 use App\Models\Person;
 use App\Repositories\AuthRepository;
 use App\Exports\PersonExport;
-use App\Traits\PersonTrait;
 use App\Traits\ResponseTrait;
 use Exception;
 use Illuminate\Http\Request;
@@ -22,7 +22,7 @@ use Maatwebsite\Excel\Facades\Excel;
  */
 class MasterDealerController extends Controller
 {
-    use PersonTrait, ResponseTrait;
+    use ResponseTrait, GlobalCodeNumberTrait;
 
     protected AuthRepository $authRepository;
 
@@ -138,7 +138,8 @@ class MasterDealerController extends Controller
 
         try {
             $person = DB::transaction(function () use ($validated) {
-                $validated['code'] = $this->generateCode('dealer');
+                $companySlug = \App\Models\Company::where('id', $validated['company_id'])->value('slug') ?? '';
+                $validated['code'] = $this->code($companySlug, 'dealer');
                 $validated['type'] = 'dealer';
 
                 return Person::create($validated);

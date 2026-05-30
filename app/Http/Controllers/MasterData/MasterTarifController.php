@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\MasterData;
 
+use App\Traits\GlobalCodeNumberTrait;
 use App\Http\Controllers\Controller;
 use App\Models\Person;
 use App\Models\Tarif;
@@ -21,7 +22,7 @@ use App\Exports\TarifExport;
  */
 class MasterTarifController extends Controller
 {
-    use ResponseTrait;
+    use ResponseTrait, GlobalCodeNumberTrait;
 
     protected $tarifTable;
 

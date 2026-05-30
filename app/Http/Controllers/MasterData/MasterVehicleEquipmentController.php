@@ -2,11 +2,11 @@
 
 namespace App\Http\Controllers\MasterData;
 
+use App\Traits\GlobalCodeNumberTrait;
 use App\Http\Controllers\Controller;
 use App\Models\VehicleEquipment;
 use App\Repositories\AuthRepository;
 use App\Traits\ResponseTrait;
-use App\Traits\VehicleEquipmentTrait;
 use App\Exports\VehicleEquipmentExport;
 use App\Imports\VehicleEquipmentImport;
 use Exception;
@@ -23,7 +23,7 @@ use Maatwebsite\Excel\Facades\Excel;
  */
 class MasterVehicleEquipmentController extends Controller
 {
-    use ResponseTrait, VehicleEquipmentTrait;
+    use ResponseTrait, GlobalCodeNumberTrait;
 
     protected AuthRepository $authRepository;
 
@@ -166,7 +166,7 @@ class MasterVehicleEquipmentController extends Controller
 
         try {
             $equipment = DB::transaction(function () use ($validated) {
-                $validated['code'] = $this->generateEquipmentCode();
+                $validated['code'] = $this->code('', 'perlengkapan');
                 return VehicleEquipment::create($validated);
             });
 

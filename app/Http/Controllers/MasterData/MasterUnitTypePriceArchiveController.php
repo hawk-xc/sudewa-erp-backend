@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\MasterData;
 
+use App\Traits\GlobalCodeNumberTrait;
 use App\Http\Controllers\Controller;
 use App\Models\UnitTypePriceArchive;
 use App\Repositories\AuthRepository;
@@ -20,7 +21,7 @@ use App\Imports\UnitTypePriceChangeImport;
  */
 class MasterUnitTypePriceArchiveController extends Controller
 {
-    use ResponseTrait;
+    use ResponseTrait, GlobalCodeNumberTrait;
 
     protected AuthRepository $authRepository;
 

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\MasterData;
 
+use App\Traits\GlobalCodeNumberTrait;
 use App\Http\Controllers\Controller;
 use App\Models\AccountGroup;
 use App\Repositories\AuthRepository;
@@ -18,7 +19,7 @@ use Illuminate\Support\Facades\Log;
  */
 class MasterAccountGroupController extends Controller
 {
-    use ResponseTrait;
+    use ResponseTrait, GlobalCodeNumberTrait;
 
     protected AuthRepository $authRepository;
 

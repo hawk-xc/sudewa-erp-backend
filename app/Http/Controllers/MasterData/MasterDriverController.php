@@ -2,12 +2,12 @@
 
 namespace App\Http\Controllers\MasterData;
 
+use App\Traits\GlobalCodeNumberTrait;
 use App\Http\Controllers\Controller;
 use App\Imports\PersonImport;
 use App\Models\Person;
 use App\Repositories\AuthRepository;
 use App\Exports\PersonExport;
-use App\Traits\PersonTrait;
 use App\Traits\ResponseTrait;
 use App\Traits\FileTrait;
 use Exception;
@@ -23,7 +23,7 @@ use Maatwebsite\Excel\Facades\Excel;
  */
 class MasterDriverController extends Controller
 {
-    use PersonTrait, ResponseTrait, FileTrait;
+    use ResponseTrait, FileTrait, GlobalCodeNumberTrait;
 
     protected AuthRepository $authRepository;
 
@@ -155,7 +155,8 @@ class MasterDriverController extends Controller
 
         try {
             $person = DB::transaction(function () use ($validated) {
-                $validated['code'] = $this->generateCode('driver');
+                $companySlug = \App\Models\Company::where('id', $validated['company_id'])->value('slug') ?? '';
+                $validated['code'] = $this->code($companySlug, 'driver');
                 $validated['type'] = 'driver';
 
                 return Person::create($validated);

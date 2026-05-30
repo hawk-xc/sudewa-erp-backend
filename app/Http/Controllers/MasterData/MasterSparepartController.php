@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\MasterData;
 
+use App\Traits\GlobalCodeNumberTrait;
 use App\Exports\SparepartExport;
 use App\Http\Controllers\Controller;
 use App\Imports\SparepartImport;
@@ -21,7 +22,7 @@ use Maatwebsite\Excel\Facades\Excel;
  */
 class MasterSparepartController extends Controller
 {
-    use ResponseTrait;
+    use ResponseTrait, GlobalCodeNumberTrait;
 
     protected $sparepartTable;
 

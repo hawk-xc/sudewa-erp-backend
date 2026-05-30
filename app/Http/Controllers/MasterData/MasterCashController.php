@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\MasterData;
 
+use App\Traits\GlobalCodeNumberTrait;
 use App\Http\Controllers\Controller;
 // use App\Imports\CashImport;
 use App\Models\Cash;
@@ -21,7 +22,7 @@ use Symfony\Component\HttpFoundation\JsonResponse;
  */
 class MasterCashController extends Controller
 {
-    use ResponseTrait;
+    use ResponseTrait, GlobalCodeNumberTrait;
 
     protected $cashTable = ['id', 'uuid', 'company_id', 'account_id', 'code', 'description', 'type', 'amount', 'created_at'];
 

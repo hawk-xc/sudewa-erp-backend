@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\MasterData;
 
+use App\Traits\GlobalCodeNumberTrait;
 use App\Http\Controllers\Controller;
 use App\Imports\MaterialImport;
 use App\Models\Company;
@@ -21,7 +22,7 @@ use Maatwebsite\Excel\Facades\Excel;
  */
 class MasterMaterialController extends Controller
 {
-    use ResponseTrait;
+    use ResponseTrait, GlobalCodeNumberTrait;
 
     // projection
     protected $materialTable;
@@ -205,7 +206,7 @@ class MasterMaterialController extends Controller
 
                 // AUTO GENERATE CODE jika kosong
                 if (empty($validated['code'])) {
-                    $validated['code'] = $this->generateCode();
+                    $validated['code'] = $this->code('', 'material');
                 }
 
                 return Material::create($validated);
@@ -275,21 +276,7 @@ class MasterMaterialController extends Controller
         }
     }
 
-    private function generateCode()
-    {
-        $last = Material::where('code', 'like', 'TM-%')
-            ->orderByDesc('id')
-            ->first();
-
-        if (! $last) {
-            return 'TM-001';
-        }
-
-        $lastNumber = (int) substr($last->code, 3);
-        $nextNumber = $lastNumber + 1;
-
-        return 'TM-'.str_pad($nextNumber, 3, '0', STR_PAD_LEFT);
-    }
+    
 
     /**
      * Import materials from Excel.

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\MasterData;
 
+use App\Traits\GlobalCodeNumberTrait;
 use App\Http\Controllers\Controller;
 use App\Models\OwnershipTransferFee;
 use App\Models\Person;
@@ -20,7 +21,7 @@ use Illuminate\Validation\ValidationException;
  */
 class MasterOwnershipTransferFeeController extends Controller
 {
-    use ResponseTrait;
+    use ResponseTrait, GlobalCodeNumberTrait;
 
     protected $OwnershipTransferFeeTable;
 

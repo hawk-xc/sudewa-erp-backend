@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\MasterData;
 
+use App\Traits\GlobalCodeNumberTrait;
 use App\Http\Controllers\Controller;
 use App\Imports\AccountImport;
 use App\Models\Account;
@@ -20,7 +21,7 @@ use Maatwebsite\Excel\Facades\Excel;
  */
 class MasterAccountController extends Controller
 {
-    use ResponseTrait;
+    use ResponseTrait, GlobalCodeNumberTrait;
 
     protected AuthRepository $authRepository;
 
