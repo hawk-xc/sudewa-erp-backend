@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 
 class FinanceBillingController extends Controller
 {
@@ -131,6 +132,10 @@ class FinanceBillingController extends Controller
             $data->total_payment_count = $items->count();
 
             return $this->responseSuccess($data, 'Finance Billing retrieved successfully', 200);
+        } catch (ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
         } catch (Exception $err) {
             return $this->responseError($err->getMessage(), 'Finance Billing not found', 404);
         }
@@ -152,6 +157,10 @@ class FinanceBillingController extends Controller
             return $this->responseSuccess($financeBilling->fresh(), 'Finance Billing updated successfully', 200);
         } catch (ValidationException $e) {
             return $this->responseError($e->errors(), 'Validation failed', 422);
+        } catch (ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
         } catch (Exception $err) {
             Log::error('Error While updating Finance Billing data : ' . $err->getMessage());
             return $this->responseError($err->getMessage(), 'Finance Billing update failed', 500);
@@ -168,6 +177,10 @@ class FinanceBillingController extends Controller
             });
 
             return $this->responseSuccess([], 'Finance Billing successfully Deleted', 200);
+        } catch (ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
         } catch (Exception $err) {
             return $this->responseError($err->getMessage(), 'Finance Billing Not Found or Failed Deleted', 500);
         }
@@ -236,7 +249,7 @@ class FinanceBillingController extends Controller
                                 ? $itemObj->unitTransactionItemDetails
                                 : $itemObj->unitTypeSoldDetails;
 
-                            foreach ($details as $detail) 
+                            foreach ($details as $detail) {
                                 $unitTransactionType = $unitTransaction->type;
                                 $type = 'ppn_' . $unitTransactionType;
 
@@ -251,7 +264,7 @@ class FinanceBillingController extends Controller
                                         'type' => $type,
                                     ]);
                                 }
-                            
+                            }
                         }
                     }
                 }
@@ -271,6 +284,10 @@ class FinanceBillingController extends Controller
             return $this->responseSuccess($itemArray, 'Finance Billing Item created successfully', 201);
         } catch (ValidationException $e) {
             return $this->responseError($e->errors(), 'Validation failed', 422);
+        } catch (ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
         } catch (Exception $err) {
             Log::error('Error While storing Finance Billing Item data : ' . $err->getMessage());
             return $this->responseError($err->getMessage(), 'Finance Billing Item creation failed', 500);
@@ -329,6 +346,10 @@ class FinanceBillingController extends Controller
             return $this->responseSuccess($item->fresh(), 'Finance Billing Item updated successfully', 200);
         } catch (ValidationException $e) {
             return $this->responseError($e->errors(), 'Validation failed', 422);
+        } catch (ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
         } catch (Exception $err) {
             Log::error('Error While updating Finance Billing Item data : ' . $err->getMessage());
             return $this->responseError($err->getMessage(), 'Finance Billing Item update failed', 500);
@@ -351,6 +372,10 @@ class FinanceBillingController extends Controller
             });
 
             return $this->responseSuccess([], 'Finance Billing Item successfully Deleted', 200);
+        } catch (ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
         } catch (Exception $err) {
             return $this->responseError($err->getMessage(), 'Finance Billing Item Not Found or Failed Deleted', 500);
         }

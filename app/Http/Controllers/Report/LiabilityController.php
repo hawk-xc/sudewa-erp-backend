@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Report;
 
 use App\Http\Controllers\Controller;
-use App\Models\UnitTransaction;
+use App\Models\CashFlow;
 use App\Traits\ResponseTrait;
 use Exception;
 use Illuminate\Http\Request;
@@ -21,68 +21,79 @@ class LiabilityController extends Controller
     public function index(Request $request)
     {
         try {
-            $query = UnitTransaction::query();
+            $query = CashFlow::query()->whereNotNull('unit_transaction_billing_id');
 
             if ($request->type) {
-                $query->where('type', match ($request->type) {
-                    'purchase' => 'purchase',
-                    'sales' => 'sales',
-                    default => null,
+                $query->whereHas('unitTransactionBilling.unitTransaction', function ($q) use ($request) {
+                    $q->where('type', match ($request->type) {
+                        'purchase' => 'purchase',
+                        'sales' => 'sales',
+                        default => null,
+                    });
                 });
             }
 
             $query->with([
-                'person:id,name',
-                'unitTransactionBilling.unitTransactionBillingHistories',
+                'financeBilling.financeBillingItems',
             ]);
 
             if ($request->filled('search')) {
                 $search = $request->search;
                 $query->where(function ($q) use ($search) {
                     $q->where('code', 'like', "%$search%")
-                        ->orWhereHas('person', function ($q) use ($search) {
-                            $q->where('name', 'like', "%$search%");
+                        ->orWhereHas('unitTransactionBilling.unitTransaction', function ($qUt) use ($search) {
+                            $qUt->where('code', 'like', "%$search%")
+                                ->orWhereHas('person', function ($qp) use ($search) {
+                                    $qp->where('name', 'like', "%$search%");
+                                });
                         });
                 });
             }
 
             if ($request->filled('liability_status')) {
                 $status = $request->liability_status;
-                $query->whereHas('unitTransactionBilling', function ($q) use ($status) {
+                $query->whereHas('financeBilling', function ($q) use ($status) {
                     if ($status === 'paid') {
-                        $q->where('is_paid', true);
+                        $q->where('is_valid', true);
                     } elseif ($status === 'unpaid') {
-                        $q->where('is_paid', false);
+                        $q->where('is_valid', false);
                     }
                 });
             }
 
             $data = $query->paginate($request->per_page ?? 10);
 
-            $data->getCollection()->transform(function ($item, $key) use ($data) {
-                $item->code = $item->code;
-                $item->date = $item->created_at;
-                $item->supplier_name = $item->person->name ?? '-';
+            $data->getCollection()->transform(function ($item, $key) {
+                $utBilling = $item->unitTransactionBilling;
+                $unitTransaction = $utBilling ? $utBilling->unitTransaction : null;
+                $person = $unitTransaction ? $unitTransaction->person : null;
 
-                $buyTotal = 0;
+                $item->code = $unitTransaction ? $unitTransaction->code : '-';
+                $item->date = $item->date ?? $item->created_at;
+                $item->supplier_name = $person ? $person->name : '-';
+
+                $buyTotal = $utBilling ? (int) $utBilling->grand_total : 0;
                 $paidTotal = 0;
-                $liabilityTotal = 0;
+                $liabilityTotal = $buyTotal;
+                $isPaid = false;
 
-                if ($item->unitTransactionBilling) {
-                    $billing = $item->unitTransactionBilling;
+                if ($item->financeBilling) {
+                    $financeBilling = $item->financeBilling;
+                    $items = $financeBilling->financeBillingItems;
 
-                    $totalCash = $billing->getTotalCashPayment();
-                    $totalBca = $billing->getTotalBcaCashPayment();
+                    $totalCash = $items->sum('cash_payment_amount');
+                    $totalBca = $items->sum('bca_payment_amount');
 
-                    $buyTotal = (int) $billing->grand_total;
+                    $buyTotal = (int) $financeBilling->grand_total;
                     $paidTotal = $totalCash + $totalBca;
                     $liabilityTotal = $buyTotal - $paidTotal;
+                    $isPaid = $financeBilling->is_valid;
                 }
 
                 $item->grand_total = $buyTotal;
                 $item->total_paid = $paidTotal;
                 $item->remaining_payment = $liabilityTotal;
-                $item->is_paid = $item->unitTransactionBilling->is_paid ?? false;
+                $item->is_paid = $isPaid;
                 $item->paid_percentage = $buyTotal > 0 ? round(($paidTotal / $buyTotal) * 100, 2) : 0;
 
                 return $item;
@@ -100,27 +111,29 @@ class LiabilityController extends Controller
     public function show(string $id)
     {
         try {
-            $data = UnitTransaction::with([
-                'person:id,uuid,code,name,type',
-                'unitTransactionBilling.unitTransactionBillingHistories',
-                'unitTransactionItems.unitType',
+            $data = CashFlow::with([
+                'unitTransactionBilling.unitTransaction.person:id,uuid,code,name,type',
+                'unitTransactionBilling.unitTransaction.unitTransactionItems.unitType',
+                'financeBilling.financeBillingItems',
             ])->findOrFail($id);
 
-            $buyTotal = 0;
+            $utBilling = $data->unitTransactionBilling;
+            $buyTotal = $utBilling ? (int) $utBilling->grand_total : 0;
             $paidTotal = 0;
-            $liabilityTotal = 0;
+            $liabilityTotal = $buyTotal;
             $isPaid = false;
 
-            if ($data->unitTransactionBilling) {
-                $billing = $data->unitTransactionBilling;
+            if ($data->financeBilling) {
+                $financeBilling = $data->financeBilling;
+                $items = $financeBilling->financeBillingItems;
 
-                $totalCash = $billing->getTotalCashPayment();
-                $totalBca = $billing->getTotalBcaCashPayment();
+                $totalCash = $items->sum('cash_payment_amount');
+                $totalBca = $items->sum('bca_payment_amount');
 
-                $buyTotal = (int) $billing->grand_total;
+                $buyTotal = (int) $financeBilling->grand_total;
                 $paidTotal = $totalCash + $totalBca;
                 $liabilityTotal = $buyTotal - $paidTotal;
-                $isPaid = $billing->is_paid;
+                $isPaid = $financeBilling->is_valid;
             }
 
             $data->billing_summary = [
