@@ -54,6 +54,16 @@ class Cash extends Model
             ->withTimestamps();
     }
 
+    public function addAmount(int $amount)
+    {
+        $this->increment('amount', $amount);
+    }
+
+    public function subtractAmount(int $amount)
+    {
+        $this->decrement('amount', $amount);
+    }
+
     protected static function booted()
     {
         static::creating(function ($model) {

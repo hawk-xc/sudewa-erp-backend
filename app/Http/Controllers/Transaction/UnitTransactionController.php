@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Company;
 use App\Models\Person;
 use App\Models\UnitTransaction;
+use App\Models\Cash;
 use App\Models\UnitTransactionAdjustment;
 use App\Models\UnitTransactionItem;
 use App\Models\UnitTransactionItemDetail;
@@ -643,6 +644,9 @@ class UnitTransactionController extends Controller
                     'type' => 'refund',
                 ]);
 
+                $cash = Cash::findOrFail($validated['cash_id']);
+                $cash->subtractAmount($amount);
+
                 $details = UnitTransactionItemDetail::whereIn('id', $validated['unit_transaction_details'])->get();
                 foreach ($details as $detail) {
                     $detail->refundStock();
@@ -695,6 +699,9 @@ class UnitTransactionController extends Controller
                     'description' => $validated['description'],
                     'type' => 'return',
                 ]);
+
+                $cash = Cash::findOrFail($validated['cash_id']);
+                $cash->addAmount($amount);
 
                 $details = UnitTransactionItemDetail::whereIn('id', $validated['unit_transaction_details'])->get();
                 foreach ($details as $detail) {
@@ -755,6 +762,13 @@ class UnitTransactionController extends Controller
                 ];
 
                 $adjustment = $unitTransaction->unitTransactionAdjustments()->create($adjustmentData);
+
+                $cash = Cash::findOrFail($validated['cash_id']);
+                if ($adjustmentType === 'refund') {
+                    $cash->subtractAmount($validated['amount']);
+                } elseif ($adjustmentType === 'return') {
+                    $cash->addAmount($validated['amount']);
+                }
 
                 // Create adjustment items if detail IDs are provided
                 if (!empty($validated['unit_transaction_item_details_ids'])) {

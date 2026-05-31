@@ -10,6 +10,7 @@ use App\Traits\ResponseTrait;
 use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
 
 class BBNBillBillingItemController extends Controller
 {
@@ -79,7 +80,14 @@ class BBNBillBillingItemController extends Controller
         }
 
         try {
-            $data = BBNBillBillingItem::create($validated);
+            $data = DB::transaction(function () use ($validated) {
+                $item = BBNBillBillingItem::create($validated);
+                
+                $cash = \App\Models\Cash::findOrFail($validated['cash_id']);
+                $cash->subtractAmount((int) $validated['amount']);
+
+                return $item;
+            });
             
             // Append remaining payment info to response
             $data->remaining_payment = $billing->getRemainingAmount();
@@ -132,7 +140,21 @@ class BBNBillBillingItemController extends Controller
                 }
             }
 
-            $item->update($validated);
+            $oldAmount = $item->amount;
+            $oldCashId = $item->cash_id;
+
+            $newAmount = $validated['amount'] ?? $oldAmount;
+            $newCashId = $validated['cash_id'] ?? $oldCashId;
+
+            DB::transaction(function () use ($item, $validated, $oldAmount, $oldCashId, $newAmount, $newCashId) {
+                $oldCash = \App\Models\Cash::findOrFail($oldCashId);
+                $oldCash->addAmount($oldAmount);
+
+                $newCash = \App\Models\Cash::findOrFail($newCashId);
+                $newCash->subtractAmount($newAmount);
+
+                $item->update($validated);
+            });
             
             $updatedItem = $item->fresh();
             $updatedItem->remaining_payment = $billing->getRemainingAmount();
@@ -163,7 +185,13 @@ class BBNBillBillingItemController extends Controller
             }
 
             $billing = $item->bbnBillBilling;
-            $item->delete();
+            
+            DB::transaction(function () use ($item) {
+                $cash = \App\Models\Cash::findOrFail($item->cash_id);
+                $cash->addAmount($item->amount);
+
+                $item->delete();
+            });
 
             // Sync BBNBill status: if not fully paid, clear paid_date
             if ($billing->getRemainingAmount() > 0) {
