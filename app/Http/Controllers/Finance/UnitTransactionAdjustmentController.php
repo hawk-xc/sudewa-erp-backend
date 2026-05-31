@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Finance;
 use App\Http\Controllers\Controller;
 use App\Models\UnitTransaction;
 use App\Models\UnitTransactionAdjustment;
+use App\Models\Cash;
 use App\Traits\ResponseTrait;
 use Exception;
 use Illuminate\Http\Request;
@@ -125,7 +126,15 @@ class UnitTransactionAdjustmentController extends Controller
             $adjustment = DB::transaction(function () use ($validated, $unitTransaction) {
                 $unitTransaction->update(['is_refunded' => true]);
 
-                return UnitTransactionAdjustment::create($validated);
+                $adj = UnitTransactionAdjustment::create($validated);
+
+                $cash = Cash::find($validated['cash_id']);
+                if ($cash) {
+                    $trxType = $unitTransaction->type;
+                    $cash->adjustAmount((float) $validated['amount'], 'refund_' . $trxType);
+                }
+
+                return $adj;
             });
 
             return $this->responseSuccess($adjustment, 'Unit Transaction Adjustment created successfully', 201);
@@ -151,6 +160,13 @@ class UnitTransactionAdjustmentController extends Controller
                 if ($unitTransaction) {
                     $unitTransaction->update(['is_refunded' => false]);
                 }
+
+                $cash = Cash::find($adjustment->cash_id);
+                if ($cash && $unitTransaction) {
+                    $trxType = $unitTransaction->type;
+                    $cash->adjustAmount(-(float) $adjustment->amount, 'refund_' . $trxType);
+                }
+
                 $adjustment->delete();
             });
 

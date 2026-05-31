@@ -76,7 +76,7 @@ class DailyCashFlowController extends Controller
             return $this->responseError($err->getMessage(), 'Cash Flow list retrieved Failed', 500);
         }
     }
-
+    
     public function show(string $id)
     {
         try {
@@ -136,7 +136,20 @@ class DailyCashFlowController extends Controller
                 );
             }
             $cashFlow = DB::transaction(function () use ($validated) {
-                return CashFlow::create($validated);
+                $cf = CashFlow::create($validated);
+
+                if (empty($cf->unit_transaction_billing_id) && !empty($cf->cash_id)) {
+                    $cash = Cash::find($cf->cash_id);
+                    if ($cash) {
+                        if ($cf->debet > 0) {
+                            $cash->adjustAmount((float) $cf->debet, 'debet');
+                        } elseif ($cf->credit > 0) {
+                            $cash->adjustAmount((float) $cf->credit, 'credit');
+                        }
+                    }
+                }
+
+                return $cf;
             });
 
             return $this->responseSuccess($cashFlow, 'Cash Flow created successfully', 201);
@@ -215,9 +228,60 @@ class DailyCashFlowController extends Controller
             }
 
             $cashFlow = DB::transaction(function () use ($cashFlow, $data) {
-                $cashFlow->update($data);
+                $oldCashId = $cashFlow->cash_id;
+                $oldDebet = (float) $cashFlow->debet;
+                $oldCredit = (float) $cashFlow->credit;
 
-                return $cashFlow->fresh();
+                $cashFlow->update($data);
+                $cf = $cashFlow->fresh();
+
+                if (empty($cf->unit_transaction_billing_id)) {
+                    $newCashId = $cf->cash_id;
+                    $newDebet = (float) $cf->debet;
+                    $newCredit = (float) $cf->credit;
+
+                    if ($oldCashId === $newCashId) {
+                        if ($newCashId) {
+                            $cash = Cash::find($newCashId);
+                            if ($cash) {
+                                $diffDebet = $newDebet - $oldDebet;
+                                $diffCredit = $newCredit - $oldCredit;
+
+                                if ($diffDebet != 0) {
+                                    $cash->adjustAmount($diffDebet, 'debet');
+                                }
+                                if ($diffCredit != 0) {
+                                    $cash->adjustAmount($diffCredit, 'credit');
+                                }
+                            }
+                        }
+                    } else {
+                        if ($oldCashId) {
+                            $oldCash = Cash::find($oldCashId);
+                            if ($oldCash) {
+                                if ($oldDebet > 0) {
+                                    $oldCash->adjustAmount(-$oldDebet, 'debet');
+                                }
+                                if ($oldCredit > 0) {
+                                    $oldCash->adjustAmount(-$oldCredit, 'credit');
+                                }
+                            }
+                        }
+                        if ($newCashId) {
+                            $newCash = Cash::find($newCashId);
+                            if ($newCash) {
+                                if ($newDebet > 0) {
+                                    $newCash->adjustAmount($newDebet, 'debet');
+                                }
+                                if ($newCredit > 0) {
+                                    $newCash->adjustAmount($newCredit, 'credit');
+                                }
+                            }
+                        }
+                    }
+                }
+
+                return $cf;
             });
 
             return $this->responseSuccess($cashFlow, 'Cash Flow updated successfully', 200);
@@ -243,7 +307,19 @@ class DailyCashFlowController extends Controller
                 $this->destroyFile('cash_flow_proof/' . $cashFlow->payment_proof);
             }
 
-            $cashFlow->delete();
+            DB::transaction(function () use ($cashFlow) {
+                if (empty($cashFlow->unit_transaction_billing_id) && !empty($cashFlow->cash_id)) {
+                    $cash = Cash::find($cashFlow->cash_id);
+                    if ($cash) {
+                        if ($cashFlow->debet > 0) {
+                            $cash->adjustAmount(-(float) $cashFlow->debet, 'debet');
+                        } elseif ($cashFlow->credit > 0) {
+                            $cash->adjustAmount(-(float) $cashFlow->credit, 'credit');
+                        }
+                    }
+                }
+                $cashFlow->delete();
+            });
 
             return $this->responseSuccess([], 'Cash Flow deleted successfully', 200);
         } catch (ModelNotFoundException $err) {

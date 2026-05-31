@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Finance;
 
 use App\Http\Controllers\Controller;
 use App\Models\FinanceRefund;
+use App\Models\Cash;
 use App\Traits\ResponseTrait;
 use Exception;
 use Illuminate\Http\Request;
@@ -110,7 +111,46 @@ class FinanceRefundController extends Controller
 
         try {
             $financeRefund = FinanceRefund::findOrFail($id);
-            $financeRefund->update($validated);
+            $oldStatus = $financeRefund->status;
+            $oldCashId = $financeRefund->cash_id;
+
+            DB::transaction(function () use ($financeRefund, $validated) {
+                $financeRefund->update($validated);
+            });
+
+            $newStatus = $financeRefund->status;
+            $newCashId = $financeRefund->cash_id;
+
+            if ($newStatus === 'approve' && $oldStatus !== 'approve') {
+                $cash = Cash::find($newCashId);
+                if ($cash && $financeRefund->unitTransactionRefund) {
+                    $refundAmount = (float) $financeRefund->unitTransactionRefund->refund_amount;
+                    $trxType = $financeRefund->unitTransactionRefund->unitTransaction->type;
+                    $cash->adjustAmount($refundAmount, 'refund_' . $trxType);
+                }
+            } elseif ($newStatus !== 'approve' && $oldStatus === 'approve') {
+                $cash = Cash::find($oldCashId);
+                if ($cash && $financeRefund->unitTransactionRefund) {
+                    $refundAmount = (float) $financeRefund->unitTransactionRefund->refund_amount;
+                    $trxType = $financeRefund->unitTransactionRefund->unitTransaction->type;
+                    $cash->adjustAmount(-$refundAmount, 'refund_' . $trxType);
+                }
+            } elseif ($newStatus === 'approve' && $oldStatus === 'approve' && $newCashId !== $oldCashId) {
+                if ($financeRefund->unitTransactionRefund) {
+                    $refundAmount = (float) $financeRefund->unitTransactionRefund->refund_amount;
+                    $trxType = $financeRefund->unitTransactionRefund->unitTransaction->type;
+
+                    $oldCash = Cash::find($oldCashId);
+                    if ($oldCash) {
+                        $oldCash->adjustAmount(-$refundAmount, 'refund_' . $trxType);
+                    }
+
+                    $newCash = Cash::find($newCashId);
+                    if ($newCash) {
+                        $newCash->adjustAmount($refundAmount, 'refund_' . $trxType);
+                    }
+                }
+            }
 
             return $this->responseSuccess($financeRefund->load(['unitTransactionRefund', 'cash']), 'Finance Refund updated successfully');
         } catch (ModelNotFoundException $err) {

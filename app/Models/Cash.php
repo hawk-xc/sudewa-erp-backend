@@ -54,14 +54,25 @@ class Cash extends Model
             ->withTimestamps();
     }
 
-    public function addAmount(int $amount)
+    public function adjustAmount(float $amount, string $type)
     {
-        $this->increment('amount', $amount);
-    }
+        $shouldAdd = match ($type) {
+            'sales', 'refund_purchase', 'debet' => true,
+            'purchase', 'refund_sales', 'credit' => false,
+            default => null,
+        };
 
-    public function subtractAmount(int $amount)
-    {
-        $this->decrement('amount', $amount);
+        if (is_null($shouldAdd)) {
+            return false;
+        }
+
+        if ($shouldAdd) {
+            $this->increment('amount', $amount);
+        } else {
+            $this->decrement('amount', $amount);
+        }
+
+        return true;
     }
 
     protected static function booted()

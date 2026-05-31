@@ -127,13 +127,6 @@ class GoodsTransactionBillingPaymentController extends Controller
                 
                 $payment = GoodsTransactionBillingPayment::create(array_merge($validated, ['code' => $code]));
                 
-                $cash = \App\Models\Cash::findOrFail($validated['cash_id']);
-                if ($billing->goodsTransaction && $billing->goodsTransaction->type === 'receipt') {
-                    $cash->subtractAmount((int) $validated['amount']);
-                } elseif ($billing->goodsTransaction && $billing->goodsTransaction->type === 'issue') {
-                    $cash->addAmount((int) $validated['amount']);
-                }
-
                 $isFullyPaid = $newTotalPaid >= $totalAmount;
                 if ($isFullyPaid) {
                     $billing->update(['is_paid' => true]);
@@ -224,35 +217,13 @@ class GoodsTransactionBillingPaymentController extends Controller
                 fn ($val) => ! is_null($val) && $val !== ''
             );
 
-            $oldCashId = $payment->cash_id;
-            $oldAmount = (int) $payment->amount;
-            $newCashId = isset($data['cash_id']) ? (int) $data['cash_id'] : $oldCashId;
-            $newAmount = isset($data['amount']) ? (int) $data['amount'] : $oldAmount;
-
-            DB::transaction(function () use ($data, $payment, $billing, $newTotalPaid, $totalAmount, $oldCashId, $oldAmount, $newCashId, $newAmount) {
+            DB::transaction(function () use ($data, $payment, $billing, $newTotalPaid, $totalAmount) {
                 $payment->update($data);
                 
-                $transaction = $billing->goodsTransaction;
-                if ($transaction) {
-                    $type = $transaction->type;
-                    if ($type === 'receipt') {
-                        $oldCash = \App\Models\Cash::findOrFail($oldCashId);
-                        $oldCash->addAmount($oldAmount);
-
-                        $newCash = \App\Models\Cash::findOrFail($newCashId);
-                        $newCash->subtractAmount($newAmount);
-                    } elseif ($type === 'issue') {
-                        $oldCash = \App\Models\Cash::findOrFail($oldCashId);
-                        $oldCash->subtractAmount($oldAmount);
-
-                        $newCash = \App\Models\Cash::findOrFail($newCashId);
-                        $newCash->addAmount($newAmount);
-                    }
-                }
-
                 $isFullyPaid = $newTotalPaid >= $totalAmount;
                 $billing->update(['is_paid' => $isFullyPaid]);
                 
+                $transaction = $billing->goodsTransaction;
                 if ($transaction) {
                     $transaction->update(['is_paid' => $isFullyPaid]);
                     if ($isFullyPaid) {
@@ -294,27 +265,13 @@ class GoodsTransactionBillingPaymentController extends Controller
         try {
             $data = GoodsTransactionBillingPayment::findOrFail($id);
             
-            $cashId = $data->cash_id;
-            $amount = (int) $data->amount;
-
-            DB::transaction(function () use ($data, $cashId, $amount) {
+            DB::transaction(function () use ($data) {
                 $billing = $data->goodsTransactionBilling;
                 $data->delete();
                 
-                $transaction = $billing->goodsTransaction;
-                if ($transaction) {
-                    $type = $transaction->type;
-                    if ($type === 'receipt') {
-                        $cash = \App\Models\Cash::findOrFail($cashId);
-                        $cash->addAmount($amount);
-                    } elseif ($type === 'issue') {
-                        $cash = \App\Models\Cash::findOrFail($cashId);
-                        $cash->subtractAmount($amount);
-                    }
-                }
-
                 $billing->update(['is_paid' => false]);
                 
+                $transaction = $billing->goodsTransaction;
                 if ($transaction) {
                     $transaction->update(['is_paid' => false]);
                     $transaction->goodsTransactionDetails()->update([

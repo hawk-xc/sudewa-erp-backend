@@ -166,11 +166,7 @@ class UnitTransactionBillingHistoryController extends Controller
                         $cash = Cash::where('company_id', $companyId)->where('code', $slug)->first();
                         if ($cash) {
                             $history->cashes()->attach($cash->id, ['amount' => $amountToAdd]);
-                            if ($billing->unitTransaction->type === 'purchase') {
-                                $cash->subtractAmount($amountToAdd);
-                            } elseif ($billing->unitTransaction->type === 'sales') {
-                                $cash->addAmount($amountToAdd);
-                            }
+                            $cash->increment('amount', $amountToAdd);
                         }
                     }
                 }
@@ -316,11 +312,7 @@ class UnitTransactionBillingHistoryController extends Controller
                     $cash = Cash::where('company_id', $companyId)->where('code', $slug)->first();
                     if ($cash) {
                         if ($diff != 0) {
-                            if ($billing->unitTransaction->type === 'purchase') {
-                                $cash->subtractAmount($diff);
-                            } elseif ($billing->unitTransaction->type === 'sales') {
-                                $cash->addAmount($diff);
-                            }
+                            $cash->increment('amount', $diff);
                         }
                         
                         if ($newVal > 0) {
@@ -393,16 +385,9 @@ class UnitTransactionBillingHistoryController extends Controller
 
                 foreach (['cash_idr', 'bca_idr', 'bca_usd'] as $slug) {
                     if ($amountsToDeduct[$slug] > 0) {
-                        $cash = Cash::where('company_id', $companyId)
+                        Cash::where('company_id', $companyId)
                             ->where('code', $slug)
-                            ->first();
-                        if ($cash) {
-                            if ($billing->unitTransaction->type === 'purchase') {
-                                $cash->addAmount($amountsToDeduct[$slug]);
-                            } elseif ($billing->unitTransaction->type === 'sales') {
-                                $cash->subtractAmount($amountsToDeduct[$slug]);
-                            }
-                        }
+                            ->decrement('amount', $amountsToDeduct[$slug]);
                     }
                 }
 

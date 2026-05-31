@@ -7,6 +7,7 @@ use App\Models\FinanceBilling;
 use App\Models\FinanceBillingItem;
 use App\Models\UnitTransactionBilling;
 use App\Models\UnitTypeDetailPpn;
+use App\Models\Cash;
 use App\Repositories\AuthRepository;
 use App\Traits\FileTrait;
 use App\Traits\ResponseTrait;
@@ -232,6 +233,41 @@ class FinanceBillingController extends Controller
                 $itemData['finance_billing_id'] = $financeBilling->id;
                 $item = FinanceBillingItem::create($itemData);
 
+                // Adjust Cash amount based on payment type
+                $utBilling = $financeBilling->unitTransactionBilling;
+                if ($utBilling && $utBilling->unitTransaction) {
+                    $unitTransaction = $utBilling->unitTransaction;
+                    $companyId = $unitTransaction->warehouse->company_id;
+                    $type = $unitTransaction->type; // 'purchase' or 'sales'
+
+                    // Cash Payment
+                    $cashAmount = (float) ($validated['cash_payment_amount'] ?? 0);
+                    if ($cashAmount > 0) {
+                        $cashObj = Cash::where('company_id', $companyId)->where('code', 'cash_idr')->first();
+                        if ($cashObj) {
+                            $cashObj->adjustAmount($cashAmount, $type);
+                        }
+                    }
+
+                    // BCA Payment
+                    $bcaAmount = (float) ($validated['bca_payment_amount'] ?? 0);
+                    if ($bcaAmount > 0) {
+                        $cashBca = Cash::where('company_id', $companyId)->where('code', 'bca_idr')->first();
+                        if ($cashBca) {
+                            $cashBca->adjustAmount($bcaAmount, $type);
+                        }
+                    }
+
+                    // BCA USD Payment
+                    $bcaUsdAmount = (float) ($validated['bca_payment_usd_amount'] ?? 0);
+                    if ($bcaUsdAmount > 0) {
+                        $cashBcaUsd = Cash::where('company_id', $companyId)->where('code', 'bca_usd')->first();
+                        if ($cashBcaUsd) {
+                            $cashBcaUsd->adjustAmount($bcaUsdAmount, $type);
+                        }
+                    }
+                }
+
                 // 2. Check if fully allocated
                 if (($alreadyAllocated + $newPayment) >= $financeBilling->grand_total) {
                     $financeBilling->update(['is_valid' => true]);
@@ -320,9 +356,49 @@ class FinanceBillingController extends Controller
             }
 
                 DB::transaction(function () use ($item, $validated) {
+                $oldBca = (float) ($item->bca_payment_amount ?? 0);
+                $oldBcaUsd = (float) ($item->bca_payment_usd_amount ?? 0);
+                $oldCash = (float) ($item->cash_payment_amount ?? 0);
+
                 $item->update($validated);
                 
+                $newBca = (float) ($item->bca_payment_amount ?? 0);
+                $newBcaUsd = (float) ($item->bca_payment_usd_amount ?? 0);
+                $newCash = (float) ($item->cash_payment_amount ?? 0);
+
+                $diffBca = $newBca - $oldBca;
+                $diffBcaUsd = $newBcaUsd - $oldBcaUsd;
+                $diffCash = $newCash - $oldCash;
+
                 $financeBilling = $item->financeBilling;
+                $utBilling = $financeBilling->unitTransactionBilling;
+                if ($utBilling && $utBilling->unitTransaction) {
+                    $unitTransaction = $utBilling->unitTransaction;
+                    $companyId = $unitTransaction->warehouse->company_id;
+                    $type = $unitTransaction->type; // 'purchase' or 'sales'
+
+                    if ($diffBca != 0) {
+                        $cashBca = Cash::where('company_id', $companyId)->where('code', 'bca_idr')->first();
+                        if ($cashBca) {
+                            $cashBca->adjustAmount($diffBca, $type);
+                        }
+                    }
+
+                    if ($diffBcaUsd != 0) {
+                        $cashBcaUsd = Cash::where('company_id', $companyId)->where('code', 'bca_usd')->first();
+                        if ($cashBcaUsd) {
+                            $cashBcaUsd->adjustAmount($diffBcaUsd, $type);
+                        }
+                    }
+
+                    if ($diffCash != 0) {
+                        $cashObj = Cash::where('company_id', $companyId)->where('code', 'cash_idr')->first();
+                        if ($cashObj) {
+                            $cashObj->adjustAmount($diffCash, $type);
+                        }
+                    }
+                }
+                
                 $cashFlow = $financeBilling->cashFlow;
 
                 if ($cashFlow) {
@@ -367,6 +443,37 @@ class FinanceBillingController extends Controller
                 }
                 
                 $financeBilling = $item->financeBilling;
+                $utBilling = $financeBilling->unitTransactionBilling;
+                if ($utBilling && $utBilling->unitTransaction) {
+                    $unitTransaction = $utBilling->unitTransaction;
+                    $companyId = $unitTransaction->warehouse->company_id;
+                    $type = $unitTransaction->type; // 'purchase' or 'sales'
+
+                    $bcaAmount = (float) ($item->bca_payment_amount ?? 0);
+                    if ($bcaAmount > 0) {
+                        $cashBca = Cash::where('company_id', $companyId)->where('code', 'bca_idr')->first();
+                        if ($cashBca) {
+                            $cashBca->adjustAmount(-$bcaAmount, $type);
+                        }
+                    }
+
+                    $bcaUsdAmount = (float) ($item->bca_payment_usd_amount ?? 0);
+                    if ($bcaUsdAmount > 0) {
+                        $cashBcaUsd = Cash::where('company_id', $companyId)->where('code', 'bca_usd')->first();
+                        if ($cashBcaUsd) {
+                            $cashBcaUsd->adjustAmount(-$bcaUsdAmount, $type);
+                        }
+                    }
+
+                    $cashAmount = (float) ($item->cash_payment_amount ?? 0);
+                    if ($cashAmount > 0) {
+                        $cashObj = Cash::where('company_id', $companyId)->where('code', 'cash_idr')->first();
+                        if ($cashObj) {
+                            $cashObj->adjustAmount(-$cashAmount, $type);
+                        }
+                    }
+                }
+
                 $item->delete();
                 $this->updateValidity($financeBilling);
             });
