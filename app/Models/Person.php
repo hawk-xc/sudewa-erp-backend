@@ -34,6 +34,10 @@ class Person extends Model
         'website_link',
     ];
 
+    protected $casts = [
+        'company_id' => 'integer'
+    ];
+
     public function company()
     {
         return $this->belongsTo(Company::class, 'company_id', 'id');
