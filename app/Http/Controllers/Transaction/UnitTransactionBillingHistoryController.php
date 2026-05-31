@@ -9,7 +9,6 @@ use App\Models\FinanceBilling;
 use App\Models\TransactionFlow;
 use App\Models\UnitTransactionBilling;
 use App\Models\UnitTransactionBillingHistory;
-use App\Models\UnitTypeDetailPpn;
 use App\Traits\GlobalCodeNumberTrait;
 use App\Traits\FileTrait;
 use App\Traits\ResponseTrait;
@@ -194,39 +193,6 @@ class UnitTransactionBillingHistoryController extends Controller
                         'bank_idr_credit' => $unitTransaction->type === 'purchase' ? $unitTransaction->getBrutoAmount() : 0,
                     ]
                 );
-
-                if ($remaining <= 0) {
-
-                    $billing->unitTransaction->update([
-                        'stock_state' => 'inbound_incoming_goods',
-                    ]);
-
-                    foreach ($billing->unitTransaction->unitTransactionItems as $item) {
-
-                        $details = $billing->unitTransaction->type === 'purchase'
-                            ? $item->unitTransactionItemDetails
-                            : $item->unitTypeSoldDetails;
-
-                        foreach ($details as $detail) {
-
-                            $unitTransactionType = $billing->unitTransaction->type;
-
-                            $type = 'ppn_'.$unitTransactionType;
-
-                            $exists = UnitTypeDetailPpn::where('unit_transaction_item_detail_id', $detail->id)
-                                ->where('type', $type)
-                                ->exists();
-
-                            if (! $exists) {
-                                UnitTypeDetailPpn::create([
-                                    'unit_transaction_item_detail_id' => $detail->id,
-                                    'unit_transaction_id' => $billing->unitTransaction->id,
-                                    'type' => $type,
-                                ]);
-                            }
-                        }
-                    }
-                }
 
                 // Create a SINGLE CashFlow and FinanceBilling for the TOTAL BRUTO on the first payment
                 $existsCashFlow = CashFlow::where('unit_transaction_billing_id', $billing->id)->exists();

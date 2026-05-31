@@ -18,7 +18,7 @@ class BBNBillController extends Controller
 {
     use ResponseTrait, GlobalCodeNumberTrait;
  
-    protected $bbnBillTable;
+    protected array $bbnBillTable;
  
     public function __construct()
     {

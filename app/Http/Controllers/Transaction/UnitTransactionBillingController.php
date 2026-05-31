@@ -18,7 +18,7 @@ class UnitTransactionBillingController extends Controller
 {
     use ResponseTrait, GlobalCodeNumberTrait;
 
-    protected $unitTransactionBillingTable;
+    protected array $unitTransactionBillingTable;
 
     public function __construct()
     {
@@ -139,7 +139,6 @@ class UnitTransactionBillingController extends Controller
     {
         try {
             $validated = $request->validate([
-                'company_id' => 'required|integer|exists:companies,id',
                 'unit_transaction_id' => 'required|integer|exists:unit_transactions,id|unique:unit_transaction_billings,unit_transaction_id',
             ]);
 
@@ -148,12 +147,6 @@ class UnitTransactionBillingController extends Controller
                     'unitTransactionItems.unitTransactionItemSales'
                 ])
                 ->findOrFail($validated['unit_transaction_id']);
-
-            if ((int) $unitTransaction->warehouse->company_id !== (int) $validated['company_id']) {
-                throw ValidationException::withMessages([
-                    'company_id' => 'Company does not own this unit transaction.',
-                ]);
-            }
 
             // unit type detail checker
             // foreach ($unitTransaction->unitTransactionItems as $item) {

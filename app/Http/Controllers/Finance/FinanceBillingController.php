@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\FinanceBilling;
 use App\Models\FinanceBillingItem;
 use App\Models\UnitTransactionBilling;
+use App\Models\UnitTypeDetailPpn;
 use App\Repositories\AuthRepository;
 use App\Traits\FileTrait;
 use App\Traits\ResponseTrait;
@@ -22,8 +23,8 @@ class FinanceBillingController extends Controller
 
     protected AuthRepository $authRepository;
 
-    protected $financeBillingTable;
-    protected $financeBillingItemTable;
+    protected array $financeBillingTable;
+    protected array $financeBillingItemTable;
 
     public function __construct(AuthRepository $ar)
     {
@@ -62,7 +63,8 @@ class FinanceBillingController extends Controller
             $query = FinanceBilling::query()
                 ->with([
                     'unitTransactionBilling:id,uuid,unit_transaction_id,grand_total,is_paid',
-                    'unitTransactionBilling.unitTransaction:id,code'
+                    'unitTransactionBilling.unitTransaction:id,code',
+                    'financeBillingItems'
                 ]);
 
             $query->select($this->financeBillingTable);
@@ -80,6 +82,18 @@ class FinanceBillingController extends Controller
             $query->orderBy($sortBy, $sortOrder);
 
             $data = $query->paginate($request->per_page ?? 10);
+
+            $data->getCollection()->transform(function ($item) {
+                $items = $item->financeBillingItems;
+                $totalCash = $items->sum('cash_payment_amount');
+                $totalBca = $items->sum('bca_payment_amount');
+                $totalPaid = $totalCash + $totalBca;
+                $remaining = ($item->unitTransactionBilling->grand_total ?? 0) - $totalPaid;
+
+                $item->remaining_payment = $remaining;
+
+                return $item;
+            });
 
             return $this->responseSuccess($data, 'Finance Billing list retrieved successfully', 200);
         } catch (Exception $err) {
@@ -178,7 +192,11 @@ class FinanceBillingController extends Controller
                 );
             }
 
-            $financeBilling = FinanceBilling::with('financeBillingItems')->findOrFail($unit_transaction_billing_id);
+            $financeBilling = FinanceBilling::with([
+                'financeBillingItems',
+                'unitTransactionBilling.unitTransaction.unitTransactionItems.unitTransactionItemDetails',
+                'unitTransactionBilling.unitTransaction.unitTransactionItems.unitTypeSoldDetails'
+            ])->findOrFail($unit_transaction_billing_id);
             $newPayment = ($validated['cash_payment_amount'] ?? 0) + ($validated['bca_payment_amount'] ?? 0);
             
             $alreadyAllocated = $financeBilling->financeBillingItems->sum(function ($item) {
@@ -204,6 +222,38 @@ class FinanceBillingController extends Controller
                 // 2. Check if fully allocated
                 if (($alreadyAllocated + $newPayment) >= $financeBilling->grand_total) {
                     $financeBilling->update(['is_valid' => true]);
+
+                    $utBilling = $financeBilling->unitTransactionBilling;
+                    if ($utBilling && $utBilling->unitTransaction) {
+                        $unitTransaction = $utBilling->unitTransaction;
+                        
+                        $unitTransaction->update([
+                            'stock_state' => 'inbound_incoming_goods',
+                        ]);
+
+                        foreach ($unitTransaction->unitTransactionItems as $itemObj) {
+                            $details = $unitTransaction->type === 'purchase'
+                                ? $itemObj->unitTransactionItemDetails
+                                : $itemObj->unitTypeSoldDetails;
+
+                            foreach ($details as $detail) 
+                                $unitTransactionType = $unitTransaction->type;
+                                $type = 'ppn_' . $unitTransactionType;
+
+                                $exists = UnitTypeDetailPpn::where('unit_transaction_item_detail_id', $detail->id)
+                                    ->where('type', $type)
+                                    ->exists();
+
+                                if (!$exists) {
+                                    UnitTypeDetailPpn::create([
+                                        'unit_transaction_item_detail_id' => $detail->id,
+                                        'unit_transaction_id' => $unitTransaction->id,
+                                        'type' => $type,
+                                    ]);
+                                }
+                            
+                        }
+                    }
                 }
 
                 return $item;

@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Finance;
 
 use App\Http\Controllers\Controller;
+use App\Models\Account;
+use App\Models\Cash;
 use App\Models\CashFlow;
 use App\Traits\FileTrait;
 use App\Traits\ResponseTrait;
@@ -10,12 +12,13 @@ use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
 
 class DailyCashFlowController extends Controller
 {
     use FileTrait, ResponseTrait;
 
-    protected $cashFlowTable;
+    protected array $cashFlowTable;
 
     public function __construct()
     {
@@ -92,19 +95,39 @@ class DailyCashFlowController extends Controller
 
     public function store(Request $request)
     {
-        $validated = $request->validate([
-            'company_id' => 'required|integer|exists:companies,id',
-            'account_id' => 'required|integer|exists:accounts,id',
-            'cash_id' => 'nullable|integer|exists:cashes,id',
-            'date' => 'required|date',
-            'note' => 'nullable|string',
-            'debet' => 'nullable|numeric|min:0|prohibits:credit',
-            'credit' => 'nullable|numeric|min:0|prohibits:debet',
-            'transaction_category' => 'nullable|string|in:general,operational,director_receivable,shareholder_receivable,receivable,inventory',
-            'payment_proof' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:2048',
-        ]);
-
         try {
+            $validated = $request->validate([
+                'company_id' => 'required|integer|exists:companies,id',
+                'account_id' => 'required|integer|exists:accounts,id',
+                'cash_id' => 'nullable|integer|exists:cashes,id',
+                'date' => 'required|date',
+                'note' => 'nullable|string',
+                'debet' => 'nullable|numeric|min:0|prohibits:credit',
+                'credit' => 'nullable|numeric|min:0|prohibits:debet',
+                'transaction_category' => 'nullable|string|in:general,operational,director_receivable,shareholder_receivable,receivable,inventory',
+                'payment_proof' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:2048',
+            ]);
+
+            $companyId = (int) $validated['company_id'];
+
+            // Check if account_id belongs to company_id
+            $account = Account::with('accountGroup')->find($validated['account_id']);
+            if (!$account || !$account->accountGroup || (int) $account->accountGroup->company_id !== $companyId) {
+                throw ValidationException::withMessages([
+                    'account_id' => ['The selected account_id does not belong to the selected company.'],
+                ]);
+            }
+
+            // Check if cash_id belongs to company_id
+            if (!empty($validated['cash_id'])) {
+                $cash = Cash::find($validated['cash_id']);
+                if (!$cash || (int) $cash->company_id !== $companyId) {
+                    throw ValidationException::withMessages([
+                        'cash_id' => ['The selected cash_id does not belong to the selected company.'],
+                    ]);
+                }
+            }
+
             if ($request->hasFile('payment_proof')) {
                 $validated['payment_proof'] = $this->storeFile(
                     $request->file('payment_proof'),
@@ -116,6 +139,8 @@ class DailyCashFlowController extends Controller
             });
 
             return $this->responseSuccess($cashFlow, 'Cash Flow created successfully', 201);
+        } catch (ValidationException $err) {
+            return $this->responseError($err->errors(), 'Validation failed', 422);
         } catch (Exception $err) {
             Log::error('Error while creating Cash Flow : '.$err->getMessage());
 
@@ -125,20 +150,52 @@ class DailyCashFlowController extends Controller
 
     public function update(Request $request, string $id)
     {
-        $request->validate([
-            'company_id' => 'sometimes|integer|exists:companies,id',
-            'account_id' => 'sometimes|integer|exists:accounts,id',
-            'cash_id' => 'sometimes|nullable|integer|exists:cashes,id',
-            'date' => 'sometimes|date',
-            'note' => 'nullable|string',
-            'debet' => 'sometimes|numeric|min:0|prohibits:credit',
-            'credit' => 'sometimes|numeric|min:0|prohibits:debet',
-            'transaction_category' => 'sometimes|string|in:general,operational,director_receivable,shareholder_receivable,receivable,inventory',
-            'payment_proof' => 'sometimes|nullable|file|mimes:jpg,jpeg,png,pdf|max:2048',
-        ]);
-
         try {
+            $validated = $request->validate([
+                'company_id' => 'sometimes|integer|exists:companies,id',
+                'account_id' => 'sometimes|integer|exists:accounts,id',
+                'cash_id' => 'sometimes|nullable|integer|exists:cashes,id',
+                'date' => 'sometimes|date',
+                'note' => 'nullable|string',
+                'debet' => 'sometimes|numeric|min:0|prohibits:credit',
+                'credit' => 'sometimes|numeric|min:0|prohibits:debet',
+                'transaction_category' => 'sometimes|string|in:general,operational,director_receivable,shareholder_receivable,receivable,inventory',
+                'payment_proof' => 'sometimes|nullable|file|mimes:jpg,jpeg,png,pdf|max:2048',
+            ]);
+
             $cashFlow = CashFlow::findOrFail($id);
+
+            // Determine active company_id
+            $companyId = isset($validated['company_id']) ? (int) $validated['company_id'] : (int) $cashFlow->company_id;
+
+            // Determine active account_id
+            $accountId = isset($validated['account_id']) ? (int) $validated['account_id'] : (int) $cashFlow->account_id;
+
+            // Determine active cash_id
+            $cashId = $cashFlow->cash_id;
+            if ($request->has('cash_id')) {
+                // If present in request, update it. Note: could be null
+                $cashId = $validated['cash_id'] ?? null;
+            }
+
+            // Check if account_id belongs to company_id
+            $account = Account::with('accountGroup')->find($accountId);
+            if (!$account || !$account->accountGroup || (int) $account->accountGroup->company_id !== $companyId) {
+                throw ValidationException::withMessages([
+                    'account_id' => ['The selected account_id does not belong to the selected company.'],
+                ]);
+            }
+
+            // Check if cash_id belongs to company_id
+            if (!is_null($cashId)) {
+                $cash = Cash::find($cashId);
+                if (!$cash || (int) $cash->company_id !== $companyId) {
+                    throw ValidationException::withMessages([
+                        'cash_id' => ['The selected cash_id does not belong to the selected company.'],
+                    ]);
+                }
+            }
+
             $data = array_filter($request->only(['company_id', 'account_id', 'cash_id', 'date', 'note', 'debet', 'credit', 'transaction_category']), fn ($value) => ! is_null($value) && $value !== '');
 
             if ($request->hasFile('payment_proof')) {
@@ -163,6 +220,12 @@ class DailyCashFlowController extends Controller
             });
 
             return $this->responseSuccess($cashFlow, 'Cash Flow updated successfully', 200);
+        } catch (ValidationException $err) {
+            return $this->responseError($err->errors(), 'Validation failed', 422);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
         } catch (Exception $err) {
             Log::error('Error while updating Cash Flow : '.$err->getMessage());
 

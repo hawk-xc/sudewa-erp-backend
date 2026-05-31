@@ -42,6 +42,11 @@ class UnitTransactionBilling extends Model
         return $this->hasMany(UnitTransactionBillingHistory::class);
     }
 
+    public function cashFlow()
+    {
+        return $this->hasOne(CashFlow::class,'unit_transaction_billing_id', 'id');
+    }
+
     public function getTotalCashPayment(): int
     {
         return (int) \DB::table('cash_unit_transaction_billing_history')
