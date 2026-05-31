@@ -25,7 +25,7 @@ class VehicleDocumentController extends Controller
 {
     use ResponseTrait, GlobalCodeNumberTrait;
 
-    protected $vehicleDocumentTable;
+    protected array $vehicleDocumentTable;
 
     public function __construct()
     {
