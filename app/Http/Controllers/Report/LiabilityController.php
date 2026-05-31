@@ -112,8 +112,6 @@ class LiabilityController extends Controller
     {
         try {
             $data = CashFlow::with([
-                'unitTransactionBilling.unitTransaction.person:id,uuid,code,name,type',
-                'unitTransactionBilling.unitTransaction.unitTransactionItems.unitType',
                 'financeBilling.financeBillingItems',
             ])->findOrFail($id);
 
