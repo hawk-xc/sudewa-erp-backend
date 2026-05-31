@@ -9,6 +9,7 @@ use App\Traits\ResponseTrait;
 use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 
 class PpnDataController extends Controller
 {
@@ -246,6 +247,10 @@ class PpnDataController extends Controller
 
         } catch (\Illuminate\Validation\ValidationException $err) {
             return $this->responseError($err->errors(), 'Validation failed', 422);
+        } catch (ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
         } catch (Exception $err) {
             Log::error('Error Update PPN Purchase: ' . $err->getMessage());
 

@@ -8,6 +8,7 @@ use App\Traits\ResponseTrait;
 use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 
 class FinanceRefundController extends Controller
 {
@@ -91,6 +92,10 @@ class FinanceRefundController extends Controller
             ])->findOrFail($id);
 
             return $this->responseSuccess($data, 'Finance Refund retrieved successfully');
+        } catch (ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
         } catch (Exception $err) {
             return $this->responseError($err->getMessage(), 'Finance Refund not found', 404);
         }
@@ -108,6 +113,10 @@ class FinanceRefundController extends Controller
             $financeRefund->update($validated);
 
             return $this->responseSuccess($financeRefund->load(['unitTransactionRefund', 'cash']), 'Finance Refund updated successfully');
+        } catch (ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
         } catch (Exception $err) {
             Log::error('Error While updating Finance Refund data: ' . $err->getMessage());
             return $this->responseError($err->getMessage(), 'Finance Refund update failed', 500);

@@ -13,6 +13,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 
 class DailyCashFlowController extends Controller
 {
@@ -245,6 +246,10 @@ class DailyCashFlowController extends Controller
             $cashFlow->delete();
 
             return $this->responseSuccess([], 'Cash Flow deleted successfully', 200);
+        } catch (ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
         } catch (Exception $err) {
             Log::error('Error while deleting Cash Flow : '.$err->getMessage());
 

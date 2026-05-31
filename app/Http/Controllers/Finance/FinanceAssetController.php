@@ -12,6 +12,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Maatwebsite\Excel\Facades\Excel;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 
 /**
  * @group Finance
@@ -151,6 +152,10 @@ class FinanceAssetController extends Controller
             $asset->final_value = round($finalValue, 2);
 
             return $this->responseSuccess($asset, 'Finance Asset retrieved successfully', 200);
+        } catch (ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
         } catch (Exception $err) {
             Log::error('Error While retrieved Finance Asset data : '.$err->getMessage());
 
@@ -179,6 +184,10 @@ class FinanceAssetController extends Controller
             });
 
             return $this->responseSuccess($asset, 'Finance Asset Update Successfully', 200);
+        } catch (ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
         } catch (Exception $err) {
             Log::error('Error while trying update Finance Asset data : '.$err->getMessage());
 

@@ -10,6 +10,7 @@ use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 
 class UnitTransactionAdjustmentController extends Controller
 {
@@ -87,6 +88,10 @@ class UnitTransactionAdjustmentController extends Controller
 
             return $this->responseSuccess($data, 'Unit Transaction Adjustment retrieved successfully', 200);
 
+        } catch (ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
         } catch (Exception $err) {
             return $this->responseError($err->getMessage(), 'Unit Transaction Adjustment not found', 404);
         }
@@ -125,6 +130,10 @@ class UnitTransactionAdjustmentController extends Controller
 
             return $this->responseSuccess($adjustment, 'Unit Transaction Adjustment created successfully', 201);
 
+        } catch (ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
         } catch (Exception $err) {
             Log::error('Error while creating Unit Transaction Adjustment: '.$err->getMessage());
 
@@ -147,6 +156,10 @@ class UnitTransactionAdjustmentController extends Controller
 
             return $this->responseSuccess((object) [], 'Unit Transaction Adjustment deleted successfully', 200);
 
+        } catch (ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
         } catch (Exception $err) {
             Log::error('Error while deleting Unit Transaction Adjustment: '.$err->getMessage());
 
