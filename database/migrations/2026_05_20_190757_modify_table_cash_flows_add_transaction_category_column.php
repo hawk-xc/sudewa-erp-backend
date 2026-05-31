@@ -23,7 +23,7 @@ return new class extends Migration
                 ])
                 ->default('general')
                 ->nullable(false)
-                ->after('unit_transaction_billing_history_id');
+                ->after('unit_transaction_billing_id');
             });
         }
     }

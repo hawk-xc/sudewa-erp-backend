@@ -18,10 +18,10 @@ return new class extends Migration
                 $table->dropColumn('finance_billing_item_id');
             }
             
-            $table->foreignId('unit_transaction_billing_history_id')
+            $table->foreignId('unit_transaction_billing_id')
                 ->nullable()
                 ->after('account_id')
-                ->constrained('unit_transaction_billing_histories')
+                ->constrained('unit_transaction_billings')
                 ->cascadeOnDelete();
         });
 
@@ -45,8 +45,8 @@ return new class extends Migration
         });
 
         Schema::table('cash_flows', function (Blueprint $table) {
-            $table->dropForeign(['unit_transaction_billing_history_id']);
-            $table->dropColumn('unit_transaction_billing_history_id');
+            $table->dropForeign(['unit_transaction_billing_id']);
+            $table->dropColumn('unit_transaction_billing_id');
         });
     }
 };
