@@ -14,6 +14,7 @@ return new class extends Migration
         Schema::create('bbn_bills', function (Blueprint $table) {
             $table->id();
             $table->uuid('uuid')->unique();
+            $table->string('code')->unique()->nullable(false);
             $table->foreignId('dealer_id')->constrained('persons');
             $table->date('bill_date');
             $table->date('paid_date')->nullable();
