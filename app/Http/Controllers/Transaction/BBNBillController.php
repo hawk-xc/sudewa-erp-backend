@@ -81,10 +81,25 @@ class BBNBillController extends Controller
         if (!$request->filled('bill_date')) {
             $validated['bill_date'] = now()->toDateTimeString();
         }
- 
-        $totalVehicleData = VehicleData::where('dealer_id', (int) $validated['dealer_id'])->count();
-        if ($totalVehicleData == 0) {
-            return $this->responseError('No vehicle data found for this dealer', 'Data not found', 404);
+
+        $notProcessedIds = \App\Models\VehicleRegistration::whereHas('vehicleData', function ($query) use ($validated) {
+                $query->where('dealer_id', (int) $validated['dealer_id']);
+            })
+            ->where('is_already_processed', false)
+            ->pluck('id');
+
+        if ($notProcessedIds->isNotEmpty()) {
+            return $this->responseError('Vehicle registration data has not been processed yet for IDs: ' . $notProcessedIds->implode(', '), 'Validation failed', 422);
+        }
+
+        $notUpdatedIds = \App\Models\VehicleRegistration::whereHas('vehicleData', function ($query) use ($validated) {
+                $query->where('dealer_id', (int) $validated['dealer_id']);
+            })
+            ->where('is_update_additional_data', false)
+            ->pluck('id');
+
+        if ($notUpdatedIds->isNotEmpty()) {
+            return $this->responseError('Vehicle registration data has not been updated yet for IDs: ' . $notUpdatedIds->implode(', '), 'Validation failed', 422);
         }
 
         $alreadyExists = BBNBill::where('dealer_id', $validated['dealer_id'])->exists();
@@ -92,6 +107,16 @@ class BBNBillController extends Controller
             return $this->responseError('A BBN Bill for this dealer already exists', 'Duplicate data found', 422);
         }
  
+        $totalVehicleData = VehicleData::where('dealer_id', (int) $validated['dealer_id'])
+            ->whereHas('vehicleRegistration', function ($q) {
+                $q->where('is_already_processed', true);
+            })
+            ->count();
+            
+        if ($totalVehicleData == 0) {
+            return $this->responseError('No vehicle data found for this dealer', 'Data not found', 404);
+        }
+
         try {
             $companySlug = $dealer->company?->slug ?? '';
             $validated['code'] = $this->code($companySlug, 'tagihan_bbn');
@@ -108,7 +133,7 @@ class BBNBillController extends Controller
         }
     }
 
-    public function show($id)
+    public function show(string $id)
     {
         try {
             $data = BBNBill::find($id);
@@ -122,7 +147,11 @@ class BBNBillController extends Controller
                     $query->select('id', 'uuid', 'name', 'type');
                 },
                 'dealer.vehicleDatas' => function ($query) {
-                    $query->select('id', 'uuid', 'dealer_id', 'invoice_number', 'stnk_name', 'ktp_number', 'chassis_number', 'machine_number');
+                    $query->select('id', 'uuid', 'dealer_id', 'invoice_number', 'stnk_name', 'ktp_number', 'chassis_number', 'machine_number')
+                        ->whereHas('vehicleRegistration', function ($q) {
+                            $q->where('is_already_processed', true)
+                              ->where('is_update_additional_data', true);
+                        });
                 },
                 'dealer.vehicleDatas.vehicleRegistration',
                 'bbnBillBillings.bbnBillBillingItems.cash'

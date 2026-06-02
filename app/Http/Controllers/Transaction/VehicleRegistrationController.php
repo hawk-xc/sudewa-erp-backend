@@ -146,13 +146,13 @@ class VehicleRegistrationController extends Controller
         }
 
         try {
-            $registration = DB::transaction(function () use ($request, $id) {
-                $registration = VehicleRegistration::findOrFail($id);
+            $registration = VehicleRegistration::findOrFail($id);
 
-                if ($registration->is_already_processed == true) {
-                    return $this->responseError((object) ['message' => 'The selected vehicle registration has already been processed.'], 'Validation failed', 422);
-                }
+            if ($registration->is_already_processed == true) {
+                return $this->responseError('The selected vehicle registration has already been processed.', 'Validation failed', 422);
+            }
 
+            $registration = DB::transaction(function () use ($request, $registration) {
                 $registration->update($request->only($this->fillable));
                 return $registration->fresh();
             });
