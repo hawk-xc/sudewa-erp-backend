@@ -259,4 +259,46 @@ class MasterDataInputTest extends TestCase
         ]);
         $response->assertStatus(201);
     }
+
+    public function test_customer_company_id_filter_and_export()
+    {
+        // Create second company
+        $company2 = Company::create([
+            'name' => 'Second Company',
+            'slug' => 'second-company',
+        ]);
+
+        // Create customer for company 1
+        $c1 = \App\Models\Person::create([
+            'company_id' => $this->company->id,
+            'type' => 'customer',
+            'name' => 'Customer C1',
+            'code' => 'CST-001',
+        ]);
+
+        // Create customer for company 2
+        $c2 = \App\Models\Person::create([
+            'company_id' => $company2->id,
+            'type' => 'customer',
+            'name' => 'Customer C2',
+            'code' => 'CST-002',
+        ]);
+
+        // Retrieve filtered by company 1
+        $response1 = $this->withHeaders($this->getHeaders())->getJson('/wapi/master-data/customer?company_id=' . $this->company->id);
+        $response1->assertStatus(200);
+        $response1->assertJsonFragment(['name' => 'Customer C1']);
+        $response1->assertJsonMissing(['name' => 'Customer C2']);
+
+        // Retrieve filtered by company 2
+        $response2 = $this->withHeaders($this->getHeaders())->getJson('/wapi/master-data/customer?company_id=' . $company2->id);
+        $response2->assertStatus(200);
+        $response2->assertJsonFragment(['name' => 'Customer C2']);
+        $response2->assertJsonMissing(['name' => 'Customer C1']);
+
+        // Test export filtering with company_id
+        $exportResponse = $this->withHeaders($this->getHeaders())->get('/wapi/master-data/customer/export?company_id=' . $company2->id);
+        $exportResponse->assertStatus(200);
+    }
 }
+

@@ -18,6 +18,7 @@ case "$response" in
     [yY] | [yY][eE][sS])
         echo "Running installer/seeder..."
         php artisan migrate:fresh --seed
+        php artisan db:seed PersonSeeder
         php artisan db:seed DummyDataSeeder
         php artisan db:seed MainCompanyWarehouseSeeder
         # php artisan db:seed PurchaseUnitTransactionDummySeeder
