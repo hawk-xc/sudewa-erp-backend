@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\MasterData;
 
+use Illuminate\Database\Eloquent\ModelNotFoundException;
+
 use App\Traits\GlobalCodeNumberTrait;
 use App\Http\Controllers\Controller;
 use App\Models\UnitTypePriceArchive;
@@ -76,6 +78,10 @@ class MasterUnitTypePriceArchiveController extends Controller
             $unitTypePriceArchives = $request->filled('per_page') ? $query->paginate($request->per_page) : $query->get();
 
             return $this->responseSuccess($unitTypePriceArchives, 'Unit Type Price Archives retrieved successfully', 200);
+        } catch (ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
         } catch (Exception $err) {
             Log::error('Error while trying get Unit Type Price Archives : ' . $err->getMessage());
 
@@ -92,6 +98,10 @@ class MasterUnitTypePriceArchiveController extends Controller
             $unitTypePriceArchive = UnitTypePriceArchive::with(['unitType', 'user'])->findOrFail($id);
 
             return $this->responseSuccess($unitTypePriceArchive, 'Unit Type Price Archive retrieved successfully', 200);
+        } catch (ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
         } catch (Exception $err) {
             Log::error('Error while trying get Unit Type Price Archive : ' . $err->getMessage());
 
@@ -120,6 +130,10 @@ class MasterUnitTypePriceArchiveController extends Controller
             });
 
             return $this->responseSuccess($unitTypePriceArchive->load(['unitType', 'user']), 'Unit Type Price Archive created successfully', 201);
+        } catch (ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
         } catch (Exception $err) {
             Log::error('Error while trying create Unit Type Price Archive : ' . $err->getMessage());
 
@@ -148,6 +162,10 @@ class MasterUnitTypePriceArchiveController extends Controller
             });
 
             return $this->responseSuccess($unitTypePriceArchive->fresh(), 'Unit Type Price Archive updated successfully', 200);
+        } catch (ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
         } catch (Exception $err) {
             Log::error('Error while trying update Unit Type Price Archive : ' . $err->getMessage());
 
@@ -165,6 +183,10 @@ class MasterUnitTypePriceArchiveController extends Controller
             $unitTypePriceArchive->delete();
 
             return $this->responseSuccess(null, 'Unit Type Price Archive deleted successfully', 200);
+        } catch (ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
         } catch (Exception $err) {
             Log::error('Error while trying delete Unit Type Price Archive : ' . $err->getMessage());
 
@@ -185,6 +207,10 @@ class MasterUnitTypePriceArchiveController extends Controller
             Excel::import(new UnitTypePriceChangeImport(), $request->file('file'));
 
             return $this->responseSuccess(null, 'Unit Type Price Archive imported successfully', 201);
+        } catch (ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
         } catch (Exception $err) {
             Log::error('Unit Type Price Archive import error', [
                 'message' => $err->getMessage(),

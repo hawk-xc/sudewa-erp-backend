@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\MasterData;
 
+use Illuminate\Database\Eloquent\ModelNotFoundException;
+
 use App\Traits\GlobalCodeNumberTrait;
 use App\Exports\VehicleFleetExport;
 use App\Imports\VehicleFleetImport;
@@ -78,6 +80,10 @@ class VehicleFleetController extends Controller
             $data = $query->orderBy($sortBy, $sortOrder)->paginate($request->per_page ?? 10);
 
             return $this->responseSuccess($data, 'Vehicle Fleet list retrieved successfully', 200);
+        } catch (ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
         } catch (Exception $err) {
             Log::error('Error while retrieving Vehicle Fleet data: ' . $err->getMessage());
             return $this->responseError($err->getMessage(), 'Vehicle Fleet list retrieved Failed', 500);
@@ -97,6 +103,10 @@ class VehicleFleetController extends Controller
             }
 
             return $this->responseSuccess($fleet, 'Vehicle Fleet retrieved successfully', 200);
+        } catch (ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
         } catch (Exception $err) {
             Log::error('Error while retrieving Vehicle Fleet data: ' . $err->getMessage());
             return $this->responseError('The requested resource could not be found.', 'Resource Not Found', 404);
@@ -133,6 +143,10 @@ class VehicleFleetController extends Controller
             });
 
             return $this->responseSuccess($fleet, 'Vehicle Fleet created successfully', 201);
+        } catch (ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
         } catch (Exception $err) {
             Log::error('Error while creating Vehicle Fleet: ' . $err->getMessage());
             return $this->responseError($err->getMessage(), 'Error while trying to create Vehicle Fleet data', 500);
@@ -194,6 +208,10 @@ class VehicleFleetController extends Controller
             });
 
             return $this->responseSuccess($fleet, 'Vehicle Fleet updated successfully', 200);
+        } catch (ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
         } catch (Exception $err) {
             Log::error('Error while updating Vehicle Fleet: ' . $err->getMessage());
             return $this->responseError($err->getMessage(), 'Error while trying to update Vehicle Fleet data', 500);
@@ -210,6 +228,10 @@ class VehicleFleetController extends Controller
             $fleet->delete();
 
             return $this->responseSuccess([], 'Vehicle Fleet deleted successfully', 200);
+        } catch (ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
         } catch (Exception $err) {
             Log::error('Error while deleting Vehicle Fleet: ' . $err->getMessage());
             return $this->responseError($err->getMessage(), 'Vehicle Fleet deletion failed', 500);
@@ -229,6 +251,10 @@ class VehicleFleetController extends Controller
             Excel::import(new VehicleFleetImport(), $request->file('file'));
 
             return $this->responseSuccess(null, 'Vehicle Fleet imported successfully', 201);
+        } catch (ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
         } catch (Exception $err) {
             Log::error('Vehicle Fleet import error: ' . $err->getMessage());
             return $this->responseError($err->getMessage(), 'Vehicle Fleet import error', 500);
@@ -249,6 +275,10 @@ class VehicleFleetController extends Controller
                 new VehicleFleetExport($request, $this->vehicleFleetTable),
                 'wajira_vehicle_fleet_data.xlsx'
             );
+        } catch (ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
         } catch (Exception $err) {
             Log::error('Error export Vehicle Fleet: ' . $err->getMessage());
             return $this->responseError($err->getMessage(), 'Vehicle Fleet export failed', 500);

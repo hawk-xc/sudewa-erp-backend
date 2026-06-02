@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\MasterData;
 
+use Illuminate\Database\Eloquent\ModelNotFoundException;
+
 use App\Traits\GlobalCodeNumberTrait;
 use App\Http\Controllers\Controller;
 use App\Models\Person;
@@ -79,6 +81,10 @@ class MasterTarifController extends Controller
             $data = $query->orderBy($sortBy, $sortOrder)->paginate($request->per_page ?? 10);
 
             return $this->responseSuccess($data, 'Tarif list retrieved successfully', 200);
+        } catch (ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
         } catch (Exception $err) {
             Log::error('Error while retrieving Tarif data: '.$err->getMessage());
             return $this->responseError($err->getMessage(), 'Tarif list retrieved Failed', 500);
@@ -98,6 +104,10 @@ class MasterTarifController extends Controller
             }
 
             return $this->responseSuccess($tarif, 'Tarif retrieved successfully', 200);
+        } catch (ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
         } catch (Exception $err) {
             Log::error('Error while retrieving Tarif data: '.$err->getMessage());
             return $this->responseError('The requested resource could not be found.', 'Resource Not Found', 404);
@@ -129,6 +139,10 @@ class MasterTarifController extends Controller
             });
 
             return $this->responseSuccess($tarif, 'Tarif created successfully', 201);
+        } catch (ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
         } catch (Exception $err) {
             Log::error('Error while creating Tarif: '.$err->getMessage());
             return $this->responseError($err->getMessage(), 'Error while trying to create Tarif data', 500);
@@ -174,6 +188,10 @@ class MasterTarifController extends Controller
             });
 
             return $this->responseSuccess($tarif, 'Tarif updated successfully', 200);
+        } catch (ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
         } catch (Exception $err) {
             Log::error('Error while updating Tarif: '.$err->getMessage());
             return $this->responseError($err->getMessage(), 'Error while trying to update Tarif data', 500);
@@ -190,6 +208,10 @@ class MasterTarifController extends Controller
             $tarif->delete();
 
             return $this->responseSuccess([], 'Tarif deleted successfully', 200);
+        } catch (ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
         } catch (Exception $err) {
             Log::error('Error while deleting Tarif: '.$err->getMessage());
             return $this->responseError($err->getMessage(), 'Tarif deletion failed', 500);
@@ -209,6 +231,10 @@ class MasterTarifController extends Controller
             Excel::import(new TarifImport(), $request->file('file'));
 
             return $this->responseSuccess(null, 'Tarif imported successfully', 201);
+        } catch (ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
         } catch (Exception $err) {
             Log::error('Tarif import error', [
                 'message' => $err->getMessage(),
@@ -228,6 +254,10 @@ class MasterTarifController extends Controller
                 new TarifExport($request, $this->tarifTable),
                 'wajira_tarif_data.xlsx'
             );
+        } catch (ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
         } catch (Exception $err) {
             Log::error('Error export tarif: '.$err->getMessage());
 

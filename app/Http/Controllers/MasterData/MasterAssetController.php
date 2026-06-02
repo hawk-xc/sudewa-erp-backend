@@ -9,6 +9,7 @@ use App\Imports\AssetImport;
 use App\Models\Asset;
 use App\Traits\ResponseTrait;
 use Exception;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -101,6 +102,10 @@ class MasterAssetController extends Controller
             $asset = Asset::select($this->assetTable)->findOrFail($id);
 
             return $this->responseSuccess($asset, 'Asset retrieved successfully', 200);
+        } catch (ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
         } catch (Exception $err) {
             Log::error('Error While retrieved Asset data : '.$err->getMessage());
 
@@ -115,7 +120,6 @@ class MasterAssetController extends Controller
     {
         $validated = $request->validate([
             'company_id' => 'required|integer|exists:companies,id',
-            'code' => 'nullable|string|unique:assets,code',
             'serial_number' => 'required|string|unique:assets,serial_number',
             'name' => 'required|string|max:255',
             'purchase_date' => 'nullable|date',
@@ -125,10 +129,9 @@ class MasterAssetController extends Controller
 
         try {
             $asset = DB::transaction(function () use ($validated) {
-                if (empty($validated['code'])) {
-                    $companySlug = \App\Models\Company::where('id', $validated['company_id'])->value('slug') ?? '';
-                    $validated['code'] = $this->code($companySlug, 'asset');
-                }
+                $companySlug = \App\Models\Company::where('id', (int) $validated['company_id'])->value('slug') ?? '';
+                $validated['code'] = $this->code($companySlug, 'asset');
+
                 return Asset::create($validated);
             });
 
@@ -169,6 +172,10 @@ class MasterAssetController extends Controller
             });
 
             return $this->responseSuccess($asset, 'Asset Update Successfully', 200);
+        } catch (ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
         } catch (Exception $err) {
             Log::error('Error while trying update Asset data : '.$err->getMessage());
 
@@ -186,6 +193,10 @@ class MasterAssetController extends Controller
             $asset->delete();
 
             return $this->responseSuccess([], 'Asset Deleted Successfully', 200);
+        } catch (ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
         } catch (Exception $err) {
             Log::error('Error while trying delete Asset data : '.$err->getMessage());
 

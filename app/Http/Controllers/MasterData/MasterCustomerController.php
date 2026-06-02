@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\MasterData;
 
+use Illuminate\Database\Eloquent\ModelNotFoundException;
+
 use App\Traits\GlobalCodeNumberTrait;
 use App\Exports\PersonExport;
 use App\Http\Controllers\Controller;
@@ -94,6 +96,10 @@ class MasterCustomerController extends Controller
             $data = $query->paginate($perPage);
 
             return $this->responseSuccess($data, 'Customer list retrieved successfully', 200);
+        } catch (ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
         } catch (Exception $err) {
             Log::error('Error While retrieved Customer data : '.$err->getMessage());
 
@@ -114,6 +120,10 @@ class MasterCustomerController extends Controller
             }
 
             return $this->responseSuccess($person, 'Customer retrieved successfully', 200);
+        } catch (ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
         } catch (Exception $err) {
             Log::error('Error While retrieved Customer data : '.$err->getMessage());
 
@@ -146,6 +156,10 @@ class MasterCustomerController extends Controller
             });
 
             return $this->responseSuccess($person, 'Customer created successfully', 201);
+        } catch (ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
         } catch (Exception $err) {
             Log::error('Error while trying create Person Data : '.$err->getMessage());
 
@@ -184,6 +198,10 @@ class MasterCustomerController extends Controller
             });
 
             return $this->responseSuccess($person, 'Customer Update Successfully', 200);
+        } catch (ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
         } catch (Exception $err) {
             Log::error('Error while trying update Person data : '.$err->getMessage());
 
@@ -201,6 +219,10 @@ class MasterCustomerController extends Controller
             $person->delete();
 
             return $this->responseSuccess([], 'Customer Deleted Successfully', 200);
+        } catch (ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
         } catch (Exception $err) {
             Log::error('Error while trying delete Customer data : '.$err->getMessage());
 
@@ -225,6 +247,10 @@ class MasterCustomerController extends Controller
             Excel::import(new PersonImport((string) 'customer', (int) $id), $request->file('file'));
 
             return $this->responseSuccess(null, 'Person Customer imported successfully', 201);
+        } catch (ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
         } catch (Exception $err) {
             Log::error('Person Customer import error', [
                 'message' => $err->getMessage(),
@@ -244,6 +270,10 @@ class MasterCustomerController extends Controller
                 new PersonExport($request, $this->personTable, 'customer'),
                 'wajira_customer_data.xlsx'
             );
+        } catch (ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
         } catch (Exception $err) {
             Log::error('Error export customer : '.$err->getMessage());
     

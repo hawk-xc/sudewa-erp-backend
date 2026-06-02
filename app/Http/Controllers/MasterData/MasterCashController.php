@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\MasterData;
 
+use Illuminate\Database\Eloquent\ModelNotFoundException;
+
 use App\Traits\GlobalCodeNumberTrait;
 use App\Http\Controllers\Controller;
 // use App\Imports\CashImport;
@@ -250,6 +252,10 @@ class MasterCashController extends Controller
                 new CashExport($request, $this->cashTable),
                 'wajira_cash_data.xlsx'
             );
+        } catch (ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
         } catch (\Exception $err) {
             Log::error('Error export cash : ' . $err->getMessage());
 

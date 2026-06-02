@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\MasterData;
 
+use Illuminate\Database\Eloquent\ModelNotFoundException;
+
 use App\Traits\GlobalCodeNumberTrait;
 use App\Exports\PersonExport;
 use App\Http\Controllers\Controller;
@@ -97,6 +99,10 @@ class MasterSupplierController extends Controller
             $data = $query->paginate($perPage);
 
             return $this->responseSuccess($data, 'Supplier list retrieved successfully', 200);
+        } catch (ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
         } catch (Exception $err) {
             Log::error('Error While retrieved Supplier data : '.$err->getMessage());
 
@@ -117,6 +123,10 @@ class MasterSupplierController extends Controller
             }
 
             return $this->responseSuccess($person, 'Supplier retrieved successfully', 200);
+        } catch (ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
         } catch (Exception $err) {
             Log::error('Error While retrieved Supplier data : '.$err->getMessage());
 
@@ -151,6 +161,10 @@ class MasterSupplierController extends Controller
             });
 
             return $this->responseSuccess($person, 'Supplier created successfully');
+        } catch (ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
         } catch (Exception $err) {
             Log::error('Error while trying create Supplier Data : '.$err->getMessage());
 
@@ -188,6 +202,10 @@ class MasterSupplierController extends Controller
             });
 
             return $this->responseSuccess($person, 'Supplier Update Successfully', 200);
+        } catch (ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
         } catch (Exception $err) {
             Log::error('Error while trying update Supplier data : '.$err->getMessage());
 
@@ -205,6 +223,10 @@ class MasterSupplierController extends Controller
             $person->delete();
 
             return $this->responseSuccess([], 'Supplier Deleted Successfully', 200);
+        } catch (ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
         } catch (Exception $err) {
             Log::error('Error while trying delete Supplier data : '.$err->getMessage());
 
@@ -229,6 +251,10 @@ class MasterSupplierController extends Controller
             Excel::import(new PersonImport((string) 'supplier', (int) $id), $request->file('file'));
 
             return $this->responseSuccess(null, 'Person Supplier imported successfully', 201);
+        } catch (ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
         } catch (Exception $err) {
             Log::error('Person Supplier import error', [
                 'message' => $err->getMessage(),
@@ -248,6 +274,10 @@ class MasterSupplierController extends Controller
                 new PersonExport($request, $this->personTable, 'supplier'),
                 'wajira_supplier_data.xlsx'
             );  
+        } catch (ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
         } catch (Exception $err) {
             Log::error('Error export supplier : '.$err->getMessage());
     

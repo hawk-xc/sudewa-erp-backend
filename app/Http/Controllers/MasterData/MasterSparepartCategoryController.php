@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\MasterData;
 
+use Illuminate\Database\Eloquent\ModelNotFoundException;
+
 use App\Traits\GlobalCodeNumberTrait;
 use App\Http\Controllers\Controller;
 use App\Models\SparepartCategory;
@@ -58,6 +60,10 @@ class MasterSparepartCategoryController extends Controller
             $sparepartCategories = $request->filled('per_page') ? $query->paginate($request->per_page) : $query->get();
 
             return $this->responseSuccess($sparepartCategories, 'Sparepart Categories retrieved successfully', 200);
+        } catch (ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
         } catch (Exception $err) {
             Log::error('Error while trying get Sparepart Categories : '.$err->getMessage());
 
@@ -74,6 +80,10 @@ class MasterSparepartCategoryController extends Controller
             $sparepartCategory = SparepartCategory::with('spareparts')->findOrFail($id);
 
             return $this->responseSuccess($sparepartCategory, 'Sparepart Category retrieved successfully', 200);
+        } catch (ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
         } catch (Exception $err) {
             Log::error('Error while trying get Sparepart Category : '.$err->getMessage());
 
@@ -100,6 +110,10 @@ class MasterSparepartCategoryController extends Controller
             });
 
             return $this->responseSuccess($sparepartCategory, 'Sparepart Category created successfully', 201);
+        } catch (ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
         } catch (Exception $err) {
             Log::error('Error while trying create Sparepart Category : '.$err->getMessage());
 
@@ -122,6 +136,10 @@ class MasterSparepartCategoryController extends Controller
             $sparepartCategory->update($validated);
 
             return $this->responseSuccess($sparepartCategory, 'Sparepart Category updated successfully', 200);
+        } catch (ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
         } catch (Exception $err) {
             Log::error('Error while trying update Sparepart Category : '.$err->getMessage());
 
@@ -139,6 +157,10 @@ class MasterSparepartCategoryController extends Controller
             $sparepartCategory->delete();
 
             return $this->responseSuccess(null, 'Sparepart Category deleted successfully', 200);
+        } catch (ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
         } catch (Exception $err) {
             Log::error('Error while trying delete Sparepart Category : '.$err->getMessage());
 

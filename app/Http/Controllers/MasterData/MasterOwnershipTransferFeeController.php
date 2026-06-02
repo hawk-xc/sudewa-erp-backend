@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\MasterData;
 
+use Illuminate\Database\Eloquent\ModelNotFoundException;
+
 use App\Traits\GlobalCodeNumberTrait;
 use App\Http\Controllers\Controller;
 use App\Models\OwnershipTransferFee;
@@ -62,6 +64,10 @@ class MasterOwnershipTransferFeeController extends Controller
             $OwnershipTransferFees = $request->filled('per_page') ? $query->paginate($request->per_page) : $query->get();
 
             return $this->responseSuccess($OwnershipTransferFees, 'OwnershipTransferFees retrieved successfully', 200);
+        } catch (ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
         } catch (Exception $err) {
             Log::error('Error while trying get OwnershipTransferFees : '.$err->getMessage());
 
@@ -78,6 +84,10 @@ class MasterOwnershipTransferFeeController extends Controller
             $OwnershipTransferFee = OwnershipTransferFee::with(['region', 'dealer'])->findOrFail($id);
 
             return $this->responseSuccess($OwnershipTransferFee, 'OwnershipTransferFee retrieved successfully', 200);
+        } catch (ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
         } catch (Exception $err) {
             Log::error('Error while trying get OwnershipTransferFee : '.$err->getMessage());
 
@@ -117,6 +127,10 @@ class MasterOwnershipTransferFeeController extends Controller
             });
 
             return $this->responseSuccess($OwnershipTransferFee, 'OwnershipTransferFee created successfully', 201);
+        } catch (ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
         } catch (Exception $err) {
             Log::error('Error while trying create OwnershipTransferFee : '.$err->getMessage());
 
@@ -146,6 +160,10 @@ class MasterOwnershipTransferFeeController extends Controller
             $OwnershipTransferFee->update($validated);
 
             return $this->responseSuccess($OwnershipTransferFee, 'OwnershipTransferFee updated successfully', 200);
+        } catch (ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
         } catch (Exception $err) {
             Log::error('Error while trying update OwnershipTransferFee : '.$err->getMessage());
 
@@ -163,6 +181,10 @@ class MasterOwnershipTransferFeeController extends Controller
             $OwnershipTransferFee->delete();
 
             return $this->responseSuccess(null, 'OwnershipTransferFee deleted successfully', 200);
+        } catch (ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
         } catch (Exception $err) {
             Log::error('Error while trying delete OwnershipTransferFee : '.$err->getMessage());
 

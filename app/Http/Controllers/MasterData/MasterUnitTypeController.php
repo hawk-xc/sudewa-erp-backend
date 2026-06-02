@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\MasterData;
 
+use Illuminate\Database\Eloquent\ModelNotFoundException;
+
 use App\Traits\GlobalCodeNumberTrait;
 use App\Exports\UnitTypeExport;
 use App\Http\Controllers\Controller;
@@ -89,6 +91,10 @@ class MasterUnitTypeController extends Controller
             $unitTypes = $request->filled('per_page') ? $query->paginate($request->per_page) : $query->get();
 
             return $this->responseSuccess($unitTypes, 'Unit Types retrieved successfully', 200);
+        } catch (ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
         } catch (Exception $err) {
             Log::error('Error while trying get Unit Types : ' . $err->getMessage());
 
@@ -152,6 +158,10 @@ class MasterUnitTypeController extends Controller
             }
 
             return $this->responseSuccess($unitType, 'Unit Type retrieved successfully', 200);
+        } catch (ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
         } catch (Exception $err) {
             Log::error('Error while trying get Unit Type : ' . $err->getMessage());
 
@@ -189,6 +199,10 @@ class MasterUnitTypeController extends Controller
             });
 
             return $this->responseSuccess($unitType->load('brand'), 'Unit Type created successfully', 201);
+        } catch (ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
         } catch (Exception $err) {
             Log::error('Error while trying create Unit Type : ' . $err->getMessage());
 
@@ -226,6 +240,10 @@ class MasterUnitTypeController extends Controller
             });
 
             return $this->responseSuccess($unitType->fresh(), 'Unit Type updated successfully', 200);
+        } catch (ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
         } catch (Exception $err) {
             Log::error('Error while trying update Unit Type : ' . $err->getMessage());
 
@@ -245,6 +263,10 @@ class MasterUnitTypeController extends Controller
             $unitType->delete();
 
             return $this->responseSuccess(null, 'Unit Type deleted successfully', 200);
+        } catch (ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
         } catch (Exception $err) {
             Log::error('Error while trying delete Unit Type : ' . $err->getMessage());
 
@@ -265,6 +287,10 @@ class MasterUnitTypeController extends Controller
             Excel::import(new UnitTypeImport(), $request->file('file'));
 
             return $this->responseSuccess(null, 'Unit Type imported successfully', 201);
+        } catch (ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
         } catch (Exception $err) {
             Log::error('Unit Type import error', [
                 'message' => $err->getMessage(),
@@ -284,6 +310,10 @@ class MasterUnitTypeController extends Controller
                 new UnitTypeExport($request, $this->unitTypeTable),
                 'wajira_unit_type_data.xlsx'
             );  
+        } catch (ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
         } catch (Exception $err) {
             Log::error('Error export unit type : ' . $err->getMessage());
 

@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\MasterData;
 
+use Illuminate\Database\Eloquent\ModelNotFoundException;
+
 use App\Traits\GlobalCodeNumberTrait;
 use App\Http\Controllers\Controller;
 use App\Models\Brand;
@@ -83,6 +85,10 @@ class MasterBrandController extends Controller
             $data = $query->paginate($perPage);
 
             return $this->responseSuccess($data, 'Brand list retrieved successfully', 200);
+        } catch (ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
         } catch (\Exception $err) {
             Log::error('List Brand Error : ' . $err->getMessage());
 
@@ -125,6 +131,10 @@ class MasterBrandController extends Controller
             });
 
             return $this->responseSuccess($brand, 'Brand created successfully', 201);
+        } catch (ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
         } catch (\Exception $err) {
             Log::error('Error creating brand: ' . $err->getMessage());
 
@@ -180,6 +190,10 @@ class MasterBrandController extends Controller
             $brand->unit_types = $unitTypeQuery->paginate($perPage);
 
             return $this->responseSuccess($brand, 'Brand retrieved successfully', 200);
+        } catch (ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
         } catch (\Exception $err) {
             return $this->responseError('The requested resource could not be found.', 'Resource Not Found', 404);
         }
@@ -230,6 +244,10 @@ class MasterBrandController extends Controller
             });
 
             return $this->responseSuccess($brand->fresh(), 'Brand updated successfully', 200);
+        } catch (ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
         } catch (\Exception $err) {
             Log::error('Error updating brand: ' . $err->getMessage());
 
@@ -250,6 +268,10 @@ class MasterBrandController extends Controller
             });
 
             return $this->responseSuccess(null, 'Brand deleted successfully', 200);
+        } catch (ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
         } catch (\Exception $err) {
             return $this->responseError('The requested resource could not be found.', 'Resource Not Found', 404);
         }
