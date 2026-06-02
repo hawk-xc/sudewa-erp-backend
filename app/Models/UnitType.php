@@ -26,6 +26,14 @@ class UnitType extends Model
         'sell_price',
     ];
 
+    protected $casts = [
+        'brand_id' => 'integer',
+        'netto_weight' => 'integer',
+        'bruto_weight' => 'integer',
+        'buy_price' => 'integer',
+        'sell_price' => 'integer',
+    ];
+
     public function brand()
     {
         return $this->belongsTo(Brand::class);

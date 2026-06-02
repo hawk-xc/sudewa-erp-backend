@@ -10,6 +10,7 @@ use App\Models\Sparepart;
 use App\Repositories\AuthRepository;
 use App\Traits\ResponseTrait;
 use Exception;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -24,7 +25,7 @@ class MasterSparepartController extends Controller
 {
     use ResponseTrait, GlobalCodeNumberTrait;
 
-    protected $sparepartTable;
+    protected array $sparepartTable;
 
     protected AuthRepository $authRepository;
 
@@ -93,16 +94,20 @@ class MasterSparepartController extends Controller
     /**
      * Get sparepart details.
      */
-    public function show($id)
+    public function show(string $id)
     {
         try {
             $sparepart = Sparepart::with('sparepartCategory')->findOrFail($id);
 
             return $this->responseSuccess($sparepart, 'Sparepart retrieved successfully', 200);
+        } catch (ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
         } catch (Exception $err) {
             Log::error('Error while trying get Sparepart : '.$err->getMessage());
 
-            return $this->responseError('The requested resource could not be found.', 'Resource Not Found', 404);
+            return $this->responseError($err->getMessage(), 'Internal Server Error', 500);
         }
     }
 
@@ -112,9 +117,9 @@ class MasterSparepartController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'sparepart_category_id' => 'required|exists:sparepart_categories,id',
+            'sparepart_category_id' => 'sometimes|exists:sparepart_categories,id',
             'code' => 'required|string|unique:spareparts,code',
-            'buy_price' => 'nullable|integer',
+            'buy_price' => 'required|integer',
             'sell_price' => 'nullable|integer',
             'name' => 'required|string|max:255',
             'capacity' => 'nullable|decimal:0,2|max:100',
@@ -141,19 +146,19 @@ class MasterSparepartController extends Controller
      */
     public function update(Request $request, $id)
     {
-        $sparepart = Sparepart::findOrFail($id);
-
-        $validated = $request->validate([
-            'sparepart_category_id' => 'sometimes|exists:sparepart_categories,id',
-            'code' => 'sometimes|string|unique:spareparts,code,'.$sparepart->id,
-            'buy_price' => 'nullable|integer',
-            'sell_price' => 'nullable|integer',
-            'name' => 'sometimes|string|max:255',
-            'capacity' => 'nullable|decimal:0,2|max:100',
-            'unit_type' => 'nullable|string|max:255|in:pcs,set,box',
-        ]);
-
         try {
+            $sparepart = Sparepart::findOrFail($id);
+
+            $validated = $request->validate([
+                'sparepart_category_id' => 'sometimes|exists:sparepart_categories,id',
+                'code' => 'sometimes|string|unique:spareparts,code,'.$sparepart->id,
+                'buy_price' => 'nullable|integer',
+                'sell_price' => 'nullable|integer',
+                'name' => 'sometimes|string|max:255',
+                'capacity' => 'nullable|decimal:0,2|max:100',
+                'unit_type' => 'nullable|string|max:255|in:pcs,set,box',
+            ]);
+
             $sparepart = DB::transaction(function () use ($validated, $sparepart) {
                 $sparepart->update($validated);
 
@@ -161,6 +166,10 @@ class MasterSparepartController extends Controller
             });
 
             return $this->responseSuccess($sparepart->fresh(), 'Sparepart updated successfully', 200);
+        } catch (ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
         } catch (Exception $err) {
             Log::error('Error while trying update Sparepart : '.$err->getMessage());
 
@@ -178,6 +187,10 @@ class MasterSparepartController extends Controller
             $unitType->delete();
 
             return $this->responseSuccess($unitType, 'Unit Type deleted successfully', 200);
+        } catch (ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
         } catch (Exception $err) {
             Log::error('Error while trying delete Unit Type : '.$err->getMessage());
 

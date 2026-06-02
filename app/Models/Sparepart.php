@@ -24,6 +24,13 @@ class Sparepart extends Model
         'unit_type',
     ];
 
+    protected $casts = [
+        'sparepart_category_id' => 'integer',
+        'buy_price' => 'integer',
+        'sell_price' => 'integer',
+        'capacity' => 'decimal:2',
+    ];
+
     public function sparepartCategory()
     {
         return $this->belongsTo(SparepartCategory::class);
