@@ -24,7 +24,7 @@ class MasterRegionController extends Controller
 {
     use ResponseTrait, GlobalCodeNumberTrait;
 
-    protected $RegionTable;
+    protected array $RegionTable;
 
     protected AuthRepository $authRepository;
 
