@@ -10,10 +10,10 @@ class DummyDataSeeder extends Seeder
     {
         $this->call([
             BrandSeeder::class,
-            PersonSeeder::class,
             SparepartCategorySeeder::class,
             SparepartSeeder::class,
             UnitTypeSeeder::class,
+            VehicleDataSeeder::class,
         ]);
     }
 }
