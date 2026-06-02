@@ -22,6 +22,12 @@ class Cash extends Model
         'type',
     ];
 
+    protected $casts = [
+        'company_id' => 'integer',
+        'account_id' => 'integer',
+        'amount' => 'integer',
+    ];
+
     public function company()
     {
         return $this->belongsTo(Company::class);
