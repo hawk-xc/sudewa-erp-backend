@@ -198,6 +198,10 @@ class MasterAssetController extends Controller
      */
     public function import(Request $request, string $id)
     {
+        if ($id == null || !is_numeric($id)) {
+            return $this->responseError(null, 'Company id cannot null', 404);
+        }
+
         $request->validate([
             'file' => 'required|file|mimes:xlsx,xls',
         ]);

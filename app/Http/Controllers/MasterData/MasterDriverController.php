@@ -28,7 +28,7 @@ class MasterDriverController extends Controller
     protected AuthRepository $authRepository;
 
     // projection
-    protected $personTable;
+    protected array $personTable;
 
     public function __construct(AuthRepository $ar)
     {
@@ -271,6 +271,10 @@ class MasterDriverController extends Controller
      */
     public function import(Request $request, string $id)
     {
+        if ($id == null || !is_numeric($id)) {
+            return $this->responseError(null, 'Company id cannot null', 404);
+        }
+        
         $request->validate([
             'file' => 'required|file|mimes:xlsx,xls',
         ]);

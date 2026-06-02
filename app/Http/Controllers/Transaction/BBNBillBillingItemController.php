@@ -8,6 +8,7 @@ use App\Models\BBNBillBillingItem;
 use App\Traits\GlobalCodeNumberTrait;
 use App\Traits\ResponseTrait;
 use Exception;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
@@ -15,7 +16,7 @@ class BBNBillBillingItemController extends Controller
 {
     use ResponseTrait, GlobalCodeNumberTrait;
 
-    protected $bbnBillBillingItemTable;
+    protected array $bbnBillBillingItemTable;
 
     public function __construct()
     {
@@ -52,11 +53,11 @@ class BBNBillBillingItemController extends Controller
             $data = $query->orderBy($sortBy, $sortOrder)->paginate($request->per_page ?? 10);
 
             return $this->responseSuccess($data, 'BBN Bill Billing Item list retrieved successfully');
-        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $err) {
+        } catch (ModelNotFoundException $err) {
             $model = class_basename($err->getModel() ?: 'Data');
             $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
             return $this->responseError(null, $friendlyModel . ' not found', 404);
-        } catch (\Exception $err) {
+        } catch (Exception $err) {
             Log::error('Error retrieving BBN Bill Billing Item: ' . $err->getMessage());
             return $this->responseError($err->getMessage(), 'Failed to retrieve BBN Bill Billing Item list', 500);
         }
@@ -85,11 +86,11 @@ class BBNBillBillingItemController extends Controller
             $data->remaining_payment = $billing->getRemainingAmount();
             
             return $this->responseSuccess($data, 'BBN Bill Billing Item created successfully', 201);
-        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $err) {
+        } catch (ModelNotFoundException $err) {
             $model = class_basename($err->getModel() ?: 'Data');
             $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
             return $this->responseError(null, $friendlyModel . ' not found', 404);
-        } catch (\Exception $err) {
+        } catch (Exception $err) {
             Log::error('Error creating BBN Bill Billing Item: ' . $err->getMessage());
             return $this->responseError($err->getMessage(), 'BBN Bill Billing Item creation failed', 500);
         }
@@ -100,11 +101,11 @@ class BBNBillBillingItemController extends Controller
         try {
             $data = BBNBillBillingItem::with(['bbnBillBilling', 'cash'])->findOrFail($id);
             return $this->responseSuccess($data, 'BBN Bill Billing Item retrieved successfully');
-        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $err) {
+        } catch (ModelNotFoundException $err) {
             $model = class_basename($err->getModel() ?: 'Data');
             $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
             return $this->responseError(null, $friendlyModel . ' not found', 404);
-        } catch (\Exception $err) {
+        } catch (Exception $err) {
             return $this->responseError($err->getMessage(), 'BBN Bill Billing Item not found', 404);
         }
     }
@@ -143,11 +144,11 @@ class BBNBillBillingItemController extends Controller
             }
 
             return $this->responseSuccess($updatedItem, 'BBN Bill Billing Item updated successfully');
-        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $err) {
+        } catch (ModelNotFoundException $err) {
             $model = class_basename($err->getModel() ?: 'Data');
             $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
             return $this->responseError(null, $friendlyModel . ' not found', 404);
-        } catch (\Exception $err) {
+        } catch (Exception $err) {
             Log::error('Error updating BBN Bill Billing Item: ' . $err->getMessage());
             return $this->responseError($err->getMessage(), 'BBN Bill Billing Item update failed', 500);
         }
@@ -171,11 +172,11 @@ class BBNBillBillingItemController extends Controller
             }
 
             return $this->responseSuccess(null, 'BBN Bill Billing Item deleted successfully');
-        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $err) {
+        } catch (ModelNotFoundException $err) {
             $model = class_basename($err->getModel() ?: 'Data');
             $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
             return $this->responseError(null, $friendlyModel . ' not found', 404);
-        } catch (\Exception $err) {
+        } catch (Exception $err) {
             Log::error('Error deleting BBN Bill Billing Item: ' . $err->getMessage());
             return $this->responseError($err->getMessage(), 'BBN Bill Billing Item deletion failed', 500);
         }
