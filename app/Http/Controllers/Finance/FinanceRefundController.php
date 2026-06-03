@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Finance;
 
 use App\Http\Controllers\Controller;
+use App\Rules\RightCashRule;
 use App\Models\FinanceRefund;
 use App\Models\Cash;
 use App\Traits\ResponseTrait;
@@ -104,13 +105,19 @@ class FinanceRefundController extends Controller
 
     public function update(Request $request, $id)
     {
-        $validated = $request->validate([
-            'cash_id' => 'sometimes|nullable|exists:cashes,id',
-            'status' => 'sometimes|required|in:waiting,reject,approve',
-        ]);
-
         try {
             $financeRefund = FinanceRefund::findOrFail($id);
+
+            $validated = $request->validate([
+                'cash_id' => [
+                    'sometimes',
+                    'nullable',
+                    'exists:cashes,id',
+                    new RightCashRule(fn () => $financeRefund->unitTransactionRefund->unitTransaction->warehouse->company_id),
+                ],
+                'status' => 'sometimes|required|in:waiting,reject,approve',
+            ]);
+
             $oldStatus = $financeRefund->status;
             $oldCashId = $financeRefund->cash_id;
 
