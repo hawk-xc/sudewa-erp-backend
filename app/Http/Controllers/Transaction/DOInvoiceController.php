@@ -6,12 +6,14 @@ use App\Http\Controllers\Controller;
 use App\Models\DOExpedition;
 use App\Models\DOInvoice;
 use App\Models\DOOrderList;
+use App\Models\Person;
 use App\Rules\RightPersonRule;
 use App\Traits\GlobalCodeNumberTrait;
 use App\Traits\ResponseTrait;
 use Exception;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
 
@@ -29,7 +31,7 @@ class DOInvoiceController extends Controller
 
     public function index(Request $request)
     {
-        $query = DOInvoice::with(['customer:id,uuid,name,code', 'order_list:id,uuid,code']);
+        $query = DOInvoice::with(['customer:id,uuid,name,code', 'order_list:id,uuid,code', 'financeBillingPayment:id,uuid,do_invoice_id,cash_id,amount']);
 
         try {
             if ($request->filled('search')) {
@@ -79,7 +81,6 @@ class DOInvoiceController extends Controller
         ]);
 
         try {
-            // Check if customer has an existing unprinted invoice
             $existingUnprintedInvoice = DOInvoice::where('customer_id', $validated['customer_id'])
                 ->where('is_already_print', false)
                 ->exists();
@@ -87,19 +88,17 @@ class DOInvoiceController extends Controller
                 return $this->responseError('Customer already has an unprinted invoice', 'Validation Error', 422);
             }
 
-            // Get all order lists for the customer
             $orderLists = DOOrderList::where('customer_id', $validated['customer_id'])->get();
             if ($orderLists->isEmpty()) {
                 return $this->responseError('Customer does not have any order lists', 'Validation Error', 422);
             }
 
             $createdInvoices = DB::transaction(function () use ($validated, $orderLists) {
-                $customer = \App\Models\Person::find($validated['customer_id']);
+                $customer = Person::findOrFail((int) $validated['customer_id']);
                 $companySlug = $customer?->company?->slug ?? '';
                 
                 $invoices = [];
                 foreach ($orderLists as $order) {
-                    // Check if this specific order list already has an invoice
                     $existingInvoice = DOInvoice::where('do_order_list_id', $order->id)->exists();
                     if ($existingInvoice) {
                         continue;
@@ -134,7 +133,7 @@ class DOInvoiceController extends Controller
         }
     }
 
-    public function show($id)
+    public function show(string $id)
     {
         try {
             $invoice = DOInvoice::with([
@@ -142,7 +141,8 @@ class DOInvoiceController extends Controller
                 'order_list.tarifs',
                 'order_list.expeditions.vehicle:id,uuid,registration_number,type,machine_number,chassis_number',
                 'order_list.expeditions.driver:id,uuid,name',
-                'order_list.expeditions.order_list_tarifs.tarif'
+                'order_list.expeditions.order_list_tarifs.tarif',
+                'financeBillingPayment'
             ])->findOrFail($id);
             return $this->responseSuccess($invoice, 'DO Invoice details retrieved successfully');
         } catch (ModelNotFoundException $err) {

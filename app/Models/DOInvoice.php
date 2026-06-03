@@ -43,6 +43,11 @@ class DOInvoice extends Model
         return $this->belongsTo(DOOrderList::class, 'do_order_list_id');
     }
 
+    public function financeBillingPayment()
+    {
+        return $this->hasOne(FinanceInvoiceBillingPayment::class, 'do_invoice_id', 'id');
+    }
+
     protected static function booted()
     {
         static::creating(function ($model) {

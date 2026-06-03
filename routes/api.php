@@ -5,6 +5,7 @@ use App\Http\Controllers\Dashboard\BillingStatController;
 use App\Http\Controllers\Finance\DailyCashFlowController;
 use App\Http\Controllers\Finance\FinanceAssetController;
 use App\Http\Controllers\Finance\FinanceBillingController;
+use App\Http\Controllers\Finance\FinanceInvoiceBillingPaymentController;
 use App\Http\Controllers\Finance\FinanceRefundController;
 use App\Http\Controllers\Finance\PpnDataController;
 use App\Http\Controllers\Finance\UJDriverBillingPaymentController;
@@ -315,6 +316,9 @@ Route::group(
 
             // UJ Driver Billing Payment
             Route::apiResource('uj-driver-billing-payment', UJDriverBillingPaymentController::class)->except(['index', 'show', 'destroy', 'update']);
+            
+            // Invoice Finance Payment
+            Route::apiResource('finance-invoice-billing-payment', FinanceInvoiceBillingPaymentController::class)->except(['index', 'show', 'destroy', 'update']);
 
             // hold
             Route::apiResource('withholding-tax', WithHoldingTaxController::class);
