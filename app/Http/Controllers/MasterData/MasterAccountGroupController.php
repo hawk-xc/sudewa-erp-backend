@@ -26,7 +26,7 @@ class MasterAccountGroupController extends Controller
     protected AuthRepository $authRepository;
 
     // projection
-    protected $accountGroupTable;
+    protected array $accountGroupTable;
 
     /**
      * AuthController constructor.
@@ -50,6 +50,10 @@ class MasterAccountGroupController extends Controller
     {
         try {
             $query = AccountGroup::query();
+
+            if ($request->filled('company_id')) {
+                $query->where('company_id', $request->company_id);
+            }
 
             $query->select($this->accountGroupTable);
 

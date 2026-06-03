@@ -28,7 +28,7 @@ class MasterAccountController extends Controller
     protected AuthRepository $authRepository;
 
     // projection
-    protected $accountTable;
+    protected array $accountTable;
 
     /**
      * AuthController constructor.
@@ -73,6 +73,12 @@ class MasterAccountController extends Controller
                             ->orWhere('description', 'like', "%$search%")
                             ->orWhere('type', 'like', "%$search%");
                     }
+                });
+            }
+
+            if ($request->filled('company_id')) {
+                $query->whereHas('accountGroup', function ($q, $request) {
+                    $q->where('company_id', $request->company_id);
                 });
             }
 
