@@ -21,6 +21,7 @@ case "$response" in
         php artisan db:seed PersonSeeder
         php artisan db:seed DummyDataSeeder
         php artisan db:seed MainCompanyWarehouseSeeder
+        php artisan db:seed TarifSeeder
         # php artisan db:seed PurchaseUnitTransactionDummySeeder
         ;;
     *)

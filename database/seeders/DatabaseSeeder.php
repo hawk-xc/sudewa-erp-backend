@@ -32,5 +32,6 @@ class DatabaseSeeder extends Seeder
 
         // Default Group Account and Account Data
         $this->call(DefaultAccountSeeder::class);
+        $this->call(VehicleFleetSeeder::class);
     }
 }
