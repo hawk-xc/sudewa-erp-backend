@@ -68,6 +68,11 @@ class Person extends Model
         return $this->hasMany(VehicleRegistration::class, 'vendor_id', 'id');
     }
 
+    public function doExpeditions()
+    {
+        return $this->hasMany(DOExpedition::class, 'driver_id', 'id');
+    }
+
     public function vehicleRegistrationProcessedCount()
     {
         if ($this->type == 'dealer') {
