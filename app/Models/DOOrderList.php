@@ -28,7 +28,12 @@ class DOOrderList extends Model
         'ppn' => 'integer',
     ];
 
-    protected $appends = ['uj_driver', 'loading_in', 'loading_out'];
+    protected $appends = ['uj_driver', 'loading_in', 'loading_out', 'do_delivery_destination'];
+
+    public function getDoDeliveryDestinationAttribute()
+    {
+        return $this->do_order_list_tarifs->pluck('delivery_destination')->filter()->unique()->implode(', ') ?: null;
+    }
 
     public function getLoadingInAttribute()
     {
@@ -46,16 +51,13 @@ class DOOrderList extends Model
 
         if ($this->relationLoaded('expeditions') && $this->expeditions->isNotEmpty()) {
             foreach ($this->expeditions as $expedition) {
-                // Load vehicle and tarifs if not loaded
                 $expedition->loadMissing(['vehicle', 'order_list_tarifs.tarif']);
                 
                 $vehicleType = $expedition->vehicle?->type;
                 if (!$vehicleType) continue;
 
-                // Get the first tarif linked to this expedition for the uj calculation
                 $firstTarif = $expedition->order_list_tarifs->first()?->tarif;
                 
-                // Fallback for existing data: if no pivot link exists, use the first available tarif from this order
                 if (!$firstTarif) {
                     $firstTarif = $this->tarifs->first();
                 }
@@ -83,8 +85,6 @@ class DOOrderList extends Model
             }
         }
 
-        // Fallback: if total is still 0 (e.g. no expeditions yet),
-        // calculate based on DOOrderList's own vehicle_type and its associated tariffs.
         if ($total === 0) {
             $vehicleType = $this->vehicle_type;
             if ($vehicleType) {
@@ -116,7 +116,7 @@ class DOOrderList extends Model
 
     public function customer()
     {
-        return $this->belongsTo(Person::class, 'customer_id');
+        return $this->belongsTo(Person::class, 'customer_id', 'id');
     }
 
     public function expeditions()

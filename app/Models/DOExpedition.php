@@ -56,6 +56,11 @@ class DOExpedition extends Model
         )->withTimestamps();
     }
 
+    public function uj_driver_billing_payment()
+    {
+        return $this->hasOne(UJDriverBillingPayment::class, 'do_expedition_id', 'id');
+    }
+
     protected static function booted()
     {
         static::creating(function ($model) {

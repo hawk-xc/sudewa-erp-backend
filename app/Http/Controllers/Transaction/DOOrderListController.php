@@ -4,14 +4,14 @@ namespace App\Http\Controllers\Transaction;
 
 use App\Http\Controllers\Controller;
 use App\Models\DOOrderList;
+use App\Rules\RightPersonRule;
 use App\Traits\GlobalCodeNumberTrait;
 use App\Traits\ResponseTrait;
 use Exception;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
-
-use App\Rules\RightPersonRule;
  
 class DOOrderListController extends Controller
 {
@@ -40,7 +40,6 @@ class DOOrderListController extends Controller
         ])->with([
             'customer:id,name,code,address', 
             'tarifs',
-            'expeditions.vehicle',
             'expeditions.order_list_tarifs.tarif'
         ]);
 
@@ -67,14 +66,14 @@ class DOOrderListController extends Controller
                 return $item;
             });
 
-            $data->getCollection()->makeHidden(['tarifs', 'expeditions']);
+            $data->getCollection()->makeHidden(['tarifs', 'expeditions', 'vehicles']);
 
             return $this->responseSuccess($data, 'DO Order List retrieved successfully');
-        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $err) {
+        } catch (ModelNotFoundException $err) {
             $model = class_basename($err->getModel() ?: 'Data');
             $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
             return $this->responseError(null, $friendlyModel . ' not found', 404);
-        } catch (\Exception $err) {
+        } catch (Exception $err) {
             Log::error('Error retrieving DO Order List: ' . $err->getMessage());
             return $this->responseError($err->getMessage(), 'Failed to retrieve DO Order List');
         }
@@ -109,11 +108,11 @@ class DOOrderListController extends Controller
             });
 
             return $this->responseSuccess($orderList, 'DO Order List created successfully', 201);
-        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $err) {
+        } catch (ModelNotFoundException $err) {
             $model = class_basename($err->getModel() ?: 'Data');
             $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
             return $this->responseError(null, $friendlyModel . ' not found', 404);
-        } catch (\Exception $err) {
+        } catch (Exception $err) {
             Log::error('Error creating DO Order List: ' . $err->getMessage());
             return $this->responseError($err->getMessage(), 'Failed to create DO Order List');
         }
@@ -123,18 +122,17 @@ class DOOrderListController extends Controller
     {
         try {
             $orderList = DOOrderList::with([
-                'customer', 
-                'tarifs', 
-                'expeditions.vehicle', 
-                'expeditions.order_list_tarifs.tarif',
+                'customer:id,uuid,company_id,code,type,name', 
+                'expeditions:id,uuid,code,do_order_list_id,vehicle_id,driver_id,date,driver_note,is_printed',
+                'expeditions.vehicle:id,uuid,registration_number,type,machine_number,chassis_number', 
                 'expeditions.order_list_tarifs.doOrderListTarifItems'
             ])->findOrFail($id);
             return $this->responseSuccess($orderList, 'DO Order List details retrieved successfully');
-        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $err) {
+        } catch (ModelNotFoundException $err) {
             $model = class_basename($err->getModel() ?: 'Data');
             $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
             return $this->responseError(null, $friendlyModel . ' not found', 404);
-        } catch (\Exception $err) {
+        } catch (Exception $err) {
             return $this->responseError('DO Order List not found', 'Not Found', 404);
         }
     }
@@ -160,11 +158,11 @@ class DOOrderListController extends Controller
             $orderList->update($validated);
 
             return $this->responseSuccess($orderList->load('customer'), 'DO Order List updated successfully');
-        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $err) {
+        } catch (ModelNotFoundException $err) {
             $model = class_basename($err->getModel() ?: 'Data');
             $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
             return $this->responseError(null, $friendlyModel . ' not found', 404);
-        } catch (\Exception $err) {
+        } catch (Exception $err) {
             Log::error('Error updating DO Order List: ' . $err->getMessage());
             return $this->responseError($err->getMessage(), 'Failed to update DO Order List');
         }
@@ -176,11 +174,11 @@ class DOOrderListController extends Controller
             $orderList = DOOrderList::findOrFail($id);
             $orderList->delete();
             return $this->responseSuccess([], 'DO Order List deleted successfully');
-        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $err) {
+        } catch (ModelNotFoundException $err) {
             $model = class_basename($err->getModel() ?: 'Data');
             $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
             return $this->responseError(null, $friendlyModel . ' not found', 404);
-        } catch (\Exception $err) {
+        } catch (Exception $err) {
             Log::error('Error deleting DO Order List: ' . $err->getMessage());
             return $this->responseError($err->getMessage(), 'Failed to delete DO Order List');
         }

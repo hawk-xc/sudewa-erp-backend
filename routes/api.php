@@ -7,7 +7,7 @@ use App\Http\Controllers\Finance\FinanceAssetController;
 use App\Http\Controllers\Finance\FinanceBillingController;
 use App\Http\Controllers\Finance\FinanceRefundController;
 use App\Http\Controllers\Finance\PpnDataController;
-use App\Http\Controllers\Finance\PurchaseRefundController;
+use App\Http\Controllers\Finance\UJDriverBillingPaymentController;
 use App\Http\Controllers\Finance\UnitTransactionAdjustmentController;
 use App\Http\Controllers\Finance\WithHoldingTaxController;
 use App\Http\Controllers\Global\GlobalCompanyController;
@@ -312,6 +312,10 @@ Route::group(
             Route::get('finance-refund', [FinanceRefundController::class, 'index']);
             Route::get('finance-refund/{id}', [FinanceRefundController::class, 'show']);
             Route::put('finance-refund/{id}', [FinanceRefundController::class, 'update']);
+
+            // UJ Driver Billing Payment
+            Route::apiResource('uj-driver-billing-payment', UJDriverBillingPaymentController::class)->except(['index', 'show', 'destroy', 'update']);
+
             // hold
             Route::apiResource('withholding-tax', WithHoldingTaxController::class);
         });

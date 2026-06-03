@@ -11,8 +11,12 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('u_j_driver_billing_payments', function (Blueprint $table) {
+        Schema::create('uj_driver_billing_payments', function (Blueprint $table) {
             $table->id();
+            $table->uuid();
+            $table->foreignId('do_expedition_id')->constrained('do_expeditions')->cascadeOnDelete();
+            $table->foreignId('cash_id')->constrained('cashes')->cascadeOnDelete();
+            $table->decimal('amount', 15,2)->default(0);
             $table->timestamps();
         });
     }
@@ -22,6 +26,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('u_j_driver_billing_payments');
+        Schema::dropIfExists('uj_driver_billing_payments');
     }
 };

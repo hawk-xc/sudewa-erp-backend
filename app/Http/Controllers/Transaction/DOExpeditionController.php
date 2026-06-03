@@ -32,8 +32,9 @@ class DOExpeditionController extends Controller
         $query = DOExpedition::with([
             'vehicle:id,uuid,registration_number,type', 
             'driver:id,uuid,name', 
-            'order_list:id,uuid,code,vehicle_type',
-            'order_list.customer'
+            'order_list:id,uuid,code,vehicle_type,customer_id',
+            'order_list.customer:id,uuid,name,type',
+            'uj_driver_billing_payment:id,uuid,do_expedition_id,cash_id,amount'
         ]);
 
         try {
@@ -57,6 +58,12 @@ class DOExpeditionController extends Controller
             }
 
             $data = $query->latest()->paginate($request->per_page ?? 10);
+
+            $data->getCollection()->each(function ($expedition) {
+                if ($expedition->order_list) {
+                    $expedition->order_list->makeHidden(['tarifs', 'do_order_list_tarifs']);
+                }
+            });
 
             return $this->responseSuccess($data, 'DO Expedition list retrieved successfully');
         } catch (ModelNotFoundException $err) {
