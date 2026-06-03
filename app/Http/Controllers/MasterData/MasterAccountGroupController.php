@@ -40,7 +40,7 @@ class MasterAccountGroupController extends Controller
 
         $this->authRepository = $ar;
 
-        $this->accountGroupTable = ['id', 'uuid', 'group_code', 'description', 'created_at'];
+        $this->accountGroupTable = ['id', 'uuid', 'company_id', 'group_code', 'description', 'created_at'];
     }
 
     /**
