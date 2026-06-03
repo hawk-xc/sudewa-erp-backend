@@ -23,7 +23,7 @@ class FinanceAssetController extends Controller
 {
     use ResponseTrait;
 
-    protected $financeAssetTable;
+    protected array $financeAssetTable;
 
     public function __construct()
     {
@@ -169,8 +169,8 @@ class FinanceAssetController extends Controller
     public function update(Request $request, string $id)
     {
         $request->validate([
-            'economic_age' => 'nullable|integer|min:0',
-            'description' => 'nullable|string',
+            'economic_age' => 'sometimes|integer|min:0',
+            'description' => 'sometimes|string',
         ]);
 
         try {

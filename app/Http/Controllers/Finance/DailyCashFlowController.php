@@ -100,7 +100,12 @@ class DailyCashFlowController extends Controller
             $validated = $request->validate([
                 'company_id' => 'required|integer|exists:companies,id',
                 'account_id' => 'required|integer|exists:accounts,id',
-                'cash_id' => 'nullable|integer|exists:cashes,id',
+                'cash_id' => [
+                    'nullable',
+                    'integer',
+                    'exists:cashes,id',
+                    new RightCashRule($request->company_id),
+                ],
                 'date' => 'required|date',
                 'note' => 'nullable|string',
                 'debet' => 'nullable|numeric|min:0|prohibits:credit',
@@ -117,16 +122,6 @@ class DailyCashFlowController extends Controller
                 throw ValidationException::withMessages([
                     'account_id' => ['The selected account_id does not belong to the selected company.'],
                 ]);
-            }
-
-            // Check if cash_id belongs to company_id
-            if (!empty($validated['cash_id'])) {
-                $cash = Cash::find($validated['cash_id']);
-                if (!$cash || (int) $cash->company_id !== $companyId) {
-                    throw ValidationException::withMessages([
-                        'cash_id' => ['The selected cash_id does not belong to the selected company.'],
-                    ]);
-                }
             }
 
             if ($request->hasFile('payment_proof')) {
@@ -165,10 +160,18 @@ class DailyCashFlowController extends Controller
     public function update(Request $request, string $id)
     {
         try {
+            $cashFlow = CashFlow::findOrFail($id);
+
             $validated = $request->validate([
                 'company_id' => 'sometimes|integer|exists:companies,id',
                 'account_id' => 'sometimes|integer|exists:accounts,id',
-                'cash_id' => 'sometimes|nullable|integer|exists:cashes,id',
+                'cash_id' => [
+                    'sometimes',
+                    'nullable',
+                    'integer',
+                    'exists:cashes,id',
+                    new RightCashRule(fn () => isset($request->company_id) ? (int) $request->company_id : (int) $cashFlow->company_id),
+                ],
                 'date' => 'sometimes|date',
                 'note' => 'nullable|string',
                 'debet' => 'sometimes|numeric|min:0|prohibits:credit',
@@ -177,20 +180,11 @@ class DailyCashFlowController extends Controller
                 'payment_proof' => 'sometimes|nullable|file|mimes:jpg,jpeg,png,pdf|max:2048',
             ]);
 
-            $cashFlow = CashFlow::findOrFail($id);
-
             // Determine active company_id
             $companyId = isset($validated['company_id']) ? (int) $validated['company_id'] : (int) $cashFlow->company_id;
 
             // Determine active account_id
             $accountId = isset($validated['account_id']) ? (int) $validated['account_id'] : (int) $cashFlow->account_id;
-
-            // Determine active cash_id
-            $cashId = $cashFlow->cash_id;
-            if ($request->has('cash_id')) {
-                // If present in request, update it. Note: could be null
-                $cashId = $validated['cash_id'] ?? null;
-            }
 
             // Check if account_id belongs to company_id
             $account = Account::with('accountGroup')->find($accountId);
@@ -198,16 +192,6 @@ class DailyCashFlowController extends Controller
                 throw ValidationException::withMessages([
                     'account_id' => ['The selected account_id does not belong to the selected company.'],
                 ]);
-            }
-
-            // Check if cash_id belongs to company_id
-            if (!is_null($cashId)) {
-                $cash = Cash::find($cashId);
-                if (!$cash || (int) $cash->company_id !== $companyId) {
-                    throw ValidationException::withMessages([
-                        'cash_id' => ['The selected cash_id does not belong to the selected company.'],
-                    ]);
-                }
             }
 
             $data = array_filter($request->only(['company_id', 'account_id', 'cash_id', 'date', 'note', 'debet', 'credit', 'transaction_category']), fn ($value) => ! is_null($value) && $value !== '');
