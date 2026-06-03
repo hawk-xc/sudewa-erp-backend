@@ -32,63 +32,82 @@ class DOOrderList extends Model
 
     public function getLoadingInAttribute()
     {
-        if (!$this->relationLoaded('tarifs')) {
-            return null;
-        }
-
-        return $this->tarifs->pluck('loading_in')->implode(', ');
+        return $this->tarifs->pluck('loading_in')->implode(', ') ?: null;
     }
 
     public function getLoadingOutAttribute()
     {
-        if (!$this->relationLoaded('tarifs')) {
-            return null;
-        }
-
-        return $this->tarifs->pluck('loading_out')->implode(', ');
+        return $this->tarifs->pluck('loading_out')->implode(', ') ?: null;
     }
 
     public function getUjDriverAttribute()
     {
-        if (!$this->relationLoaded('expeditions')) {
-            return 0;
+        $total = 0;
+
+        if ($this->relationLoaded('expeditions') && $this->expeditions->isNotEmpty()) {
+            foreach ($this->expeditions as $expedition) {
+                // Load vehicle and tarifs if not loaded
+                $expedition->loadMissing(['vehicle', 'order_list_tarifs.tarif']);
+                
+                $vehicleType = $expedition->vehicle?->type;
+                if (!$vehicleType) continue;
+
+                // Get the first tarif linked to this expedition for the uj calculation
+                $firstTarif = $expedition->order_list_tarifs->first()?->tarif;
+                
+                // Fallback for existing data: if no pivot link exists, use the first available tarif from this order
+                if (!$firstTarif) {
+                    $firstTarif = $this->tarifs->first();
+                }
+
+                if (!$firstTarif) continue;
+
+                $normalizedType = strtolower($vehicleType);
+                $matchedType = null;
+                if (str_contains($normalizedType, 'towing') || str_contains($normalizedType, 'trailer')) {
+                    $matchedType = 'towing';
+                } elseif (str_contains($normalizedType, 'cdd')) {
+                    $matchedType = 'cdd';
+                } elseif (str_contains($normalizedType, 'fuso')) {
+                    $matchedType = 'fuso';
+                }
+
+                if ($matchedType) {
+                    $total += match ($matchedType) {
+                        'towing' => $firstTarif->uj_towing ?? 0,
+                        'cdd'    => $firstTarif->uj_cdd ?? 0,
+                        'fuso'   => $firstTarif->uj_fuso ?? 0,
+                        default  => 0,
+                    };
+                }
+            }
         }
 
-        $total = 0;
-        foreach ($this->expeditions as $expedition) {
-            // Load vehicle and tarifs if not loaded
-            $expedition->loadMissing(['vehicle', 'order_list_tarifs.tarif']);
-            
-            $vehicleType = $expedition->vehicle?->type;
-            if (!$vehicleType) continue;
+        // Fallback: if total is still 0 (e.g. no expeditions yet),
+        // calculate based on DOOrderList's own vehicle_type and its associated tariffs.
+        if ($total === 0) {
+            $vehicleType = $this->vehicle_type;
+            if ($vehicleType) {
+                $normalizedType = strtolower($vehicleType);
+                $matchedType = null;
+                if (str_contains($normalizedType, 'towing') || str_contains($normalizedType, 'trailer')) {
+                    $matchedType = 'towing';
+                } elseif (str_contains($normalizedType, 'cdd')) {
+                    $matchedType = 'cdd';
+                } elseif (str_contains($normalizedType, 'fuso')) {
+                    $matchedType = 'fuso';
+                }
 
-            // Get the first tarif linked to this expedition for the uj calculation
-            $firstTarif = $expedition->order_list_tarifs->first()?->tarif;
-            
-            // Fallback for existing data: if no pivot link exists, use the first available tarif from this order
-            if (!$firstTarif && $this->relationLoaded('tarifs')) {
-                $firstTarif = $this->tarifs->first();
-            }
-
-            if (!$firstTarif) continue;
-
-            $normalizedType = strtolower($vehicleType);
-            $matchedType = null;
-            if (str_contains($normalizedType, 'towing') || str_contains($normalizedType, 'trailer')) {
-                $matchedType = 'towing';
-            } elseif (str_contains($normalizedType, 'cdd')) {
-                $matchedType = 'cdd';
-            } elseif (str_contains($normalizedType, 'fuso')) {
-                $matchedType = 'fuso';
-            }
-
-            if ($matchedType) {
-                $total += match ($matchedType) {
-                    'towing' => $firstTarif->uj_towing ?? 0,
-                    'cdd'    => $firstTarif->uj_cdd ?? 0,
-                    'fuso'   => $firstTarif->uj_fuso ?? 0,
-                    default  => 0,
-                };
+                if ($matchedType) {
+                    foreach ($this->tarifs as $tarif) {
+                        $total += match ($matchedType) {
+                            'towing' => $tarif->uj_towing ?? 0,
+                            'cdd'    => $tarif->uj_cdd ?? 0,
+                            'fuso'   => $tarif->uj_fuso ?? 0,
+                            default  => 0,
+                        };
+                    }
+                }
             }
         }
 
