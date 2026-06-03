@@ -77,7 +77,7 @@ class MasterAccountController extends Controller
             }
 
             if ($request->filled('company_id')) {
-                $query->whereHas('accountGroup', function ($q, $request) {
+                $query->whereHas('accountGroup', function ($q) use ($request) {
                     $q->where('company_id', $request->company_id);
                 });
             }

@@ -6,17 +6,16 @@ use App\Exports\DOExpeditionExport;
 use App\Http\Controllers\Controller;
 use App\Models\DOExpedition;
 use App\Models\DOOrderList;
+use App\Rules\RightPersonRule;
 use App\Traits\GlobalCodeNumberTrait;
 use App\Traits\ResponseTrait;
 use Exception;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
 use Maatwebsite\Excel\Facades\Excel;
-
-use App\Rules\RightPersonRule;
  
 class DOExpeditionController extends Controller
 {
@@ -43,6 +42,12 @@ class DOExpeditionController extends Controller
                 $query->where('code', 'like', "%$search%");
             }
 
+            if ($request->filled('with_driver') && $request->with_driver == 'true') {
+                $query->whereHas('driver', function ($q) {
+                    $q->where('type', 'driver');
+                });
+            }
+
             if ($request->filled('do_order_list_id')) {
                 $query->where('do_order_list_id', $request->do_order_list_id);
             }
@@ -54,11 +59,11 @@ class DOExpeditionController extends Controller
             $data = $query->latest()->paginate($request->per_page ?? 10);
 
             return $this->responseSuccess($data, 'DO Expedition list retrieved successfully');
-        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $err) {
+        } catch (ModelNotFoundException $err) {
             $model = class_basename($err->getModel() ?: 'Data');
             $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
             return $this->responseError(null, $friendlyModel . ' not found', 404);
-        } catch (\Exception $err) {
+        } catch (Exception $err) {
             Log::error('Error retrieving DO Expedition: ' . $err->getMessage());
             return $this->responseError($err->getMessage(), 'Failed to retrieve DO Expedition');
         }
@@ -70,11 +75,11 @@ class DOExpeditionController extends Controller
             $doExpedition = DOExpedition::with(['vehicle', 'driver', 'order_list.customer', 'order_list.tarifs'])
                 ->findOrFail($id);
             return $this->responseSuccess($doExpedition, 'DO Expedition retrieved successfully');
-        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $err) {
+        } catch (ModelNotFoundException $err) {
             $model = class_basename($err->getModel() ?: 'Data');
             $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
             return $this->responseError(null, $friendlyModel . ' not found', 404);
-        } catch (\Exception $err) {
+        } catch (Exception $err) {
             return $this->responseError('DO Expedition not found', 'Not Found', 404);
         }
     }
@@ -119,11 +124,11 @@ class DOExpeditionController extends Controller
         try {
             $doExpedition->update($validated);
             return $this->responseSuccess($doExpedition, 'DO Expedition updated successfully');
-        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $err) {
+        } catch (ModelNotFoundException $err) {
             $model = class_basename($err->getModel() ?: 'Data');
             $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
             return $this->responseError(null, $friendlyModel . ' not found', 404);
-        } catch (\Exception $err) {
+        } catch (Exception $err) {
             Log::error('Error updating DO Expedition: ' . $err->getMessage());
             return $this->responseError($err->getMessage(), 'Failed to update DO Expedition');
         }
@@ -133,11 +138,11 @@ class DOExpeditionController extends Controller
     {
         try {
             return Excel::download(new DOExpeditionExport($request), 'do_expedition_data.xlsx');
-        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $err) {
+        } catch (ModelNotFoundException $err) {
             $model = class_basename($err->getModel() ?: 'Data');
             $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
             return $this->responseError(null, $friendlyModel . ' not found', 404);
-        } catch (\Exception $err) {
+        } catch (Exception $err) {
             Log::error('Error exporting DO Expedition: ' . $err->getMessage());
             return $this->responseError($err->getMessage(), 'Failed to export DO Expedition');
         }
@@ -151,11 +156,11 @@ class DOExpeditionController extends Controller
             return $this->responseSuccess([
                 'next_code' => $nextCode
             ], 'Next DO Expedition code retrieved successfully');
-        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $err) {
+        } catch (ModelNotFoundException $err) {
             $model = class_basename($err->getModel() ?: 'Data');
             $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
             return $this->responseError(null, $friendlyModel . ' not found', 404);
-        } catch (\Exception $err) {
+        } catch (Exception $err) {
             Log::error('Error generating next DO Expedition code: ' . $err->getMessage());
             return $this->responseError($err->getMessage(), 'Failed to generate next DO Expedition code');
         }

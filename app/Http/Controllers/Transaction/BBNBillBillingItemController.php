@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Transaction;
 use App\Http\Controllers\Controller;
 use App\Models\BBNBillBilling;
 use App\Models\BBNBillBillingItem;
+use App\Rules\RightCashRule;
 use App\Traits\GlobalCodeNumberTrait;
 use App\Traits\ResponseTrait;
 use Exception;
@@ -68,7 +69,11 @@ class BBNBillBillingItemController extends Controller
         $validated = $request->validate([
             'bbn_bill_billing_id' => 'required|exists:bbn_bill_billings,id',
             'paid_date' => 'required|date',
-            'cash_id' => 'required|exists:cashes,id',
+            'cash_id' => [
+                'required',
+                'exists:cashes,id',
+                new RightCashRule(fn () => \App\Models\BBNBillBilling::find($request->bbn_bill_billing_id)?->bbnBill?->dealer?->company_id),
+            ],
             'amount' => 'required|numeric|min:1',
         ]);
 
@@ -110,17 +115,20 @@ class BBNBillBillingItemController extends Controller
         }
     }
 
-    public function update(Request $request, $id)
-    {
-        $validated = $request->validate([
-            'bbn_bill_billing_id' => 'sometimes|required|exists:bbn_bill_billings,id',
-            'paid_date' => 'sometimes|required|date',
-            'cash_id' => 'sometimes|required|exists:cashes,id',
-            'amount' => 'sometimes|required|numeric',
-        ]);
-
         try {
             $item = BBNBillBillingItem::findOrFail($id);
+
+            $validated = $request->validate([
+                'bbn_bill_billing_id' => 'sometimes|required|exists:bbn_bill_billings,id',
+                'paid_date' => 'sometimes|required|date',
+                'cash_id' => [
+                    'sometimes',
+                    'required',
+                    'exists:cashes,id',
+                    new RightCashRule(fn () => \App\Models\BBNBillBilling::find($request->bbn_bill_billing_id ?? $item->bbn_bill_billing_id)?->bbnBill?->dealer?->company_id),
+                ],
+                'amount' => 'sometimes|required|numeric',
+            ]);
             $billing = $item->bbnBillBilling;
 
             if ($request->has('amount')) {

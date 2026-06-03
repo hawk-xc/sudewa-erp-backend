@@ -9,6 +9,7 @@ use App\Models\Material;
 use App\Models\VehicleEquipment;
 use App\Models\WarehouseActivity;
 use App\Models\WarehouseMovement;
+use App\Rules\RightCashRule;
 use App\Traits\GlobalCodeNumberTrait;
 use App\Traits\ResponseTrait;
 use Exception;
@@ -192,7 +193,11 @@ class GoodsTransactionDetailController extends Controller
             'type' => $transaction->company_id == 4 ? 'nullable|in:pcs,set,box' : 'required|in:pcs,set,box',
             'price' => $transaction->company_id == 4 ?  ($isReceipt ? 'required|numeric|min:0' : 'nullable|numeric|min:0') : 'required|numeric|min:0',
             'description' => 'nullable|string',
-            'cash_id' => 'nullable|exists:cashes,id',
+            'cash_id' => [
+                'nullable',
+                'exists:cashes,id',
+                new RightCashRule(fn () => $transaction?->company_id),
+            ],
             'person_id' => 'nullable|exists:persons,id',
         ], [
             'material_id.unique' => 'This material already exists in this transaction.',
@@ -341,7 +346,12 @@ class GoodsTransactionDetailController extends Controller
             'is_forecast' => 'nullable|boolean',
             'description' => 'nullable|string',
             'warehouse_id' => 'sometimes|required|exists:warehouses,id',
-            'cash_id' => 'sometimes|nullable|exists:cashes,id',
+            'cash_id' => [
+                'sometimes',
+                'nullable',
+                'exists:cashes,id',
+                new RightCashRule(fn () => \App\Models\GoodsTransaction::find($request->goods_transaction_id ?? $detail->goods_transaction_id)?->company_id),
+            ],
             'person_id' => 'sometimes|nullable|exists:persons,id',
         ], [
             'material_id.unique' => 'This material already exists in this transaction.',

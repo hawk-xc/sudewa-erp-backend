@@ -15,6 +15,7 @@ use App\Traits\FileTrait;
 use App\Traits\ResponseTrait;
 use App\Traits\GlobalCodeNumberTrait;
 use App\Rules\RightPersonRule;
+use App\Rules\RightCashRule;
 use Exception;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\Request;
@@ -613,7 +614,12 @@ class UnitTransactionController extends Controller
     public function refund(Request $request, string $id)
     {
         $validated = $request->validate([
-            'cash_id' => 'required|integer|exists:cashes,id',
+            'cash_id' => [
+                'required',
+                'integer',
+                'exists:cashes,id',
+                new RightCashRule(fn () => \App\Models\UnitTransaction::find($id)?->warehouse?->company_id),
+            ],
             'amount' => 'nullable|numeric|min:0',
             'description' => 'required|string',
             'unit_transaction_details' => 'required|array|min:1',
@@ -666,7 +672,12 @@ class UnitTransactionController extends Controller
     public function return(Request $request, string $id)
     {
         $validated = $request->validate([
-            'cash_id' => 'required|integer|exists:cashes,id',
+            'cash_id' => [
+                'required',
+                'integer',
+                'exists:cashes,id',
+                new RightCashRule(fn () => \App\Models\UnitTransaction::find($id)?->warehouse?->company_id),
+            ],
             'amount' => 'nullable|numeric|min:0',
             'description' => 'required|string',
             'unit_transaction_details' => 'required|array|min:1',
@@ -726,7 +737,12 @@ class UnitTransactionController extends Controller
 
         try {
             $validated = $request->validate([
-                'cash_id' => 'required|integer|exists:cashes,id',
+                'cash_id' => [
+                    'required',
+                    'integer',
+                    'exists:cashes,id',
+                    new RightCashRule(fn () => \App\Models\UnitTransaction::find($id)?->warehouse?->company_id),
+                ],
                 'amount' => 'required|numeric|min:0',
                 'description' => 'nullable|string',
                 'unit_transaction_item_details_ids' => 'sometimes|nullable|array',
