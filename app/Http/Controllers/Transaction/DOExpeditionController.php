@@ -79,7 +79,7 @@ class DOExpeditionController extends Controller
     public function show(int $id): JsonResponse
     {
         try {
-            $doExpedition = DOExpedition::with(['vehicle', 'driver', 'order_list.customer', 'order_list.tarifs'])
+            $doExpedition = DOExpedition::with(['vehicle', 'driver:id,uuid,code,type,name', 'order_list:id,uuid,code,customer_id,status,vehicle_type,bill_invoice,ppn', 'order_list.customer:id,uuid,code,type,name', 'order_list.tarifs:id,uuid,loading_in,loading_out,distance,is_active'])
                 ->findOrFail($id);
             return $this->responseSuccess($doExpedition, 'DO Expedition retrieved successfully');
         } catch (ModelNotFoundException $err) {

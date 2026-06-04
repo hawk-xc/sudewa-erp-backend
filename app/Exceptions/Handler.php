@@ -39,42 +39,6 @@ class Handler extends ExceptionHandler
         });
     }
 
-    /**
-     * Convert an exception into an HTTP response.
-     */
-    // public function render($request, Throwable $exception)
-    // {
-    //     if ($exception instanceof NotFoundHttpException) {
-    //         return $this->responseError(null, 'API endpoint not found', 404);
-    //     }
-
-    //     if ($exception instanceof MethodNotAllowedHttpException) {
-    //         return $this->responseError(null, 'Method not allowed for this endpoint', 405);
-    //     }
-
-    //     if ($exception instanceof \Spatie\Permission\Exceptions\UnauthorizedException) {
-    //         return $this->responseError(null, 'You do not have the required role/permission', 403);
-    //     }
-
-    //     if ($exception instanceof \TypeError) {
-    //         return $this->responseError(['error' => $exception->getMessage()], 'A type error occurred', 500);
-    //     }
-
-    //     if ($request->expectsJson()) {
-    //         return $this->responseError(['error' => $exception->getMessage()], 'Unexpected server error', 500);
-    //     }
-
-    //     if ($exception instanceof ValidationException) {
-    //         return $this->responseError(
-    //             $exception->errors(), 
-    //             'Validation failed', 
-    //             422
-    //         );
-    //     }
-
-    //     return parent::render($request, $exception);
-    // }
-
     public function render($request, Throwable $exception)
     {
         if ($request->is('api/*') || $request->is('wapi/*') || $request->expectsJson()) {
@@ -88,7 +52,7 @@ class Handler extends ExceptionHandler
                 $exception instanceof \Tymon\JWTAuth\Exceptions\TokenInvalidException || 
                 $exception instanceof \Tymon\JWTAuth\Exceptions\JWTException ||
                 $exception instanceof \Symfony\Component\HttpKernel\Exception\UnauthorizedHttpException) {
-                return $this->responseError(null, 'Unauthenticated. Your session has expired or is invalid.', 401);
+                return $this->responseError(null, 'Unauthenticated. Your session has expired or is invalid.', 403);
             }
 
             if ($exception instanceof NotFoundHttpException) {
