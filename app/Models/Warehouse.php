@@ -43,6 +43,10 @@ class Warehouse extends Model
 
     public function scopeGetWarehouseCapacityUsage()
     {
-        return $this->unitTransactions()->sum('max_capacity');
+        return UnitTransactionItemDetail::where('in_stock', true)
+            ->whereHas('unitTransactionItem.unitTransaction', function ($query) {
+                $query->where('warehouse_id', $this->id);
+            })
+            ->count();
     }
 }

@@ -91,7 +91,6 @@ class TransactionWarehouseFlowTest extends TestCase
             'type' => 'purchase',
             'transaction_date' => now()->toDateString(),
             'description' => 'Test Purchase',
-            'max_capacity' => 10,
             'stock_state' => 'inbound_receipt',
         ]);
         $response->assertStatus(201);
@@ -165,7 +164,6 @@ class TransactionWarehouseFlowTest extends TestCase
             'person_id' => $this->supplier->id,
             'warehouse_id' => $this->warehouse->id,
             'type' => 'purchase',
-            'max_capacity' => 10,
             'stock_state' => 'inbound_receipt',
             'transaction_date' => now()->toDateString(),
         ]);
@@ -218,7 +216,6 @@ class TransactionWarehouseFlowTest extends TestCase
             'person_id' => $this->customer->id,
             'warehouse_id' => $this->warehouse->id,
             'type' => 'sales',
-            'max_capacity' => 10,
             'stock_state' => 'outbound_reserved',
             'transaction_date' => now()->toDateString(),
         ]);

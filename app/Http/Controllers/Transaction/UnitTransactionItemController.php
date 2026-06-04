@@ -173,13 +173,17 @@ class UnitTransactionItemController extends Controller
                 }
             }
 
-            // unit transaction stock guard
-            if ($request->qty_total > $unitTransaction->max_capacity - $unitTransactionItems->sum('qty_total')) {
-                return $this->responseError(
-                    'Cannot create data. The quantity exceeds the remaining transaction capacity.',
-                    'Validation failed',
-                    422
-                );
+            // warehouse capacity guard
+            if ($unitTransaction->type === 'purchase') {
+                $warehouse = $unitTransaction->warehouse;
+                $warehouseForecastCapacity = $warehouse->capacity - $warehouse->getWarehouseCapacityUsage();
+                if ($request->qty_total > $warehouseForecastCapacity) {
+                    return $this->responseError(
+                        'Cannot create data. The quantity exceeds the remaining warehouse capacity.',
+                        'Validation failed',
+                        422
+                    );
+                }
             }
 
             // duplicate unit type guard
@@ -325,13 +329,18 @@ class UnitTransactionItemController extends Controller
                     }
                 }
 
-                // unit transaction stock guard
-                if ($request->qty_total > $unitTransaction->max_capacity - $unitTransactionItems->sum('qty_total')) {
-                    return $this->responseError(
-                        'Cannot create data. The quantity exceeds the remaining transaction capacity.',
-                        'Validation failed',
-                        422
-                    );
+                // warehouse capacity guard
+                if ($unitTransaction->type === 'purchase') {
+                    $warehouse = $unitTransaction->warehouse;
+                    $warehouseForecastCapacity = $warehouse->capacity - $warehouse->getWarehouseCapacityUsage();
+                    $currentInStockCount = $item->unitTransactionItemDetails()->where('in_stock', true)->count();
+                    if ($request->qty_total > $warehouseForecastCapacity + $currentInStockCount) {
+                        return $this->responseError(
+                            'Cannot update data. The quantity exceeds the remaining warehouse capacity.',
+                            'Validation failed',
+                            422
+                        );
+                    }
                 }
 
                 // duplicate unit type guard

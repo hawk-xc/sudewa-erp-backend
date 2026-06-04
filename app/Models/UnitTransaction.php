@@ -18,14 +18,12 @@ class UnitTransaction extends Model
         'person_id',
         'code',
         'type',
-        'max_capacity',
         'stock_state',
         'invoice_file',
         'is_refunded'
     ];
 
     protected $casts = [
-        'max_capacity' => 'integer',
         'stock_state' => 'string',
         'is_refunded' => 'boolean'
     ];

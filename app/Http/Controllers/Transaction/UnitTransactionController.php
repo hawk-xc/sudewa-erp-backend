@@ -44,7 +44,6 @@ class UnitTransactionController extends Controller
             'person_id',
             'code',
             'type',
-            'max_capacity',
             'stock_state',
             'invoice_file',
             'is_refunded',
@@ -229,7 +228,6 @@ class UnitTransactionController extends Controller
                 ],
                 'code' => 'sometimes|string|max:255|unique:unit_transactions,code',
                 'type' => 'required|string|in:purchase,sales',
-                'max_capacity' => 'required|numeric|min:0|max:100',
                 'stock_state' => 'required|string',
  
                 // optional item
@@ -264,9 +262,9 @@ class UnitTransactionController extends Controller
 
             $warehouseForecastCapacity = $warehouseData->capacity - $warehouseData->getWarehouseCapacityUsage();
 
-            if ($request->type === 'purchase' && $request->max_capacity > $warehouseForecastCapacity) {
+            if ($request->type === 'purchase' && $request->filled('qty_total') && $request->qty_total > $warehouseForecastCapacity) {
                 throw ValidationException::withMessages([
-                    'max_capacity' => 'Warehouse capacity is not sufficient.',
+                    'qty_total' => 'Warehouse capacity is not sufficient.',
                 ]);
             }
 
@@ -300,12 +298,6 @@ class UnitTransactionController extends Controller
                                 'qty_total' => 'Qty exceeds stock',
                             ]);
                         }
-                    }
-
-                    if ($request->qty_total > $unitTransaction->max_capacity) {
-                        throw ValidationException::withMessages([
-                            'qty_total' => 'Exceeds transaction capacity',
-                        ]);
                     }
 
                     $additional_fee =

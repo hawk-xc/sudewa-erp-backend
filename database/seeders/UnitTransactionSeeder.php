@@ -80,7 +80,6 @@ class UnitTransactionSeeder extends Seeder
                     'person_id' => $suppliers->random()->id,
                     'code' => $code,
                     'type' => 'purchase',
-                    'max_capacity' => 50,
                     'stock_state' => 'draft',
                 ]);
 
@@ -218,7 +217,6 @@ class UnitTransactionSeeder extends Seeder
                     'person_id' => $suppliers->random()->id,
                     'code' => $code,
                     'type' => 'purchase',
-                    'max_capacity' => 50,
                     'stock_state' => 'draft',
                 ]);
 
@@ -311,7 +309,6 @@ class UnitTransactionSeeder extends Seeder
                     'person_id' => $customers->random()->id,
                     'code' => $code,
                     'type' => 'sales',
-                    'max_capacity' => 10,
                     'stock_state' => 'draft',
                 ]);
 
@@ -468,7 +465,6 @@ class UnitTransactionSeeder extends Seeder
                     'person_id' => $customers->random()->id,
                     'code' => $code,
                     'type' => 'sales',
-                    'max_capacity' => 10,
                     'stock_state' => 'draft',
                 ]);
 

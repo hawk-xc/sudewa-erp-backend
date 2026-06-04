@@ -21,7 +21,6 @@ return new class extends Migration
                 'purchase',
                 'sales',
             ])->default('purchase')->nullable(false);
-            $table->integer('max_capacity')->default(0)->nullable(true);
             $table->enum('stock_state', [
                 'draft',
                 'cancel',
