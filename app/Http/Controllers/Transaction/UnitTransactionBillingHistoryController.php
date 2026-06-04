@@ -226,6 +226,7 @@ class UnitTransactionBillingHistoryController extends Controller
                     if ($cash) {
                         $cashFlow = CashFlow::create([
                             'company_id' => $companyId,
+                            'code' => $billing->unitTransaction->code,
                             'unit_transaction_billing_id' => $billing->id,
                             'date' => $validated['payment_at'] ?? now(),
                             'note' => "Pelunasan Total " . $billing->unitTransaction->code,

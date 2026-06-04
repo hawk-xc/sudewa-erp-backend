@@ -6,14 +6,15 @@ use App\Http\Controllers\Controller;
 use App\Models\Account;
 use App\Models\Cash;
 use App\Models\CashFlow;
+use App\Rules\RightCashRule;
 use App\Traits\FileTrait;
 use App\Traits\ResponseTrait;
 use Exception;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
-use Illuminate\Database\Eloquent\ModelNotFoundException;
 
 class DailyCashFlowController extends Controller
 {
@@ -52,6 +53,14 @@ class DailyCashFlowController extends Controller
 
             if ($request->filled('transaction_category') && in_array($request->transaction_category, ['general', 'operational', 'director_receivable', 'shareholder_receivable', 'receivable', 'inventory'])) {
                 $query->where('transaction_category', $request->transaction_category);
+            }
+
+            if ($request->filled('start_date') && $request->filled('end_date')) {
+                $query->whereBetween('date', [$request->start_date, $request->end_date]);
+            } elseif ($request->filled('start_date')) {
+                $query->where('date', '>=', $request->start_date);
+            } elseif ($request->filled('end_date')) {
+                $query->where('date', '<=', $request->end_date);
             }
 
             foreach ($this->cashFlowTable as $field) {
@@ -271,7 +280,7 @@ class DailyCashFlowController extends Controller
             return $this->responseSuccess($cashFlow, 'Cash Flow updated successfully', 200);
         } catch (ValidationException $err) {
             return $this->responseError($err->errors(), 'Validation failed', 422);
-        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $err) {
+        } catch (ModelNotFoundException $err) {
             $model = class_basename($err->getModel() ?: 'Data');
             $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
             return $this->responseError(null, $friendlyModel . ' not found', 404);
@@ -286,6 +295,12 @@ class DailyCashFlowController extends Controller
     {
         try {
             $cashFlow = CashFlow::findOrFail($id);
+
+            if (!empty($cashFlow->unitTransactionBilling()->first())) {
+                throw ValidationException::withMessages([
+                    'unit_transaction_billing_id' => ['Cash Flow is linked to a unit transaction billing, cannot be deleted'],
+                ]);
+            }
             
             if ($cashFlow->payment_proof) {
                 $this->destroyFile('cash_flow_proof/' . $cashFlow->payment_proof);
