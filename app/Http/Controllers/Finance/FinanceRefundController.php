@@ -3,14 +3,15 @@
 namespace App\Http\Controllers\Finance;
 
 use App\Http\Controllers\Controller;
-use App\Rules\RightCashRule;
-use App\Models\FinanceRefund;
 use App\Models\Cash;
+use App\Models\FinanceRefund;
+use App\Rules\RightCashRule;
 use App\Traits\ResponseTrait;
 use Exception;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class FinanceRefundController extends Controller
 {
@@ -129,14 +130,14 @@ class FinanceRefundController extends Controller
             $newCashId = $financeRefund->cash_id;
 
             if ($newStatus === 'approve' && $oldStatus !== 'approve') {
-                $cash = Cash::find($newCashId);
+                $cash = Cash::findOrFail($newCashId);
                 if ($cash && $financeRefund->unitTransactionRefund) {
                     $refundAmount = (float) $financeRefund->unitTransactionRefund->refund_amount;
                     $trxType = $financeRefund->unitTransactionRefund->unitTransaction->type;
                     $cash->adjustAmount($refundAmount, 'refund_' . $trxType);
                 }
             } elseif ($newStatus !== 'approve' && $oldStatus === 'approve') {
-                $cash = Cash::find($oldCashId);
+                $cash = Cash::findOrFail($oldCashId);
                 if ($cash && $financeRefund->unitTransactionRefund) {
                     $refundAmount = (float) $financeRefund->unitTransactionRefund->refund_amount;
                     $trxType = $financeRefund->unitTransactionRefund->unitTransaction->type;
@@ -147,12 +148,12 @@ class FinanceRefundController extends Controller
                     $refundAmount = (float) $financeRefund->unitTransactionRefund->refund_amount;
                     $trxType = $financeRefund->unitTransactionRefund->unitTransaction->type;
 
-                    $oldCash = Cash::find($oldCashId);
+                    $oldCash = Cash::findOrFail($oldCashId);
                     if ($oldCash) {
                         $oldCash->adjustAmount(-$refundAmount, 'refund_' . $trxType);
                     }
 
-                    $newCash = Cash::find($newCashId);
+                    $newCash = Cash::findOrFail($newCashId);
                     if ($newCash) {
                         $newCash->adjustAmount($refundAmount, 'refund_' . $trxType);
                     }
