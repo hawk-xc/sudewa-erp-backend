@@ -37,6 +37,7 @@ use App\Http\Controllers\Permission\PermissionController;
 use App\Http\Controllers\Report\LiabilityController;
 use App\Http\Controllers\Report\TransactionReportController;
 use App\Http\Controllers\Report\UnitTypeDetailReportController;
+use App\Http\Controllers\Report\VehicleRegistrationReport;
 use App\Http\Controllers\Role\RoleController;
 use App\Http\Controllers\Transaction\BBNBillBillingController;
 use App\Http\Controllers\Transaction\BBNBillBillingItemController;
@@ -332,6 +333,12 @@ Route::group(
             Route::get('unit-type-detail-report', [UnitTypeDetailReportController::class, 'index']);
             Route::get('unit-type-detail-stock', [UnitTransactionController::class, 'getStock']);
             Route::get('unit-type-detail-stock/export', [UnitTransactionController::class, 'exportStock']);
+            
+            // BPKB Report
+            Route::get('bpkb-report', [VehicleRegistrationReport::class, 'getBPKBReport']);
+            Route::get('stnk-report', [VehicleRegistrationReport::class, 'getSTNKReport']);
+            Route::get('skpd-report', [VehicleRegistrationReport::class, 'getSKPDReport']);
+            Route::get('tnkb-report', [VehicleRegistrationReport::class, 'getTNKBReport']);
         });
 
 	// Stats

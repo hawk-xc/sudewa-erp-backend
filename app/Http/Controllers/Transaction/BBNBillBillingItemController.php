@@ -101,20 +101,8 @@ class BBNBillBillingItemController extends Controller
         }
     }
 
-    public function show($id)
+    public function show(Request $request, string $id)
     {
-        try {
-            $data = BBNBillBillingItem::with(['bbnBillBilling', 'cash'])->findOrFail($id);
-            return $this->responseSuccess($data, 'BBN Bill Billing Item retrieved successfully');
-        } catch (ModelNotFoundException $err) {
-            $model = class_basename($err->getModel() ?: 'Data');
-            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
-            return $this->responseError(null, $friendlyModel . ' not found', 404);
-        } catch (Exception $err) {
-            return $this->responseError($err->getMessage(), 'BBN Bill Billing Item not found', 404);
-        }
-    }
-
         try {
             $item = BBNBillBillingItem::findOrFail($id);
 
@@ -125,7 +113,7 @@ class BBNBillBillingItemController extends Controller
                     'sometimes',
                     'required',
                     'exists:cashes,id',
-                    new RightCashRule(fn () => \App\Models\BBNBillBilling::find($request->bbn_bill_billing_id ?? $item->bbn_bill_billing_id)?->bbnBill?->dealer?->company_id),
+                    new RightCashRule(fn () => BBNBillBilling::find($request->bbn_bill_billing_id ?? $item->bbn_bill_billing_id)?->bbnBill?->dealer?->company_id),
                 ],
                 'amount' => 'sometimes|required|numeric',
             ]);
@@ -162,7 +150,7 @@ class BBNBillBillingItemController extends Controller
         }
     }
 
-    public function destroy($id)
+    public function destroy(string $id)
     {
         try {
             $item = BBNBillBillingItem::with('bbnBillBilling.bbnBill')->findOrFail($id);
