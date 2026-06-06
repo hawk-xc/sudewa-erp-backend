@@ -165,12 +165,15 @@ class GoodsTransactionDetailController extends Controller
 
     public function store(Request $request)
     {
+        $request->validate([
+            'goods_transaction_id' => 'required|exists:goods_transactions,id',
+        ]);
+        
         $transactionId = $request->input('goods_transaction_id');
         $transaction = $transactionId ? GoodsTransaction::find($transactionId) : null;
         $isReceipt = $transaction && ($transaction->type == 'receipt' || $transaction->type == 'purchase');
 
         $validated = $request->validate([
-            'goods_transaction_id' => 'required|exists:goods_transactions,id',
             'material_id' => [
                 'required_without:vehicle_equipment_id',
                 'nullable',
