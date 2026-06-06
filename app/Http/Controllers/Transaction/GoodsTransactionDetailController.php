@@ -168,7 +168,7 @@ class GoodsTransactionDetailController extends Controller
         $request->validate([
             'goods_transaction_id' => 'required|exists:goods_transactions,id',
         ]);
-        
+
         $transactionId = $request->input('goods_transaction_id');
         $transaction = $transactionId ? GoodsTransaction::find($transactionId) : null;
         $isReceipt = $transaction && ($transaction->type == 'receipt' || $transaction->type == 'purchase');
@@ -206,6 +206,8 @@ class GoodsTransactionDetailController extends Controller
             'material_id.unique' => 'This material already exists in this transaction.',
             'vehicle_equipment_id.unique' => 'This vehicle equipment already exists in this transaction.',
         ]);
+
+        $validated['goods_transaction_id'] = $request->goods_transaction_id;
 
         try {
             $transaction = GoodsTransaction::findOrFail($validated['goods_transaction_id']);
