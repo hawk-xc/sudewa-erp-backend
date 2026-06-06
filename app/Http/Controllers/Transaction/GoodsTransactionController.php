@@ -398,7 +398,7 @@ class GoodsTransactionController extends Controller
     public function uploadInvoice(Request $request, string $id): JsonResponse
     {
         $validated = $request->validate([
-            'invoice_file' => 'required|file|mimes:pdf,doc,docx|max:2048',
+            'invoice_file' => 'required|file|mimes:pdf,doc,docx,png,jpeg,jpg|max:2048',
         ]);
 
         try {
