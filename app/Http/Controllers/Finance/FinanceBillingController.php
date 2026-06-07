@@ -78,6 +78,16 @@ class FinanceBillingController extends Controller
                 })->orWhere('uuid', 'like', "%$search%");
             }
 
+            if ($request->filled('company_id')) {
+                $query->whereHas('cashFlow', function ($q) use ($request) {
+                    $q->where('company_id', $request->company_id);
+                });
+            }
+
+            if ($request->filled('cash_flow_id')) {
+                $query->where('cash_flow_id', $request->cash_flow_id);
+            }
+
             $sortBy = in_array($request->sort_by, $this->financeBillingTable) ? $request->sort_by : 'id';
             $sortOrder = $request->sort_order === 'asc' ? 'asc' : 'desc';
 

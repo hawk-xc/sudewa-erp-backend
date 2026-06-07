@@ -35,6 +35,11 @@ class GoodsTransactionBilling extends Model
         return $this->hasMany(GoodsTransactionBillingPayment::class, 'goods_transaction_billing_id');
     }
 
+    public function financeBilling()
+    {
+        return $this->hasOne(FinanceBilling::class, 'goods_transaction_billing_id');
+    }
+
     protected static function booted()
     {
         static::creating(function ($model) {

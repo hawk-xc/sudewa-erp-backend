@@ -15,6 +15,7 @@ class FinanceBilling extends Model
      protected $fillable = [
         'uuid',
         'unit_transaction_billing_id',
+        'goods_transaction_billing_id',
         'cash_flow_id',
         'last_payment_at',
         'grand_total',
@@ -23,6 +24,7 @@ class FinanceBilling extends Model
 
     protected $casts = [
         'unit_transaction_billing_id' => 'integer',
+        'goods_transaction_billing_id' => 'integer',
         'cash_flow_id' => 'integer',
         'last_payment_at' => 'date',
         'is_valid' => 'boolean'
@@ -31,6 +33,11 @@ class FinanceBilling extends Model
     public function unitTransactionBilling()
     {
         return $this->belongsTo(UnitTransactionBilling::class, 'unit_transaction_billing_id', 'id');
+    }
+
+    public function goodsTransactionBilling()
+    {
+        return $this->belongsTo(GoodsTransactionBilling::class, 'goods_transaction_billing_id', 'id');
     }
 
     public function cashFlow()

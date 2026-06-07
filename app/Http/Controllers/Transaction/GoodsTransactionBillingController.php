@@ -3,8 +3,11 @@
 namespace App\Http\Controllers\Transaction;
 
 use App\Http\Controllers\Controller;
+use App\Models\CashFlow;
+use App\Models\FinanceBilling;
 use App\Models\GoodsTransaction;
 use App\Models\GoodsTransactionBilling;
+use App\Models\TransactionFlow;
 use App\Traits\GlobalCodeNumberTrait;
 use App\Traits\ResponseTrait;
 use Exception;
@@ -87,7 +90,7 @@ class GoodsTransactionBillingController extends Controller
         ]);
 
         try {
-            $transaction = GoodsTransaction::findOrFail($validated['goods_transaction_id']);
+            $transaction = GoodsTransaction::with(['supplier', 'driver'])->findOrFail($validated['goods_transaction_id']);
 
             if ($transaction->goodsTransactionBillings()->exists()) {
                 return $this->responseError('Goods Transaction Billing already exists', 'Goods Transaction Billing already exists', 400);
@@ -96,10 +99,43 @@ class GoodsTransactionBillingController extends Controller
             $grandTotal = $transaction->getTotalAmount();
 
             $data = DB::transaction(function () use ($transaction, $grandTotal) {
-                return GoodsTransactionBilling::create([
+                $billing = GoodsTransactionBilling::create([
                     'goods_transaction_id' => $transaction->id,
                     'grand_total' => $grandTotal,
                 ]);
+
+                // Transaction Flow data trigger
+                TransactionFlow::create([
+                    'company_id' => $transaction->company_id,
+                    'transaction_date' => now(),
+                    'name' => $transaction->supplier?->name ?? $transaction->driver?->name ?? null,
+                    'description' => "Billing untuk transaksi barang: {$transaction->code} ({$transaction->category})",
+                    'bank_idr_debit' => $transaction->type === 'issue' ? $grandTotal : 0,
+                    'bank_idr_credit' => $transaction->type === 'receipt' ? $grandTotal : 0,
+                ]);
+
+                // CashFlow data trigger (autocreate)
+                $cashFlow = CashFlow::create([
+                    'company_id' => $transaction->company_id,
+                    'cash_id' => null,
+                    'account_id' => null,
+                    'unit_transaction_billing_id' => null,
+                    'date' => now(),
+                    'note' => "Billing untuk transaksi barang: {$transaction->code} ({$transaction->category})",
+                    'debet' => $transaction->type === 'issue' ? $grandTotal : 0,
+                    'credit' => $transaction->type === 'receipt' ? $grandTotal : 0,
+                ]);
+
+                // FinanceBilling data trigger (autocreate)
+                FinanceBilling::create([
+                    'goods_transaction_billing_id' => $billing->id,
+                    'cash_flow_id' => $cashFlow->id,
+                    'grand_total' => $billing->grand_total,
+                    'last_payment_at' => now(),
+                    'is_valid' => false,
+                ]);
+
+                return $billing;
             });
 
             return $this->responseSuccess($data, 'Goods Transaction Billing created successfully', 201);
