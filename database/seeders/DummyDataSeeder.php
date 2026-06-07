@@ -14,6 +14,7 @@ class DummyDataSeeder extends Seeder
             SparepartSeeder::class,
             UnitTypeSeeder::class,
             VehicleDataSeeder::class,
+            WarehouseGoodsTransactionSeeder::class,
         ]);
     }
 }
