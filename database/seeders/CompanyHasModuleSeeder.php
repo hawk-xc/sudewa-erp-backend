@@ -36,8 +36,10 @@ class CompanyHasModuleSeeder extends Seeder
             [
                 'company' => 'wajira-transindo',
                 'modules' => [
+                    'warehouse',
                     'master-data',
                     'transaction',
+                    'finance',
                     'report',
                 ],
             ],
@@ -54,8 +56,10 @@ class CompanyHasModuleSeeder extends Seeder
             [
                 'company' => 'wajira-yanotama',
                 'modules' => [
+                    'warehouse',
                     'master-data',
                     'transaction',
+                    'finance',
                     'report',
                 ],
             ],
