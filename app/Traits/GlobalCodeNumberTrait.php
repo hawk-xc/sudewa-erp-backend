@@ -13,6 +13,7 @@ use App\Models\Person;
 use App\Models\Tarif;
 use App\Models\UnitTransaction;
 use App\Models\UnitTransactionRefund;
+use App\Models\VehicleData;
 use App\Models\VehicleDocument;
 use App\Models\VehicleEquipment;
 use App\Models\VehicleFleet;
@@ -198,7 +199,7 @@ trait GlobalCodeNumberTrait
 
             // Proses Ditlantas
             case 'input_data_kendaraan':
-                $modelClass = DOOrderList::class;
+                $modelClass = VehicleData::class;
                 $prefix = 'ORD-' . strtoupper($compKey) . '/' . date('Ymd') . '-';
                 break;
             case 'ditlantas_input_stnk_bpkb':

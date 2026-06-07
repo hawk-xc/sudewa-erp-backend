@@ -257,6 +257,7 @@ Route::group(
 
             // Vehicle Data
             Route::post('vehicle-data/assign-registration', [VehicleDataController::class, 'assignRegistration']);
+            Route::post('vehicle-data/ditlantas-process', [VehicleDataController::class, 'ditlantasProcess']);
             Route::apiResource('vehicle-data', VehicleDataController::class);
             Route::apiResource('vehicle-document', VehicleDocumentController::class);
             Route::apiResource('vehicle-registration', VehicleRegistrationController::class);

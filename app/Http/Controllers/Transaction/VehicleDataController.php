@@ -3,8 +3,10 @@
 namespace App\Http\Controllers\Transaction;
 
 use App\Http\Controllers\Controller;
+use App\Models\DitlantasProcess;
 use App\Models\Person;
 use App\Models\VehicleData;
+use App\Models\VehicleDataDitlantasProcessed;
 use App\Models\VehicleRegistration;
 use App\Rules\RightPersonRule;
 use App\Traits\GlobalCodeNumberTrait;
@@ -50,13 +52,22 @@ class VehicleDataController extends Controller
     {
         $query = VehicleData::query();
 
-        $query->with(['dealer:id,name,code', 'region:id,name', 'vehicleRegistration:id,vendor_id,vehicle_data_id,process_date,is_already_processed']);
+        $query->with(['dealer:id,name,code', 'region:id,name', 'vehicleRegistration:id,vendor_id,vehicle_data_id,process_date,is_already_processed', 'ditlantasCoded']);
 
         if ($request->filled('is_already_processed')) {
             $isProcessed = $request->is_already_processed === 'true';
             $query->whereHas('vehicleRegistration', function ($q) use ($isProcessed) {
                 $q->where('is_already_processed', $isProcessed);
             });
+        }
+
+        if ($request->filled('has_ditlantas_process')) {
+            $hasDitlantas = $request->boolean('has_ditlantas_process');
+            if ($hasDitlantas) {
+                $query->whereHas('ditlantasCoded');
+            } else {
+                $query->whereDoesntHave('ditlantasCoded');
+            }
         }
 
         try {
@@ -98,7 +109,7 @@ class VehicleDataController extends Controller
     public function show(string $id)
     {
         try {
-            $vehicleData = VehicleData::with(['dealer', 'region', 'vehicleRegistration'])->find($id);
+            $vehicleData = VehicleData::with(['dealer', 'region', 'vehicleRegistration', 'ditlantasCoded'])->find($id);
 
             if (!$vehicleData) {
                 return $this->responseError(null, 'Vehicle Data not found', 404);
@@ -258,6 +269,78 @@ class VehicleDataController extends Controller
         } catch (Exception $err) {
             Log::error('Error while assigning Vehicle Registration: ' . $err->getMessage());
             return $this->responseError($err->getMessage(), 'Error while trying to assign Vehicle Registration', 500);
+        }
+    }
+
+
+    /**
+     * Process vehicle data with Ditlantas.
+     */
+    public function ditlantasProcess(Request $request)
+    {
+        if (is_string($request->vehicle_data_ids)) {
+            $request->merge([
+                'vehicle_data_ids' => json_decode($request->vehicle_data_ids, true),
+            ]);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'vendor_id' => [
+                'required',
+                'integer',
+                new RightPersonRule('vendor')
+            ],
+            'process_date' => 'required|date',
+            'note' => 'nullable|string|max:249',
+            'vehicle_data_ids' => 'required|array|min:1',
+            'vehicle_data_ids.*' => 'required|integer|exists:vehicle_datas,id',
+        ]);
+
+        $validator->after(function ($validator) use ($request) {
+            $ids = $request->input('vehicle_data_ids');
+            if (empty($ids) || !is_array($ids)) return;
+
+            $alreadyProcessed = VehicleDataDitlantasProcessed::whereIn('vehicle_data_id', $ids)
+                ->pluck('vehicle_data_id')
+                ->toArray();
+
+            if (!empty($alreadyProcessed)) {
+                foreach ($alreadyProcessed as $id) {
+                    $validator->errors()->add('vehicle_data_ids', "Vehicle with ID $id has already been processed by Ditlantas.");
+                }
+            }
+        });
+
+        if ($validator->fails()) {
+            return $this->responseError($validator->errors(), 'Validation failed', 422);
+        }
+
+        try {
+            $process = DB::transaction(function () use ($request) {
+                $ditlantasProcess = DitlantasProcess::create([
+                    'vendor_id' => $request->vendor_id,
+                    'process_date' => $request->process_date,
+                    'note' => $request->note ?? null,
+                ]);
+
+                foreach ($request->vehicle_data_ids as $id) {
+                    VehicleDataDitlantasProcessed::create([
+                        'ditlantas_process_id' => $ditlantasProcess->id,
+                        'vehicle_data_id' => $id,
+                    ]);
+                }
+
+                return $ditlantasProcess->load(['vehicleDatas:id,uuid,chassis_number,machine_number', 'vendor:id,uuid,type,name']);
+            });
+
+            return $this->responseSuccess($process, 'Ditlantas process created successfully', 201);
+        } catch (ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
+        } catch (Exception $err) {
+            Log::error('Error in Ditlantas Process: ' . $err->getMessage());
+            return $this->responseError($err->getMessage(), 'Error while trying to process Ditlantas data', 500);
         }
     }
 

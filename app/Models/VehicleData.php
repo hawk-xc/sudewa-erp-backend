@@ -115,6 +115,11 @@ class VehicleData extends Model
         return $this->hasOne(VehicleRegistration::class);
     }
 
+    public function ditlantasCoded()
+    {
+        return $this->belongsToMany(DitlantasProcess::class, 'vehicle_data_ditlantas_processed', 'vehicle_data_id', 'ditlantas_process_id')->one();
+    }
+
     protected static function booted()
     {
         static::creating(function ($model) {
