@@ -78,6 +78,8 @@ class DOInvoiceController extends Controller
             'subject' => 'nullable|string',
             'letter_content' => 'nullable|string',
             'description' => 'nullable|string',
+            'other_fee' => 'nullable|integer',
+            'additional_fee' => 'nullable|integer',
         ]);
 
         try {
@@ -112,6 +114,8 @@ class DOInvoiceController extends Controller
                         'subject' => $validated['subject'] ?? null,
                         'letter_content' => $validated['letter_content'] ?? null,
                         'description' => $validated['description'] ?? null,
+                        'other_fee' => $validated['other_fee'] ?? 0,
+                        'additional_fee' => $validated['additional_fee'] ?? 0,
                         'is_already_print' => false,
                     ]);
                 }
@@ -166,6 +170,8 @@ class DOInvoiceController extends Controller
             'subject' => 'sometimes|nullable|string',
             'letter_content' => 'sometimes|nullable|string',
             'description' => 'sometimes|nullable|string',
+            'other_fee' => 'sometimes|nullable|integer',
+            'additional_fee' => 'sometimes|nullable|integer',
             'is_already_print' => 'sometimes|boolean',
         ]);
 

@@ -21,6 +21,8 @@ class DOInvoice extends Model
         'subject',
         'letter_content',
         'description',
+        'other_fee',
+        'additional_fee',
         'is_already_print'
     ];
 
@@ -29,6 +31,8 @@ class DOInvoice extends Model
         'do_order_list_id' => 'integer',
         'date' => 'date',
         'is_already_print' => 'boolean',
+        'other_fee' => 'integer',
+        'additional_fee' => 'integer',
         'created_at' => 'datetime',
         'updated_at' => 'datetime'
     ];
