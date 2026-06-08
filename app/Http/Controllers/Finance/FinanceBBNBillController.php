@@ -101,7 +101,7 @@ class FinanceBBNBillController extends Controller
 
     public function update(Request $request, string $id)
     {
-        $item = FinanceBBNBilling::findOrFailOrFail($id);
+        $item = FinanceBBNBilling::findOrFail($id);
 
         $validated = $request->validate([
             'cash_id' => [
