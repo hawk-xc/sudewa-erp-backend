@@ -46,11 +46,11 @@ class BBNBillBillingItemControllerTest extends TestCase
             'is_active' => true,
         ]);
 
-        $this->company = Company::create([
-            'id' => 3,
-            'name' => 'Wajira Corp',
-            'slug' => 'wajira-corp'
-        ]);
+        $this->company = new Company();
+        $this->company->id = 3;
+        $this->company->name = 'Wajira Corp';
+        $this->company->slug = 'wajira-corp';
+        $this->company->save();
 
         $this->cash = Cash::create([
             'company_id' => $this->company->id,
@@ -142,14 +142,14 @@ class BBNBillBillingItemControllerTest extends TestCase
             'amount' => 10000000,
         ]);
 
-        // Verify TransactionFlow was created with the full amount under bank_usd_credit
+        // Verify TransactionFlow was created with the full amount under bank_usd_debit
         $this->assertEquals(1, TransactionFlow::count());
         $this->assertDatabaseHas('transaction_flows', [
             'company_id' => $this->company->id,
             'description' => 'Pelunasan BBN Bill: BBN-0001',
-            'bank_usd_credit' => 10000000,
-            'bank_idr_credit' => 0,
-            'cash_idr_credit' => 0,
+            'bank_usd_debit' => 10000000,
+            'bank_idr_debit' => 0,
+            'cash_idr_debit' => 0,
         ]);
     }
 
@@ -178,8 +178,8 @@ class BBNBillBillingItemControllerTest extends TestCase
             'cash_id' => $this->cash->id,
         ]);
 
-        // Verify that the cash amount was adjusted (decremented by 1 Million)
-        $this->assertEquals($initialCashAmount - 1000000, (float) $this->cash->fresh()->amount);
+        // Verify that the cash amount was adjusted (incremented by 1 Million)
+        $this->assertEquals($initialCashAmount + 1000000, (float) $this->cash->fresh()->amount);
     }
 
     public function test_update_finance_bbn_billing_changes_cash_id_and_reverses_and_adjusts_amount()
@@ -208,10 +208,10 @@ class BBNBillBillingItemControllerTest extends TestCase
             'cash_id' => $this->bankIdr->id,
         ]);
 
-        // Verify cash amount was reversed (incremented by 2 Million -> 102 Million)
-        $this->assertEquals(102000000, (float) $this->cash->fresh()->amount);
+        // Verify cash amount was reversed (decremented by 2 Million -> 98 Million)
+        $this->assertEquals(98000000, (float) $this->cash->fresh()->amount);
 
-        // Verify bankIdr amount was adjusted (decremented by 2 Million -> 98 Million)
-        $this->assertEquals(98000000, (float) $this->bankIdr->fresh()->amount);
+        // Verify bankIdr amount was adjusted (incremented by 2 Million -> 102 Million)
+        $this->assertEquals(102000000, (float) $this->bankIdr->fresh()->amount);
     }
 }

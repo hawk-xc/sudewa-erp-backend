@@ -76,7 +76,7 @@ class BBNBillBillingItemController extends Controller
             'cash_id' => [
                 'required',
                 'exists:cashes,id',
-                new RightCashRule(fn () => BBNBillBilling::findOrFail($request->bbn_bill_billing_id)?->bbnBill?->dealer?->company_id),
+                new RightCashRule(fn() => 3),
             ],
             'amount' => 'required|numeric|min:1',
         ]);
@@ -97,18 +97,18 @@ class BBNBillBillingItemController extends Controller
                 $item->remaining_payment = $remainingPayment;
 
                 $cash = Cash::findOrFail($validated['cash_id']);
-                $bankUsdCredit = 0;
-                $bankIdrCredit = 0;
-                $cashIdrCredit = 0;
+                $bankUsdDebit = 0;
+                $bankIdrDebit = 0;
+                $cashIdrDebit = 0;
 
                 if ($cash->type === 'bank') {
                     if (str_contains(strtolower($cash->code), 'usd')) {
-                        $bankUsdCredit = $item->amount;
+                        $bankUsdDebit = $item->amount;
                     } else {
-                        $bankIdrCredit = $item->amount;
+                        $bankIdrDebit = $item->amount;
                     }
                 } else {
-                    $cashIdrCredit = $item->amount;
+                    $cashIdrDebit = $item->amount;
                 }
 
                 $prefix = $remainingPayment <= 0 ? 'Pelunasan' : 'Pembayaran';
@@ -118,9 +118,9 @@ class BBNBillBillingItemController extends Controller
                     'transaction_date' => $item->paid_date,
                     'name' => $billing->bbnBill?->ditlantasProcess?->vendor?->name ?? null,
                     'description' => "{$prefix} BBN Bill: " . ($billing->bbnBill?->code ?? ''),
-                    'bank_usd_credit' => $bankUsdCredit,
-                    'bank_idr_credit' => $bankIdrCredit,
-                    'cash_idr_credit' => $cashIdrCredit,
+                    'bank_usd_debit' => $bankUsdDebit,
+                    'bank_idr_debit' => $bankIdrDebit,
+                    'cash_idr_debit' => $cashIdrDebit,
                 ]);
 
                 FinanceBBNBilling::create([

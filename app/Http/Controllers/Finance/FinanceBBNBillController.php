@@ -128,7 +128,7 @@ class FinanceBBNBillController extends Controller
                         if ($cash) {
                             $diffAmount = $newAmount - $oldAmount;
                             if ($diffAmount != 0) {
-                                $cash->adjustAmount($diffAmount, 'credit');
+                                $cash->adjustAmount($diffAmount, 'debet');
                             }
                         }
                     }
@@ -136,13 +136,13 @@ class FinanceBBNBillController extends Controller
                     if ($oldCashId) {
                         $oldCash = Cash::findOrFail($oldCashId);
                         if ($oldCash) {
-                            $oldCash->adjustAmount(-$oldAmount, 'credit');
+                            $oldCash->adjustAmount(-$oldAmount, 'debet');
                         }
                     }
                     if ($newCashId) {
                         $newCash = Cash::findOrFail($newCashId);
                         if ($newCash) {
-                            $newCash->adjustAmount($newAmount, 'credit');
+                            $newCash->adjustAmount($newAmount, 'debet');
                         }
                     }
                 }
