@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Transaction;
 
 use App\Http\Controllers\Controller;
+use App\Models\VehicleDocument;
 use App\Models\VehicleRegistration;
 use App\Traits\GlobalCodeNumberTrait;
 use App\Traits\ResponseTrait;
@@ -23,7 +24,7 @@ class VehicleRegistrationController extends Controller
 {
     use ResponseTrait, VehicleTrait, GlobalCodeNumberTrait;
 
-    protected $fillable;
+    protected array $fillable;
 
     public function __construct()
     {
@@ -34,6 +35,7 @@ class VehicleRegistrationController extends Controller
             'vendor_id',
             'process_date',
             'is_already_processed',
+            'is_update_additional_data',
             'bpkb_number',
             'bpkb_registration_date',
             'bpkb_received_date',
@@ -99,58 +101,63 @@ class VehicleRegistrationController extends Controller
      */
     public function update(Request $request, string $id)
     {
-        foreach (['bpkb_physical_status', 'stnk_physical_status', 'skpd_physical_status', 'tnkb_physical_status'] as $field) {
-            if ($request->has($field)) {
-                $value = $request->input($field);
-                if ($value === 'true') $request->merge([$field => true]);
-                if ($value === 'false') $request->merge([$field => false]);
-            }
-        }
-
-        // set already processed to true
-        $request->merge(['is_already_processed' => true]);
-
-        $validator = Validator::make($request->all(), [
-            'customer_delivery_date' => 'sometimes|nullable|date',
-            'process_date' => 'sometimes|nullable|date',
-            'bpkb_number' => 'sometimes|nullable|string',
-            'bpkb_registration_date' => 'sometimes|nullable|date',
-            'bpkb_received_date' => 'sometimes|nullable|date',
-            'bpkb_physical_status' => 'sometimes|boolean',
-            'stnk_registration_date' => 'sometimes|nullable|date',
-            'stnk_received_date' => 'sometimes|nullable|date',
-            'stnk_physical_status' => 'sometimes|boolean',
-            'skpd_payment_date' => 'sometimes|nullable|date',
-            'skpd_received_date' => 'sometimes|nullable|date',
-            'skpd_physical_status' => 'sometimes|boolean',
-            'tnkb_received_date' => 'sometimes|nullable|date',
-            'tnkb_number' => 'sometimes|nullable|string',
-            'tnkb_physical_status' => 'sometimes|boolean',
-            'stck_fee' => 'sometimes|numeric',
-            'bbn_registration_fee' => 'sometimes|numeric',
-            'notice_fee' => 'sometimes|numeric',
-            'pmi_fee' => 'sometimes|numeric',
-            'physical_check_fee' => 'sometimes|numeric',
-            'nik_validation_fee' => 'sometimes|numeric',
-            'garwil_fee' => 'sometimes|numeric',
-            'built_up_fee' => 'sometimes|numeric',
-            'acceleration_fee' => 'sometimes|numeric',
-            'plate_recommendation_fee' => 'sometimes|numeric',
-            'service_fee' => 'sometimes|numeric',
-            'skpd_fee' => 'sometimes|numeric',
-            'stamp_fee' => 'sometimes|numeric',
-            'pnbp_bpkb' => 'sometimes|numeric',
-        ]);
-
-        if ($validator->fails()) {
-            return $this->responseError($validator->errors(), 'Validation failed', 422);
-        }
-
         try {
             $registration = VehicleRegistration::findOrFail($id);
 
             if ($registration->is_already_processed == true) {
                 return $this->responseError('The selected vehicle registration has already been processed.', 'Validation failed', 422);
+            }
+
+            foreach (['bpkb_physical_status', 'stnk_physical_status', 'skpd_physical_status', 'tnkb_physical_status'] as $field) {
+                if ($request->has($field)) {
+                    $value = $request->input($field);
+                    if ($value === 'true') $request->merge([$field => true]);
+                    if ($value === 'false') $request->merge([$field => false]);
+                }
+            }
+
+            // set already processed to true
+            $request->merge(['is_already_processed' => true]);
+
+            $hasVehicleDocument = VehicleDocument::where('ditlantas_process_id', $registration->ditlantas_process_id)->exists();
+            if ($hasVehicleDocument) {
+                $request->merge(['is_update_additional_data' => true]);
+            }
+
+            $validator = Validator::make($request->all(), [
+                'customer_delivery_date' => 'sometimes|nullable|date',
+                'process_date' => 'sometimes|nullable|date',
+                'bpkb_number' => 'sometimes|nullable|string',
+                'bpkb_registration_date' => 'sometimes|nullable|date',
+                'bpkb_received_date' => 'sometimes|nullable|date',
+                'bpkb_physical_status' => 'sometimes|boolean',
+                'stnk_registration_date' => 'sometimes|nullable|date',
+                'stnk_received_date' => 'sometimes|nullable|date',
+                'stnk_physical_status' => 'sometimes|boolean',
+                'skpd_payment_date' => 'sometimes|nullable|date',
+                'skpd_received_date' => 'sometimes|nullable|date',
+                'skpd_physical_status' => 'sometimes|boolean',
+                'tnkb_received_date' => 'sometimes|nullable|date',
+                'tnkb_number' => 'sometimes|nullable|string',
+                'tnkb_physical_status' => 'sometimes|boolean',
+                'stck_fee' => 'sometimes|numeric',
+                'bbn_registration_fee' => 'sometimes|numeric',
+                'notice_fee' => 'sometimes|numeric',
+                'pmi_fee' => 'sometimes|numeric',
+                'physical_check_fee' => 'sometimes|numeric',
+                'nik_validation_fee' => 'sometimes|numeric',
+                'garwil_fee' => 'sometimes|numeric',
+                'built_up_fee' => 'sometimes|numeric',
+                'acceleration_fee' => 'sometimes|numeric',
+                'plate_recommendation_fee' => 'sometimes|numeric',
+                'service_fee' => 'sometimes|numeric',
+                'skpd_fee' => 'sometimes|numeric',
+                'stamp_fee' => 'sometimes|numeric',
+                'pnbp_bpkb' => 'sometimes|numeric',
+            ]);
+
+            if ($validator->fails()) {
+                return $this->responseError($validator->errors(), 'Validation failed', 422);
             }
 
             $registration = DB::transaction(function () use ($request, $registration) {

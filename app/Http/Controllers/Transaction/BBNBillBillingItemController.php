@@ -5,12 +5,16 @@ namespace App\Http\Controllers\Transaction;
 use App\Http\Controllers\Controller;
 use App\Models\BBNBillBilling;
 use App\Models\BBNBillBillingItem;
+use App\Models\TransactionFlow;
+use App\Models\Cash;
+use App\Models\Finance\FinanceBBNBilling;
 use App\Rules\RightCashRule;
 use App\Traits\GlobalCodeNumberTrait;
 use App\Traits\ResponseTrait;
 use Exception;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class BBNBillBillingItemController extends Controller
@@ -72,7 +76,7 @@ class BBNBillBillingItemController extends Controller
             'cash_id' => [
                 'required',
                 'exists:cashes,id',
-                new RightCashRule(fn () => \App\Models\BBNBillBilling::find($request->bbn_bill_billing_id)?->bbnBill?->dealer?->company_id),
+                new RightCashRule(fn () => BBNBillBilling::find($request->bbn_bill_billing_id)?->bbnBill?->dealer?->company_id),
             ],
             'amount' => 'required|numeric|min:1',
         ]);
@@ -85,10 +89,45 @@ class BBNBillBillingItemController extends Controller
         }
 
         try {
-            $data = BBNBillBillingItem::create($validated);
-            
-            // Append remaining payment info to response
-            $data->remaining_payment = $billing->getRemainingAmount();
+            $data = DB::transaction(function () use ($validated, $billing) {
+                $item = BBNBillBillingItem::create($validated);
+                
+                // Add data to FinanceBBNBilling model
+                FinanceBBNBilling::create([
+                    'bbn_bill_id' => $billing->bbn_bill_id,
+                    'cash_id' => $item->cash_id,
+                    'amount' => $item->amount,
+                ]);
+                
+                $billing->refresh();
+                $remainingPayment = $billing->getRemainingAmount();
+                $item->remaining_payment = $remainingPayment;
+
+                if ($remainingPayment <= 0) {
+                    $cash = Cash::find($validated['cash_id']);
+                    $bankIdrCredit = 0;
+                    $cashIdrCredit = 0;
+
+                    if ($cash) {
+                        if ($cash->type === 'bank') {
+                            $bankIdrCredit = $billing->total_payment;
+                        } else {
+                            $cashIdrCredit = $billing->total_payment;
+                        }
+                    }
+
+                    TransactionFlow::create([
+                        'company_id' => 4,
+                        'transaction_date' => $item->paid_date,
+                        'name' => $billing->bbnBill?->ditlantasProcess?->vendor?->name ?? null,
+                        'description' => "Pelunasan BBN Bill: " . ($billing->bbnBill?->code ?? ''),
+                        'bank_idr_credit' => $bankIdrCredit,
+                        'cash_idr_credit' => $cashIdrCredit,
+                    ]);
+                }
+
+                return $item;
+            });
             
             return $this->responseSuccess($data, 'BBN Bill Billing Item created successfully', 201);
         } catch (ModelNotFoundException $err) {

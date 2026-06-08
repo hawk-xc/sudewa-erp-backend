@@ -4,6 +4,7 @@ use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\Dashboard\BillingStatController;
 use App\Http\Controllers\Finance\DailyCashFlowController;
 use App\Http\Controllers\Finance\FinanceAssetController;
+use App\Http\Controllers\Finance\FinanceBBNBillController;
 use App\Http\Controllers\Finance\FinanceBillingController;
 use App\Http\Controllers\Finance\FinanceInvoiceBillingPaymentController;
 use App\Http\Controllers\Finance\FinanceRefundController;
@@ -308,6 +309,7 @@ Route::group(
 
             Route::apiResource('ppn', PpnDataController::class);
             Route::apiResource('cash-flow', DailyCashFlowController::class);
+            Route::apiResource('finance-bbn-billing', FinanceBBNBillController::class)->only(['index', 'show', 'update']);
             Route::apiResource('adjustment', UnitTransactionAdjustmentController::class);
             Route::apiResource('finance-billing', FinanceBillingController::class);
 

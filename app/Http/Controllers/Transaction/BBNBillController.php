@@ -31,7 +31,7 @@ class BBNBillController extends Controller
             'id',
             'uuid',
             'code',
-            'dealer_id',
+            'ditlantas_process_id',
             'bill_date',
             'paid_date',
             'created_at',
@@ -40,7 +40,7 @@ class BBNBillController extends Controller
  
     public function index(Request $request)
     {
-        $query = BBNBill::with(['dealer:id,name']);
+        $query = BBNBill::with(['ditlantasProcess:id,code,vendor_id', 'ditlantasProcess.vendor:id,name']);
  
         try {
             foreach ($this->bbnBillTable as $field) {
@@ -68,57 +68,52 @@ class BBNBillController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'dealer_id' => [
+            'ditlantas_process_id' => [
                 'required',
-                new RightPersonRule('dealer')
+                'integer',
+                'exists:ditlantas_processed,id'
             ],
             'bill_date' => 'nullable|date',
             'paid_date' => 'nullable|date',
         ]);
  
-        $dealer = Person::findOrFail($validated['dealer_id']);
+        $ditlantasProcess = \App\Models\DitlantasProcess::with('vendor.company')->findOrFail($validated['ditlantas_process_id']);
  
         if (!$request->filled('bill_date')) {
             $validated['bill_date'] = now()->toDateTimeString();
         }
-
-        $notProcessedIds = \App\Models\VehicleRegistration::whereHas('vehicleData', function ($query) use ($validated) {
-                $query->where('dealer_id', (int) $validated['dealer_id']);
-            })
+ 
+        $notProcessedIds = \App\Models\VehicleRegistration::where('ditlantas_process_id', $validated['ditlantas_process_id'])
             ->where('is_already_processed', false)
             ->pluck('id');
-
+ 
         if ($notProcessedIds->isNotEmpty()) {
             return $this->responseError('Vehicle registration data has not been processed yet for IDs: ' . $notProcessedIds->implode(', '), 'Validation failed', 422);
         }
-
-        $notUpdatedIds = \App\Models\VehicleRegistration::whereHas('vehicleData', function ($query) use ($validated) {
-                $query->where('dealer_id', (int) $validated['dealer_id']);
-            })
+ 
+        $notUpdatedIds = \App\Models\VehicleRegistration::where('ditlantas_process_id', $validated['ditlantas_process_id'])
             ->where('is_update_additional_data', false)
             ->pluck('id');
-
+ 
         if ($notUpdatedIds->isNotEmpty()) {
             return $this->responseError('Vehicle registration data has not been updated yet for IDs: ' . $notUpdatedIds->implode(', '), 'Validation failed', 422);
         }
-
-        $alreadyExists = BBNBill::where('dealer_id', $validated['dealer_id'])->exists();
-        if ($alreadyExists) {
-            return $this->responseError('A BBN Bill for this dealer already exists', 'Duplicate data found', 422);
-        }
  
-        $totalVehicleData = VehicleData::where('dealer_id', (int) $validated['dealer_id'])
-            ->whereHas('vehicleRegistration', function ($q) {
-                $q->where('is_already_processed', true);
-            })
+        $alreadyExists = BBNBill::where('ditlantas_process_id', $validated['ditlantas_process_id'])->exists();
+        if ($alreadyExists) {
+            return $this->responseError('A BBN Bill for this Ditlantas Process already exists', 'Duplicate data found', 422);
+        }
+  
+        $totalVehicleRegistrations = \App\Models\VehicleRegistration::where('ditlantas_process_id', $validated['ditlantas_process_id'])
+            ->where('is_already_processed', true)
             ->count();
             
-        if ($totalVehicleData == 0) {
-            return $this->responseError('No vehicle data found for this dealer', 'Data not found', 404);
+        if ($totalVehicleRegistrations == 0) {
+            return $this->responseError('No processed vehicle registrations found for this Ditlantas Process', 'Data not found', 404);
         }
-
+ 
         try {
-            $companySlug = $dealer->company?->slug ?? '';
+            $companySlug = $ditlantasProcess->vendor?->company?->slug ?? '';
             $validated['code'] = $this->code($companySlug, 'tagihan_bbn');
             
             $data = BBNBill::create($validated);
@@ -143,17 +138,13 @@ class BBNBillController extends Controller
             }
 
             $data->load([
-                'dealer' => function ($query) {
-                    $query->select('id', 'uuid', 'name', 'type');
+                'ditlantasProcess:id,uuid,code,vendor_id',
+                'ditlantasProcess.vendor:id,uuid,name,type',
+                'ditlantasProcess.vehicleRegistrations' => function ($query) {
+                    $query->where('is_already_processed', true)
+                          ->where('is_update_additional_data', true);
                 },
-                'dealer.vehicleDatas' => function ($query) {
-                    $query->select('id', 'uuid', 'dealer_id', 'invoice_number', 'stnk_name', 'ktp_number', 'chassis_number', 'machine_number')
-                        ->whereHas('vehicleRegistration', function ($q) {
-                            $q->where('is_already_processed', true)
-                              ->where('is_update_additional_data', true);
-                        });
-                },
-                'dealer.vehicleDatas.vehicleRegistration',
+                'ditlantasProcess.vehicleRegistrations.vehicleData:id,uuid,dealer_id,stnk_name,ktp_number,chassis_number,machine_number',
                 'bbnBillBillings.bbnBillBillingItems.cash'
             ]);
             return $this->responseSuccess($data, 'BBN Bill retrieved successfully');
@@ -170,10 +161,10 @@ class BBNBillController extends Controller
     public function update(Request $request, $id)
     {
         $validated = $request->validate([
-            'dealer_id' => [
+            'ditlantas_process_id' => [
                 'sometimes',
                 'required',
-                new RightPersonRule('dealer'),
+                'exists:ditlantas_processed,id',
             ],
             'bill_date' => 'sometimes|required|date',
             'paid_date' => 'nullable|date',
@@ -182,38 +173,33 @@ class BBNBillController extends Controller
         try {
             $bbnBill = BBNBill::findOrFail($id);
  
-            if ($request->filled('dealer_id')) {
-                $dealer = Person::findOrFail($validated['dealer_id']);
+            if ($request->filled('ditlantas_process_id')) {
+                $ditlantasProcess = \App\Models\DitlantasProcess::findOrFail($validated['ditlantas_process_id']);
  
-                $unprocessedIds = VehicleData::where('dealer_id', $validated['dealer_id'])
-                    ->where(function ($q) {
-                        $q->whereDoesntHave('vehicleRegistration')
-                          ->orWhereHas('vehicleRegistration', function ($query) {
-                              $query->where('is_already_processed', false);
-                          });
-                    })->pluck('id');
+                $unprocessedIds = \App\Models\VehicleRegistration::where('ditlantas_process_id', $validated['ditlantas_process_id'])
+                    ->where('is_already_processed', false)
+                    ->pluck('id');
 
                 if ($unprocessedIds->isNotEmpty()) {
                     return $this->responseError('Cannot update BBN Bill. Unprocessed vehicle registrations found for IDs: ' . $unprocessedIds->implode(', '), 'Unprocessed Data Found', 422);
                 }
 
-                $alreadyExists = BBNBill::where('dealer_id', $validated['dealer_id'])
+                $alreadyExists = BBNBill::where('ditlantas_process_id', $validated['ditlantas_process_id'])
                     ->where('id', '!=', $id)
                     ->exists();
                 if ($alreadyExists) {
-                    return $this->responseError('A BBN Bill for this dealer already exists', 'Duplicate data found', 422);
+                    return $this->responseError('A BBN Bill for this Ditlantas Process already exists', 'Duplicate data found', 422);
                 }
 
-                $notUpdatedExists = VehicleData::where('dealer_id', $validated['dealer_id'])
-                    ->whereHas('vehicleRegistration', function ($query) {
-                        $query->where('is_update_additional_data', false);
-                    })->exists();
+                $notUpdatedExists = \App\Models\VehicleRegistration::where('ditlantas_process_id', $validated['ditlantas_process_id'])
+                    ->where('is_update_additional_data', false)
+                    ->exists();
 
                 if ($notUpdatedExists) {
                     return $this->responseError('Vehicle registration data has not been updated yet', 'Validation failed', 422);
                 }
             }
-
+ 
             $bbnBill->update($validated);
             return $this->responseSuccess($bbnBill->fresh(), 'BBN Bill updated successfully');
         } catch (ModelNotFoundException $err) {

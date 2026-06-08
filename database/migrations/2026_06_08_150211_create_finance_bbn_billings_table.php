@@ -11,12 +11,12 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('bbn_bills', function (Blueprint $table) {
+        Schema::create('finance_bbn_billings', function (Blueprint $table) {
             $table->id();
             $table->uuid('uuid')->unique();
-            $table->string('code')->unique()->nullable(false);
-            $table->date('bill_date');
-            $table->date('paid_date')->nullable();
+            $table->foreignId('bbn_bill_id')->constrained('bbn_bills')->onDelete('cascade');
+            $table->foreignId('cash_id')->constrained('cashes')->onDelete('cascade');
+            $table->bigInteger('amount');
             $table->timestamps();
         });
     }
@@ -26,6 +26,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('bbn_bills');
+        Schema::dropIfExists('finance_bbn_billings');
     }
 };
