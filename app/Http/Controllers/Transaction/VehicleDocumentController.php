@@ -3,18 +3,18 @@
 namespace App\Http\Controllers\Transaction;
 
 use App\Http\Controllers\Controller;
+use App\Models\DitlantasProcess;
 use App\Models\Person;
 use App\Models\VehicleDocument;
-use App\Models\VehicleDocumentItem;
-use App\Traits\ResponseTrait;
+use App\Rules\RightPersonRule;
 use App\Traits\GlobalCodeNumberTrait;
+use App\Traits\ResponseTrait;
 use Exception;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
-use Illuminate\Validation\Rule;
-use App\Rules\RightPersonRule;
 
 /**
  * @group Transaction
@@ -35,7 +35,7 @@ class VehicleDocumentController extends Controller
         $this->middleware(['permission:transaction:delete'])->only(['destroy']);
 
         $this->vehicleDocumentTable = [
-            'id', 'uuid', 'code', 'vendor_id', 'receipt_date', 'description', 'created_at', 'updated_at'
+            'id', 'uuid', 'code', 'ditlantas_process_id', 'receipt_date', 'description', 'created_at', 'updated_at'
         ];
     }
 
@@ -46,7 +46,7 @@ class VehicleDocumentController extends Controller
     {
         $query = VehicleDocument::query();
 
-        $query->with(['vendor:id,name,code']);
+        $query->with(['ditlantasProcess:id,code,vendor_id', 'ditlantasProcess.vendor:id,name,code']);
         $query->withCount([
             'vehicleRegistrations as processed_count' => function ($query) {
                 $query->where('is_already_processed', true);
@@ -75,11 +75,11 @@ class VehicleDocumentController extends Controller
             $data = $query->orderBy($sortBy, $sortOrder)->paginate($request->per_page ?? 10);
 
             return $this->responseSuccess($data, 'Vehicle Documents retrieved successfully', 200);
-        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $err) {
+        } catch (ModelNotFoundException $err) {
             $model = class_basename($err->getModel() ?: 'Data');
             $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
             return $this->responseError(null, $friendlyModel . ' not found', 404);
-        } catch (\Exception $err) {
+        } catch (Exception $err) {
             Log::error('Error while retrieving Vehicle Documents: ' . $err->getMessage());
             return $this->responseError($err->getMessage(), 'Failed to retrieve Vehicle Documents', 500);
         }
@@ -90,46 +90,38 @@ class VehicleDocumentController extends Controller
      */
     public function store(Request $request)
     {
-        if (is_string($request->items)) {
-            $request->merge([
-                'items' => json_decode($request->items, true),
-            ]);
-        }
-
         $validator = Validator::make($request->all(), [
-            'vendor_id' => [
+            'ditlantas_process_id' => [
                 'required',
                 'integer',
-                new RightPersonRule('vendor')
+                'exists:ditlantas_processed,id'
             ],
             'receipt_date' => 'required|date',
             'description' => 'nullable|string',
-        ], [
-            'receipt_date.unique' => 'A vehicle document for this vendor on this receipt date already exists.',
-        ], []);
+        ]);
  
         if ($validator->fails()) {
             return $this->responseError($validator->errors(), 'Validation failed', 422);
         }
  
-        // Check if vendor is valid and has registrations
-        $vendor = Person::findOrFail($request->vendor_id);
+        // Check if ditlantasProcess is valid and has registrations
+        $ditlantasProcess = DitlantasProcess::findOrFail($request->ditlantas_process_id);
 
-        if ($vendor->vehicleRegistrations()->count() == 0) {
-            return $this->responseError((object) ['message' => 'The selected vendor has no vehicle registrations data.'], 'Validation failed', 422);
+        if ($ditlantasProcess->vehicleRegistrations()->count() == 0) {
+            return $this->responseError((object) ['message' => 'The selected Ditlantas Process has no vehicle registrations data.'], 'Validation failed', 422);
         }
 
-        // Check if there are any unprocessed vehicle registrations for this vendor
-        $unprocessedExists = $vendor->vehicleRegistrations()
+        // Check if there are any unprocessed vehicle registrations for this ditlantas process
+        $unprocessedExists = $ditlantasProcess->vehicleRegistrations()
             ->where('is_already_processed', false)
             ->exists();
 
         if (!$unprocessedExists) {
-            return $this->responseError((object) ['message' => 'This vendor has no unprocessed vehicle registrations.'], 'Validation failed', 422);
+            return $this->responseError((object) ['message' => 'This Ditlantas Process has no unprocessed vehicle registrations.'], 'Validation failed', 422);
         }
 
-        // Check if there is already a document for this vendor and date that still has unprocessed registrations
-        $duplicateWithUnprocessedExists = VehicleDocument::where('vendor_id', $request->vendor_id)
+        // Check if there is already a document for this ditlantas process and date that still has unprocessed registrations
+        $duplicateWithUnprocessedExists = VehicleDocument::where('ditlantas_process_id', $request->ditlantas_process_id)
             ->whereDate('receipt_date', $request->receipt_date)
             ->whereHas('vehicleRegistrations', function ($q) {
                 $q->where('is_already_processed', false);
@@ -137,18 +129,18 @@ class VehicleDocumentController extends Controller
             ->exists();
 
         if ($duplicateWithUnprocessedExists) {
-            return $this->responseError((object) ['receipt_date' => ['A vehicle document with unprocessed registrations for this vendor on this receipt date already exists.']], 'Validation failed', 422);
+            return $this->responseError((object) ['receipt_date' => ['A vehicle document with unprocessed registrations for this Ditlantas Process on this receipt date already exists.']], 'Validation failed', 422);
         }
 
         try {
-            $document = DB::transaction(function () use ($request) {
-                $vendor = Person::find($request->vendor_id);
+            $document = DB::transaction(function () use ($request, $ditlantasProcess) {
+                $vendor = $ditlantasProcess->vendor;
                 $companySlug = $vendor?->company?->slug ?? '';
                 $code = $this->code($companySlug, 'penerimaan_input_stnk_bpkb');
 
                 $document = VehicleDocument::create([
                     'code' => $code,
-                    'vendor_id' => $request->vendor_id,
+                    'ditlantas_process_id' => $request->ditlantas_process_id,
                     'receipt_date' => $request->receipt_date,
                     'description' => $request->description,
                 ]);
@@ -157,11 +149,11 @@ class VehicleDocumentController extends Controller
             });
 
             return $this->responseSuccess($document, 'Vehicle Document created successfully', 201);
-        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $err) {
+        } catch (ModelNotFoundException $err) {
             $model = class_basename($err->getModel() ?: 'Data');
             $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
             return $this->responseError(null, $friendlyModel . ' not found', 404);
-        } catch (\Exception $err) {
+        } catch (Exception $err) {
             Log::error('Error while creating Vehicle Document: ' . $err->getMessage());
             return $this->responseError($err->getMessage(), 'Failed to create Vehicle Document', 500);
         }
@@ -174,12 +166,15 @@ class VehicleDocumentController extends Controller
     {
         try {
             $document = VehicleDocument::with([
-                'vendor:id,uuid,code,type,name',
-                'vendor.vehicleRegistrations',
-                'vendor.vehicleRegistrations.vehicleData:id,uuid,dealer_id,region_id,ktp_number,stnk_name,chassis_number,machine_number',
-                'vendor.vehicleRegistrations.vehicleData.dealer:id,uuid,company_id,code,name',
-                'vendor.vehicleRegistrations.vehicleData.region:id,uuid,code,name',
-                'vehicleDocumentItems.vehicleData',
+                'ditlantasProcess',
+                'ditlantasProcess.vehicleRegistrations',
+            ])->withCount([
+                'vehicleRegistrations as processed_count' => function ($query) {
+                    $query->where('is_already_processed', true);
+                },
+                'vehicleRegistrations as unprocessed_count' => function ($query) {
+                    $query->where('is_already_processed', false);
+                }
             ])->find($id);
 
             if (!$document) {
@@ -187,11 +182,11 @@ class VehicleDocumentController extends Controller
             }
 
             return $this->responseSuccess($document, 'Vehicle Document retrieved successfully', 200);
-        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $err) {
+        } catch (ModelNotFoundException $err) {
             $model = class_basename($err->getModel() ?: 'Data');
             $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
             return $this->responseError(null, $friendlyModel . ' not found', 404);
-        } catch (\Exception $err) {
+        } catch (Exception $err) {
             Log::error('Error while retrieving Vehicle Document: ' . $err->getMessage());
             return $this->responseError($err->getMessage(), 'Failed to retrieve Vehicle Document', 500);
         }
@@ -203,10 +198,10 @@ class VehicleDocumentController extends Controller
     public function update(Request $request, string $id)
     {
         $validator = Validator::make($request->all(), [
-            'vendor_id' => [
+            'ditlantas_process_id' => [
                 'sometimes',
                 'integer',
-                new RightPersonRule('vendor')
+                'exists:ditlantas_processed,id'
             ],
             'receipt_date' => 'sometimes|date',
             'description' => 'sometimes|nullable|string',
@@ -216,23 +211,21 @@ class VehicleDocumentController extends Controller
             return $this->responseError($validator->errors(), 'Validation failed', 422);
         }
 
-        // Check for duplicate document and unprocessed registrations
-        if ($request->has('vendor_id') || $request->has('receipt_date')) {
+        if ($request->has('ditlantas_process_id') || $request->has('receipt_date')) {
             $document = VehicleDocument::findOrFail($id);
-            $vendorId = $request->vendor_id ?? $document->vendor_id;
+            $ditlantasProcessId = $request->ditlantas_process_id ?? $document->ditlantas_process_id;
             $receiptDate = $request->receipt_date ?? $document->receipt_date;
 
-            $vendor = Person::findOrFail($vendorId);
-            $unprocessedExists = $vendor->vehicleRegistrations()
+            $ditlantasProcess = DitlantasProcess::findOrFail($ditlantasProcessId);
+            $unprocessedExists = $ditlantasProcess->vehicleRegistrations()
                 ->where('is_already_processed', false)
                 ->exists();
 
             if (!$unprocessedExists) {
-                return $this->responseError((object) ['message' => 'This vendor has no unprocessed vehicle registrations.'], 'Validation failed', 422);
+                return $this->responseError((object) ['message' => 'This Ditlantas Process has no unprocessed vehicle registrations.'], 'Validation failed', 422);
             }
 
-            // Check if there is already another document for this vendor and date that still has unprocessed registrations
-            $duplicateWithUnprocessedExists = VehicleDocument::where('vendor_id', $vendorId)
+            $duplicateWithUnprocessedExists = VehicleDocument::where('ditlantas_process_id', $ditlantasProcessId)
                 ->whereDate('receipt_date', $receiptDate)
                 ->where('id', '!=', $id)
                 ->whereHas('vehicleRegistrations', function ($q) {
@@ -241,23 +234,23 @@ class VehicleDocumentController extends Controller
                 ->exists();
 
             if ($duplicateWithUnprocessedExists) {
-                return $this->responseError((object) ['receipt_date' => ['A vehicle document with unprocessed registrations for this vendor on this receipt date already exists.']], 'Validation failed', 422);
+                return $this->responseError((object) ['receipt_date' => ['A vehicle document with unprocessed registrations for this Ditlantas Process on this receipt date already exists.']], 'Validation failed', 422);
             }
         }
 
         try {
             $document = DB::transaction(function () use ($request, $id) {
                 $document = VehicleDocument::findOrFail($id);
-                $document->update($request->only(['vendor_id', 'receipt_date', 'description']));
+                $document->update($request->only(['ditlantas_process_id', 'receipt_date', 'description']));
                 return $document->fresh();
             });
 
             return $this->responseSuccess($document, 'Vehicle Document updated successfully', 200);
-        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $err) {
+        } catch (ModelNotFoundException $err) {
             $model = class_basename($err->getModel() ?: 'Data');
             $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
             return $this->responseError(null, $friendlyModel . ' not found', 404);
-        } catch (\Exception $err) {
+        } catch (Exception $err) {
             Log::error('Error while updating Vehicle Document: ' . $err->getMessage());
             return $this->responseError($err->getMessage(), 'Failed to update Vehicle Document', 500);
         }
@@ -273,11 +266,11 @@ class VehicleDocumentController extends Controller
             $document->delete();
 
             return $this->responseSuccess([], 'Vehicle Document deleted successfully', 200);
-        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $err) {
+        } catch (ModelNotFoundException $err) {
             $model = class_basename($err->getModel() ?: 'Data');
             $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
             return $this->responseError(null, $friendlyModel . ' not found', 404);
-        } catch (\Exception $err) {
+        } catch (Exception $err) {
             Log::error('Error while deleting Vehicle Document: ' . $err->getMessage());
             return $this->responseError($err->getMessage(), 'Failed to delete Vehicle Document', 500);
         }
