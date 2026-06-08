@@ -15,7 +15,7 @@ return new class extends Migration
             $table->id();
             $table->uuid('uuid')->unique();
             $table->string('code')->unique()->nullable(false);
-            $table->foreignId('dealer_id')->constrained('persons');
+            $table->foreignId('ditlantas_process_id')->constrained('ditlantas_processed');
             $table->date('bill_date');
             $table->date('paid_date')->nullable();
             $table->timestamps();

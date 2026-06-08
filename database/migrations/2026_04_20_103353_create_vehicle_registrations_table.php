@@ -14,7 +14,6 @@ return new class extends Migration
         Schema::create('vehicle_registrations', function (Blueprint $table) {
             $table->id();
             $table->uuid('uuid')->unique();
-            $table->foreignId('vendor_id')->constrained('persons')->onDelete('cascade');
             $table->foreignId('vehicle_data_id')->constrained('vehicle_datas')->onDelete('cascade');
             $table->date('process_date')->nullable();
             $table->boolean('is_already_processed')->default(false);

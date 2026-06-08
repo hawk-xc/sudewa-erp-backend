@@ -15,7 +15,6 @@ return new class extends Migration
             $table->id();
             $table->uuid('uuid')->unique();
             $table->string('code')->unique();
-            $table->foreignId('vendor_id')->constrained('persons')->onDelete('cascade');
             $table->date('receipt_date')->nullable();
             $table->text('description')->nullable();
             $table->timestamps();

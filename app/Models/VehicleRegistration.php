@@ -14,7 +14,7 @@ class VehicleRegistration extends Model
 
     protected $fillable = [
         'uuid',
-        'vendor_id',
+        'ditlantas_process_id',
         'vehicle_data_id',
         'process_date',  // date
         
@@ -93,9 +93,9 @@ class VehicleRegistration extends Model
         'pnbp_bpkb' => 'integer',
     ];
 
-    public function vendor()
+    public function ditlantasProcess()
     {
-        return $this->belongsTo(Person::class);
+        return $this->belongsTo(DitlantasProcess::class, 'ditlantas_process_id', 'id');
     }
 
     public function vehicleData()

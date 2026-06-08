@@ -16,13 +16,13 @@ class BBNBill extends Model
     protected $fillable = [
         'uuid',
         'code',
-        'dealer_id',
+        'ditlantas_process_id',
         'bill_date',
         'paid_date',
     ];
 
     protected $casts = [
-        'dealer_id' => 'integer',
+        'ditlantas_process_id' => 'integer',
         'bill_date' => 'datetime',
         'paid_date' => 'datetime',
     ];
@@ -44,12 +44,10 @@ class BBNBill extends Model
 
     public function getBruttoAmountAttribute()
     {
-        $dealer = $this->dealer;
-        if (!$dealer) return 0;
+        $ditlantasProcessId = $this->ditlantas_process_id;
+        if (!$ditlantasProcessId) return 0;
 
-        $vehicleDataIds = $dealer->vehicleDatas()->pluck('id');
-
-        $subTotal = (int) VehicleRegistration::whereIn('vehicle_data_id', $vehicleDataIds)
+        $subTotal = (int) VehicleRegistration::where('ditlantas_process_id', $ditlantasProcessId)
             ->get()
             ->sum(function ($reg) {
                 return $reg->stck_fee +
@@ -75,12 +73,10 @@ class BBNBill extends Model
 
     public function getPPH23AmountAttribute()
     {
-        $dealer = $this->dealer;
-        if (!$dealer) return 0;
+        $ditlantasProcessId = $this->ditlantas_process_id;
+        if (!$ditlantasProcessId) return 0;
 
-        $vehicleDataIds = $dealer->vehicleDatas()->pluck('id');
-
-        $subTotal = (int) VehicleRegistration::whereIn('vehicle_data_id', $vehicleDataIds)
+        $subTotal = (int) VehicleRegistration::where('ditlantas_process_id', $ditlantasProcessId)
             ->get()
             ->sum(function ($reg) {
                 return $reg->stck_fee +
@@ -120,9 +116,9 @@ class BBNBill extends Model
         return (int) ($this->brutto_amount - $this->paid_amount);
     }
 
-    public function dealer()
+    public function ditlantasProcess()
     {
-        return $this->belongsTo(Person::class, 'dealer_id');
+        return $this->belongsTo(DitlantasProcess::class, 'ditlantas_process_id');
     }
 
     public function bbnBillBillings()

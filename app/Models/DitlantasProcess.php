@@ -14,6 +14,7 @@ class DitlantasProcess extends Model
 
     protected $fillable = [
         'uuid',
+        'code',
         'vendor_id',
         'process_date',
         'note'
@@ -31,6 +32,11 @@ class DitlantasProcess extends Model
     public function vendor()
     {
         return $this->belongsTo(Person::class, 'vendor_id', 'id');
+    }
+
+    public function vehicleRegistrations()
+    {
+        return $this->hasMany(VehicleRegistration::class, 'ditlantas_process_id', 'id');
     }
 
     protected static function booted()

@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use App\Models\VehicleDocumentItem;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
@@ -15,9 +14,9 @@ class VehicleDocument extends Model
 
     protected $fillable = [
         'uuid',
-        'code', // TRM-260419001 (YYMMDDXXX)
-        'vendor_id',
-        'receipt_date', // date
+        'code',
+        'ditlantas_process_id',
+        'receipt_date',
         'description'
     ];
 
@@ -30,14 +29,14 @@ class VehicleDocument extends Model
         return $this->belongsTo(Person::class);
     }
 
-    public function vehicleDocumentItems()
+    public function ditlantasProcess()
     {
-        return $this->hasMany(VehicleDocumentItem::class);
+        return $this->belongsTo(DitlantasProcess::class, 'ditlantas_process_id', 'id');
     }
 
     public function vehicleRegistrations()
     {
-        return $this->hasMany(VehicleRegistration::class, 'vendor_id', 'vendor_id');
+        return $this->hasMany(VehicleRegistration::class, 'ditlantas_process_id', 'ditlantas_process_id');
     }
 
     protected static function booted()

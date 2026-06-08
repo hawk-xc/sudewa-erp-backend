@@ -14,6 +14,7 @@ return new class extends Migration
         Schema::create('ditlantas_processed', function (Blueprint $table) {
             $table->id();
             $table->uuid();
+            $table->string('code')->unique(true)->nullable(false);
             $table->foreignId('vendor_id')->constrained('persons')->nullable(false)->cascadeOnDelete();
             $table->date('process_date')->nullable(false)->comment('Tanggal Proses');
             $table->string('note')->nullable(true);
