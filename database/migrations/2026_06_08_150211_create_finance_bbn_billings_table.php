@@ -15,7 +15,7 @@ return new class extends Migration
             $table->id();
             $table->uuid('uuid')->unique();
             $table->foreignId('bbn_bill_id')->constrained('bbn_bills')->onDelete('cascade');
-            $table->foreignId('cash_id')->constrained('cashes')->onDelete('cascade');
+            $table->foreignId('cash_id')->nullable(true)->constrained('cashes')->onDelete('cascade');
             $table->bigInteger('amount');
             $table->timestamps();
         });

@@ -3,13 +3,15 @@
 namespace App\Http\Controllers\Finance;
 
 use App\Http\Controllers\Controller;
-use App\Models\Finance\FinanceBBNBilling;
+use App\Models\Cash;
+use App\Models\FinanceBBNBilling;
+use App\Rules\RightCashRule;
 use App\Traits\ResponseTrait;
 use Exception;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Database\Eloquent\ModelNotFoundException;
 
 class FinanceBBNBillController extends Controller
 {
@@ -99,17 +101,53 @@ class FinanceBBNBillController extends Controller
 
     public function update(Request $request, string $id)
     {
+        $item = FinanceBBNBilling::findOrFailOrFail($id);
+
         $validated = $request->validate([
-            'bbn_bill_id' => 'sometimes|required|exists:bbn_bills,id',
-            'cash_id' => 'sometimes|required|exists:cashes,id',
-            'amount' => 'sometimes|required|numeric|min:1',
+            'cash_id' => [
+                'required',
+                'exists:cashes,id',
+                new RightCashRule(3),
+            ]
         ]);
 
         try {
-            $item = DB::transaction(function () use ($id, $validated) {
-                $item = FinanceBBNBilling::findOrFail($id);
+            $item = DB::transaction(function () use ($item, $validated) {
+                $oldCashId = $item->cash_id;
+                $oldAmount = (float) $item->amount;
+
                 $item->update($validated);
-                return $item->fresh(['bbnBill', 'cash']);
+                $item = $item->fresh();
+
+                $newCashId = $item->cash_id;
+                $newAmount = (float) $item->amount;
+
+                if ($oldCashId === $newCashId) {
+                    if ($newCashId) {
+                        $cash = Cash::findOrFail($newCashId);
+                        if ($cash) {
+                            $diffAmount = $newAmount - $oldAmount;
+                            if ($diffAmount != 0) {
+                                $cash->adjustAmount($diffAmount, 'credit');
+                            }
+                        }
+                    }
+                } else {
+                    if ($oldCashId) {
+                        $oldCash = Cash::findOrFail($oldCashId);
+                        if ($oldCash) {
+                            $oldCash->adjustAmount(-$oldAmount, 'credit');
+                        }
+                    }
+                    if ($newCashId) {
+                        $newCash = Cash::findOrFail($newCashId);
+                        if ($newCash) {
+                            $newCash->adjustAmount($newAmount, 'credit');
+                        }
+                    }
+                }
+
+                return $item->load(['bbnBill', 'cash']);
             });
 
             return $this->responseSuccess($item, 'Finance BBN Billing updated successfully');

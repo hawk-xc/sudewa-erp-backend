@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Models\Finance;
+namespace App\Models;
 
 use App\Models\BBNBill;
 use App\Models\Cash;
@@ -24,6 +24,7 @@ class FinanceBBNBilling extends Model
     protected $casts = [
         'bbn_bill_id' => 'integer',
         'cash_id' => 'integer',
+        'amount' => 'integer',
     ];
 
     public function cash()

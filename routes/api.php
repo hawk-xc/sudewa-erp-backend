@@ -324,6 +324,11 @@ Route::group(
             // Invoice Finance Payment
             Route::apiResource('finance-invoice-billing-payment', FinanceInvoiceBillingPaymentController::class)->except(['index', 'show', 'destroy', 'update']);
 
+            // BBN Billing
+            Route::get('bbn-billing', [FinanceBBNBillController::class, 'index']);
+            Route::get('bbn-billing/{id}', [FinanceBBNBillController::class, 'show']);
+            Route::put('bbn-billing/{id}', [FinanceBBNBillController::class, 'update']);
+            
             // hold
             Route::apiResource('withholding-tax', WithHoldingTaxController::class);
         });

@@ -4,6 +4,7 @@ namespace App\Traits;
 
 use App\Models\Asset;
 use App\Models\BBNBill;
+use App\Models\DitlantasProcess;
 use App\Models\DOExpedition;
 use App\Models\DOInvoice;
 use App\Models\DOOrderList;
@@ -203,7 +204,7 @@ trait GlobalCodeNumberTrait
                 $prefix = 'ORD-' . strtoupper($compKey) . '/' . date('Ymd') . '-';
                 break;
             case 'ditlantas_input_stnk_bpkb':
-                $modelClass = VehicleDocument::class;
+                $modelClass = DitlantasProcess::class;
                 $prefix = 'DTL-' . strtoupper($compKey) . '/' . date('Ymd') . '-';
                 break;
             case 'penerimaan_input_stnk_bpkb':

@@ -11,6 +11,9 @@ return new class extends Migration
      */
     public function up(): void
     {
+        if (!Schema::hasTable('migrations')) {
+             throw new \Exception("Migrations table is missing before creating uj_driver_billing_payments");
+        }
         Schema::create('uj_driver_billing_payments', function (Blueprint $table) {
             $table->id();
             $table->uuid();

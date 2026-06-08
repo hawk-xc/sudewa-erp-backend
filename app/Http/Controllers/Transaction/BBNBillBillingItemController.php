@@ -7,7 +7,7 @@ use App\Models\BBNBillBilling;
 use App\Models\BBNBillBillingItem;
 use App\Models\TransactionFlow;
 use App\Models\Cash;
-use App\Models\Finance\FinanceBBNBilling;
+use App\Models\FinanceBBNBilling;
 use App\Rules\RightCashRule;
 use App\Traits\GlobalCodeNumberTrait;
 use App\Traits\ResponseTrait;
@@ -76,7 +76,7 @@ class BBNBillBillingItemController extends Controller
             'cash_id' => [
                 'required',
                 'exists:cashes,id',
-                new RightCashRule(fn () => BBNBillBilling::find($request->bbn_bill_billing_id)?->bbnBill?->dealer?->company_id),
+                new RightCashRule(fn () => BBNBillBilling::findOrFail($request->bbn_bill_billing_id)?->bbnBill?->dealer?->company_id),
             ],
             'amount' => 'required|numeric|min:1',
         ]);
@@ -84,47 +84,50 @@ class BBNBillBillingItemController extends Controller
         $billing = BBNBillBilling::findOrFail($validated['bbn_bill_billing_id']);
         $remainingBefore = $billing->getRemainingAmount();
 
-        if ($validated['amount'] > $remainingBefore) {
-            return $this->responseError('Payment amount exceeds the remaining balance of ' . number_format($remainingBefore), 'Validation failed', 422);
+        if ((int) $validated['amount'] !== (int) $remainingBefore) {
+            return $this->responseError('Payment must be paid in full. Remaining balance is ' . number_format($remainingBefore), 'Validation failed', 422);
         }
 
         try {
             $data = DB::transaction(function () use ($validated, $billing) {
                 $item = BBNBillBillingItem::create($validated);
                 
-                // Add data to FinanceBBNBilling model
-                FinanceBBNBilling::create([
-                    'bbn_bill_id' => $billing->bbn_bill_id,
-                    'cash_id' => $item->cash_id,
-                    'amount' => $item->amount,
-                ]);
-                
                 $billing->refresh();
                 $remainingPayment = $billing->getRemainingAmount();
                 $item->remaining_payment = $remainingPayment;
 
-                if ($remainingPayment <= 0) {
-                    $cash = Cash::find($validated['cash_id']);
-                    $bankIdrCredit = 0;
-                    $cashIdrCredit = 0;
+                $cash = Cash::findOrFail($validated['cash_id']);
+                $bankUsdCredit = 0;
+                $bankIdrCredit = 0;
+                $cashIdrCredit = 0;
 
-                    if ($cash) {
-                        if ($cash->type === 'bank') {
-                            $bankIdrCredit = $billing->total_payment;
-                        } else {
-                            $cashIdrCredit = $billing->total_payment;
-                        }
+                if ($cash->type === 'bank') {
+                    if (str_contains(strtolower($cash->code), 'usd')) {
+                        $bankUsdCredit = $item->amount;
+                    } else {
+                        $bankIdrCredit = $item->amount;
                     }
-
-                    TransactionFlow::create([
-                        'company_id' => 4,
-                        'transaction_date' => $item->paid_date,
-                        'name' => $billing->bbnBill?->ditlantasProcess?->vendor?->name ?? null,
-                        'description' => "Pelunasan BBN Bill: " . ($billing->bbnBill?->code ?? ''),
-                        'bank_idr_credit' => $bankIdrCredit,
-                        'cash_idr_credit' => $cashIdrCredit,
-                    ]);
+                } else {
+                    $cashIdrCredit = $item->amount;
                 }
+
+                $prefix = $remainingPayment <= 0 ? 'Pelunasan' : 'Pembayaran';
+
+                TransactionFlow::create([
+                    'company_id' => $cash->company_id,
+                    'transaction_date' => $item->paid_date,
+                    'name' => $billing->bbnBill?->ditlantasProcess?->vendor?->name ?? null,
+                    'description' => "{$prefix} BBN Bill: " . ($billing->bbnBill?->code ?? ''),
+                    'bank_usd_credit' => $bankUsdCredit,
+                    'bank_idr_credit' => $bankIdrCredit,
+                    'cash_idr_credit' => $cashIdrCredit,
+                ]);
+
+                FinanceBBNBilling::create([
+                    'bbn_bill_id' => $billing->bbn_bill_id,
+                    'cash_id' => null,
+                    'amount' => $item->amount,
+                ]);
 
                 return $item;
             });
@@ -152,7 +155,7 @@ class BBNBillBillingItemController extends Controller
                     'sometimes',
                     'required',
                     'exists:cashes,id',
-                    new RightCashRule(fn () => BBNBillBilling::find($request->bbn_bill_billing_id ?? $item->bbn_bill_billing_id)?->bbnBill?->dealer?->company_id),
+                    new RightCashRule(fn () => BBNBillBilling::findOrFail($request->bbn_bill_billing_id ?? $item->bbn_bill_billing_id)?->bbnBill?->dealer?->company_id),
                 ],
                 'amount' => 'sometimes|required|numeric',
             ]);
