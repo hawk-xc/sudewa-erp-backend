@@ -8,11 +8,19 @@ use App\Traits\ResponseTrait;
 use Exception;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
+use App\Repositories\AuthRepository;
 
 class VehicleRegistrationReport extends Controller
 {
     use ResponseTrait;
+
+    protected AuthRepository $authRepository;
+
+    public function __construct(AuthRepository $ar)
+    {
+        $this->authRepository = $ar;
+        $this->middleware(['permission:report:list'])->only(['getBPKBReport', 'getSTNKReport', 'getSKPDReport', 'getTNKBReport']);
+    }
 
     protected function basicQuery(string $dataType, Request $request) {
         $query = VehicleRegistration::query()->with(['vendor:id,name,code', 'vehicleData']);

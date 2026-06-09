@@ -22,7 +22,7 @@ class UnitTypeDetailReportController extends Controller
     {
         $this->authRepository = $ar;
 
-        $this->middleware(['permission:report:list'])->only(['index', 'show']);
+        $this->middleware(['permission:report:list'])->only(['index', 'export']);
     }
 
     public function index(Request $request)
