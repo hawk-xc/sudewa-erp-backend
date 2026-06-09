@@ -40,6 +40,7 @@ use App\Http\Controllers\Report\TransactionReportController;
 use App\Http\Controllers\Report\UnitTypeDetailReportController;
 use App\Http\Controllers\Report\VehicleRegisterReceiptReport;
 use App\Http\Controllers\Report\VehicleRegistrationReport;
+use App\Http\Controllers\Report\VehicleRegistrationSubmissionReport;
 use App\Http\Controllers\Role\RoleController;
 use App\Http\Controllers\Transaction\BBNBillBillingController;
 use App\Http\Controllers\Transaction\BBNBillBillingItemController;
@@ -354,6 +355,9 @@ Route::group(
             Route::get('stnk-receipt', [VehicleRegisterReceiptReport::class, 'getSTNKReceipt']);
             Route::get('skpd-receipt', [VehicleRegisterReceiptReport::class, 'getSKPDReceipt']);
             Route::get('tnkb-receipt', [VehicleRegisterReceiptReport::class, 'getTNKBReceipt']);
+
+            // Vehicle Registration Submission
+            Route::get('vehicle-registration-submission', [VehicleRegistrationSubmissionReport::class, 'index']);
         });
 
 	// Stats
