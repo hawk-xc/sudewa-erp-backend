@@ -23,7 +23,12 @@ class VehicleRegistrationReport extends Controller
             'skpd_number' => 'skpd_payment_date',
             default => $dataType,
         };
-        $query->whereNotNull($column);
+
+        if ($request->boolean('is_outstanding')) {
+            $query->whereNull($column);
+        } else {
+            $query->whereNotNull($column);
+        }
 
         // Filter: Vendor
         if ($request->filled('vendor_id')) {
