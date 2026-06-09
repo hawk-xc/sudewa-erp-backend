@@ -224,6 +224,8 @@ Route::group(
             // Goods Stock
             Route::get('goods-transaction-stock', [GoodsTransactionStockController::class, 'index']);
             Route::get('goods-transaction-stock-material', [GoodsTransactionStockController::class, 'indexMaterial']);
+            Route::get('goods-transaction-stock-material-receipt', [GoodsTransactionStockController::class, 'receiptMaterial']);
+            Route::get('goods-transaction-stock-material-issue', [GoodsTransactionStockController::class, 'issueMaterial']);
         });
 
         // Transaction API
@@ -339,7 +341,6 @@ Route::group(
         Route::group(['prefix' => 'report', 'as' => 'report.'], function () {
             Route::get('transaction-purchase-report', [TransactionReportController::class, 'purchaseTransactionReport']);
             Route::get('transaction-sales-report', [TransactionReportController::class, 'salesTransactionReport']);
-            Route::apiResource('liability-report', LiabilityController::class)->only(['index', 'show']);
             Route::get('unit-type-detail-report', [UnitTypeDetailReportController::class, 'index']);
             Route::get('unit-type-detail-stock', [UnitTransactionController::class, 'getStock']);
             Route::get('unit-type-detail-stock/export', [UnitTransactionController::class, 'exportStock']);

@@ -25,7 +25,7 @@ class VehicleRegistrationSubmissionReport extends Controller
     public function index(Request $request)
     {
         try {
-            $query = VehicleRegistration::query()->with(['vendor:id,name,code', 'vehicleData']);
+            $query = VehicleRegistration::query()->with(['vendor:persons.id,persons.name,persons.code', 'vehicleData']);
 
             // Filter: customer_delivery_date is null or not null (defaults to null)
             if ($request->has('is_delivered')) {

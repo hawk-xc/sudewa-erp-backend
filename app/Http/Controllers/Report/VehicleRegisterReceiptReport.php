@@ -9,6 +9,7 @@ use Exception;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\Request;
 use App\Repositories\AuthRepository;
+use Illuminate\Support\Facades\Log;
 
 class VehicleRegisterReceiptReport extends Controller
 {
@@ -23,7 +24,12 @@ class VehicleRegisterReceiptReport extends Controller
     }
 
     protected function basicQuery(string $dataType, Request $request) {
-        $query = VehicleRegistration::query()->with(['vendor:id,name,code', 'vehicleData']);
+        $query = VehicleRegistration::query()->with([
+            'vendor:persons.id,persons.name,persons.code',
+            'vehicleData',
+            'vehicleData.region:id,name',
+            'vehicleData.dealer:id,name',
+        ]);
 
         // Map placeholder fields to actual columns for Receipt Report (must have received date not null)
         $column = match ($dataType) {
@@ -120,6 +126,38 @@ class VehicleRegisterReceiptReport extends Controller
         return $query;
     }
 
+    private function transformReport($data, string $surat)
+    {
+        $data->getCollection()->transform(function ($item) use ($surat) {
+            // Determine TGL DAFTAR (registration_date) based on document type
+            $registrationDate = match ($surat) {
+                'bpkb' => $item->bpkb_registration_date,
+                'stnk' => $item->stnk_registration_date,
+                'skpd' => $item->skpd_payment_date,
+                'tnkb' => $item->tnkb_received_date,
+                default => null,
+            };
+
+            return [
+                'id' => $item->id,
+                'stnk_name' => $item->vehicleData?->stnk_name,
+                "{$surat}_number" => $item->{"{$surat}_number"} ?? null,
+                'region' => $item->vehicleData?->region?->name,
+                'dealer' => $item->vehicleData?->dealer?->name,
+                'vendor' => $item->vendor?->name,
+                'tnkb_number' => $item->tnkb_number,
+                'vehicle_type' => $item->vehicleData?->vehicle_type,
+                'chassis_number' => $item->vehicleData?->chassis_number,
+                'machine_number' => $item->vehicleData?->machine_number,
+                'registration_date' => $registrationDate,
+                "{$surat}_physical_status" => (bool) $item->{"{$surat}_physical_status"},
+                'created_at' => $item->created_at,
+            ];
+        });
+
+        return $data;
+    }
+
     public function getBPKBReceipt(Request $request)
     {
         try {
@@ -133,6 +171,7 @@ class VehicleRegisterReceiptReport extends Controller
             $sortOrder = $request->sort_order === 'asc' ? 'asc' : 'desc';
 
             $data = $query->orderBy($sortBy, $sortOrder)->paginate($request->per_page ?? 10);
+            $data = $this->transformReport($data, 'bpkb');
 
             return $this->responseSuccess($data, 'BPKB Receipt Report retrieved successfully');
         } catch (ModelNotFoundException $err) {
@@ -158,6 +197,7 @@ class VehicleRegisterReceiptReport extends Controller
             $sortOrder = $request->sort_order === 'asc' ? 'asc' : 'desc';
 
             $data = $query->orderBy($sortBy, $sortOrder)->paginate($request->per_page ?? 10);
+            $data = $this->transformReport($data, 'stnk');
 
             return $this->responseSuccess($data, 'STNK Receipt Report retrieved successfully');
         } catch (ModelNotFoundException $err) {
@@ -183,6 +223,7 @@ class VehicleRegisterReceiptReport extends Controller
             $sortOrder = $request->sort_order === 'asc' ? 'asc' : 'desc';
 
             $data = $query->orderBy($sortBy, $sortOrder)->paginate($request->per_page ?? 10);
+            $data = $this->transformReport($data, 'skpd');
 
             return $this->responseSuccess($data, 'SKPD Receipt Report retrieved successfully');
         } catch (ModelNotFoundException $err) {
@@ -208,6 +249,7 @@ class VehicleRegisterReceiptReport extends Controller
             $sortOrder = $request->sort_order === 'asc' ? 'asc' : 'desc';
 
             $data = $query->orderBy($sortBy, $sortOrder)->paginate($request->per_page ?? 10);
+            $data = $this->transformReport($data, 'tnkb');
 
             return $this->responseSuccess($data, 'TNKB Receipt Report retrieved successfully');
         } catch (ModelNotFoundException $err) {
