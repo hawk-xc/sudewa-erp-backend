@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Transaction;
 
 use App\Http\Controllers\Controller;
+use App\Models\Cash;
+use App\Models\CashFlow;
 use App\Models\GoodsTransactionBilling;
 use App\Models\GoodsTransactionBillingPayment;
 use App\Rules\RightCashRule;
@@ -144,6 +146,23 @@ class GoodsTransactionBillingPaymentController extends Controller
                             'is_forecast' => false,
                             'in_stock' => true
                         ]);
+
+                        $exists = CashFlow::where('company_id', $transaction->company_id)
+                            ->where('note', "Pelunasan Total " . $transaction->code)
+                            ->exists();
+
+                        if (!$exists) {
+                            $cash = Cash::find($payment->cash_id);
+                            CashFlow::create([
+                                'company_id' => $transaction->company_id,
+                                'cash_id' => $payment->cash_id,
+                                'account_id' => $cash?->account_id,
+                                'date' => $payment->transaction_date,
+                                'note' => "Pelunasan Total " . $transaction->code,
+                                'debet' => $transaction->type === 'issue' ? $billing->grand_total : 0,
+                                'credit' => $transaction->type === 'receipt' ? $billing->grand_total : 0,
+                            ]);
+                        }
                     }
                 }
 
@@ -189,8 +208,6 @@ class GoodsTransactionBillingPaymentController extends Controller
         }
     }
 
-    /**
-     * Update a goods transaction billing payment.
     public function update(Request $request, string $id)
     {
         try {
@@ -202,7 +219,7 @@ class GoodsTransactionBillingPaymentController extends Controller
                     'sometimes',
                     'required',
                     'exists:cashes,id',
-                    new RightCashRule(fn () => \App\Models\GoodsTransactionBilling::find($payment->goods_transaction_billing_id)?->goodsTransaction?->company_id),
+                    new RightCashRule(fn () => GoodsTransactionBilling::find($payment->goods_transaction_billing_id)?->goodsTransaction?->company_id),
                 ],
                 'amount' => 'sometimes|required|numeric|min:1',
                 'transaction_date' => 'sometimes|required|date',
@@ -241,11 +258,34 @@ class GoodsTransactionBillingPaymentController extends Controller
                             'is_forecast' => false,
                             'in_stock' => true
                         ]);
+
+                        // Create Cash Flow
+                        $exists = CashFlow::where('company_id', $transaction->company_id)
+                            ->where('note', "Pelunasan Total " . $transaction->code)
+                            ->exists();
+
+                        if (!$exists) {
+                            $cash = Cash::find($payment->cash_id);
+                            CashFlow::create([
+                                'company_id' => $transaction->company_id,
+                                'cash_id' => $payment->cash_id,
+                                'account_id' => $cash?->account_id,
+                                'date' => $payment->transaction_date,
+                                'note' => "Pelunasan Total " . $transaction->code,
+                                'debet' => $transaction->type === 'issue' ? $billing->grand_total : 0,
+                                'credit' => $transaction->type === 'receipt' ? $billing->grand_total : 0,
+                            ]);
+                        }
                     } else {
                         $transaction->goodsTransactionDetails()->update([
                             'is_forecast' => true,
                             'in_stock' => false
                         ]);
+
+                        // Delete Cash Flow if exists
+                        CashFlow::where('company_id', $transaction->company_id)
+                            ->where('note', "Pelunasan Total " . $transaction->code)
+                            ->delete();
                     }
                 }
             });
@@ -288,6 +328,11 @@ class GoodsTransactionBillingPaymentController extends Controller
                         'is_forecast' => true,
                         'in_stock' => false
                     ]);
+
+                    // Delete Cash Flow if exists
+                    CashFlow::where('company_id', $transaction->company_id)
+                        ->where('note', "Pelunasan Total " . $transaction->code)
+                        ->delete();
                 }
             });
 
