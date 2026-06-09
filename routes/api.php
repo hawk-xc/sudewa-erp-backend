@@ -38,6 +38,7 @@ use App\Http\Controllers\Permission\PermissionController;
 use App\Http\Controllers\Report\LiabilityController;
 use App\Http\Controllers\Report\TransactionReportController;
 use App\Http\Controllers\Report\UnitTypeDetailReportController;
+use App\Http\Controllers\Report\VehicleRegisterReceiptReport;
 use App\Http\Controllers\Report\VehicleRegistrationReport;
 use App\Http\Controllers\Role\RoleController;
 use App\Http\Controllers\Transaction\BBNBillBillingController;
@@ -347,6 +348,12 @@ Route::group(
             Route::get('stnk-report', [VehicleRegistrationReport::class, 'getSTNKReport']);
             Route::get('skpd-report', [VehicleRegistrationReport::class, 'getSKPDReport']);
             Route::get('tnkb-report', [VehicleRegistrationReport::class, 'getTNKBReport']);
+
+            // BPKB Report
+            Route::get('bpkb-receipt', [VehicleRegisterReceiptReport::class, 'getBPKBReceipt']);
+            Route::get('stnk-receipt', [VehicleRegisterReceiptReport::class, 'getSTNKReceipt']);
+            Route::get('skpd-receipt', [VehicleRegisterReceiptReport::class, 'getSKPDReceipt']);
+            Route::get('tnkb-receipt', [VehicleRegisterReceiptReport::class, 'getTNKBReceipt']);
         });
 
 	// Stats

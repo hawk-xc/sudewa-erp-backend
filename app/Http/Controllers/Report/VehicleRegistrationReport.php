@@ -14,93 +14,199 @@ class VehicleRegistrationReport extends Controller
 {
     use ResponseTrait;
 
-    protected function basicQuery(string $dataType) {
-        $query = VehicleRegistration::query()->with(['vendor:id,name,code', 'vehicleData:id,uuid,']);
+    protected function basicQuery(string $dataType, Request $request) {
+        $query = VehicleRegistration::query()->with(['vendor:id,name,code', 'vehicleData']);
 
-        return $query->whereNotNUll($dataType);
+        // Map placeholder fields to actual columns
+        $column = match ($dataType) {
+            'stnk_number' => 'stnk_registration_date',
+            'skpd_number' => 'skpd_payment_date',
+            default => $dataType,
+        };
+        $query->whereNotNull($column);
+
+        // Filter: Vendor
+        if ($request->filled('vendor_id')) {
+            $query->whereHas('ditlantasProcess', function ($q) use ($request) {
+                $q->where('vendor_id', $request->vendor_id);
+            });
+        }
+
+        // Filter: Dealer
+        if ($request->filled('dealer_id')) {
+            $query->whereHas('vehicleData', function ($q) use ($request) {
+                $q->where('dealer_id', $request->dealer_id);
+            });
+        }
+
+        // Filter: Physical Status (bpkb_physical_status, stnk_physical_status, etc.)
+        foreach (['bpkb_physical_status', 'stnk_physical_status', 'skpd_physical_status', 'tnkb_physical_status'] as $field) {
+            if ($request->filled($field)) {
+                $query->where($field, $request->boolean($field));
+            }
+        }
+
+        // Filter: Physical Status specific to the report type
+        if ($request->filled('physical_status')) {
+            $statusField = match ($dataType) {
+                'bpkb_number' => 'bpkb_physical_status',
+                'stnk_number' => 'stnk_physical_status',
+                'skpd_number' => 'skpd_physical_status',
+                'tnkb_number' => 'tnkb_physical_status',
+                default => null,
+            };
+            if ($statusField) {
+                $query->where($statusField, $request->boolean('physical_status'));
+            }
+        }
+
+        // Filter: Dates and Date Ranges
+        $dateFields = [
+            'process_date',
+            'customer_delivery_date',
+            'bpkb_registration_date',
+            'bpkb_received_date',
+            'stnk_registration_date',
+            'stnk_received_date',
+            'skpd_payment_date',
+            'skpd_received_date',
+            'tnkb_received_date',
+        ];
+
+        foreach ($dateFields as $field) {
+            if ($request->filled($field)) {
+                $query->whereDate($field, $request->$field);
+            }
+            if ($request->filled($field . '_start')) {
+                $query->whereDate($field, '>=', $request->input($field . '_start'));
+            }
+            if ($request->filled($field . '_end')) {
+                $query->whereDate($field, '<=', $request->input($field . '_end'));
+            }
+        }
+
+        // Filter: Processing Status
+        if ($request->filled('is_already_processed')) {
+            $query->where('is_already_processed', $request->boolean('is_already_processed'));
+        }
+
+        // Filter: Search query (across numbers, stnk name, chassis, machine, brand, type, invoice)
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('bpkb_number', 'like', "%$search%")
+                  ->orWhere('tnkb_number', 'like', "%$search%")
+                  ->orWhereHas('vehicleData', function ($q2) use ($search) {
+                      $q2->where('stnk_name', 'like', "%$search%")
+                         ->orWhere('chassis_number', 'like', "%$search%")
+                         ->orWhere('machine_number', 'like', "%$search%")
+                         ->orWhere('invoice_number', 'like', "%$search%")
+                         ->orWhere('motorcycle_brand', 'like', "%$search%")
+                         ->orWhere('motorcycle_type', 'like', "%$search%");
+                  });
+            });
+        }
+
+        return $query;
     }
 
     public function getBPKBReport(Request $request)
     {
-        $query = $this->basicQuery('bpkb_number');
-
         try {
-            $sortBy = $request->sort_by ?? 'id';
+            $query = $this->basicQuery('bpkb_number', $request);
+
+            $allowedSort = [
+                'id', 'process_date', 'customer_delivery_date', 'bpkb_registration_date',
+                'bpkb_received_date', 'bpkb_physical_status', 'created_at'
+            ];
+            $sortBy = in_array($request->sort_by, $allowedSort) ? $request->sort_by : 'id';
             $sortOrder = $request->sort_order === 'asc' ? 'asc' : 'desc';
 
             $data = $query->orderBy($sortBy, $sortOrder)->paginate($request->per_page ?? 10);
 
-            return $this->responseSuccess($data, 'Vehicle Registrations retrieved successfully');
+            return $this->responseSuccess($data, 'BPKB Report retrieved successfully');
         } catch (ModelNotFoundException $err) {
             $model = class_basename($err->getModel() ?: 'Data');
             $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
             return $this->responseError(null, $friendlyModel . ' not found', 404);
         } catch (Exception $err) {
-            Log::error('Error while retrieving Vehicle Registrations: ' . $err->getMessage());
-            return $this->responseError($err->getMessage(), 'Failed to retrieve Vehicle Registrations', 500);
+            Log::error('Error while retrieving BPKB Report: ' . $err->getMessage());
+            return $this->responseError($err->getMessage(), 'Failed to retrieve BPKB Report', 500);
         }
     }
 
     public function getSTNKReport(Request $request)
     {
-        $query = $this->basicQuery('stnk_number');
-
         try {
-            $sortBy = $request->sort_by ?? 'id';
+            $query = $this->basicQuery('stnk_number', $request);
+
+            $allowedSort = [
+                'id', 'process_date', 'customer_delivery_date', 'stnk_registration_date',
+                'stnk_received_date', 'stnk_physical_status', 'created_at'
+            ];
+            $sortBy = in_array($request->sort_by, $allowedSort) ? $request->sort_by : 'id';
             $sortOrder = $request->sort_order === 'asc' ? 'asc' : 'desc';
 
             $data = $query->orderBy($sortBy, $sortOrder)->paginate($request->per_page ?? 10);
 
-            return $this->responseSuccess($data, 'Vehicle Registrations retrieved successfully');
+            return $this->responseSuccess($data, 'STNK Report retrieved successfully');
         } catch (ModelNotFoundException $err) {
             $model = class_basename($err->getModel() ?: 'Data');
             $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
             return $this->responseError(null, $friendlyModel . ' not found', 404);
         } catch (Exception $err) {
-            Log::error('Error while retrieving Vehicle Registrations: ' . $err->getMessage());
-            return $this->responseError($err->getMessage(), 'Failed to retrieve Vehicle Registrations', 500);
+            Log::error('Error while retrieving STNK Report: ' . $err->getMessage());
+            return $this->responseError($err->getMessage(), 'Failed to retrieve STNK Report', 500);
         }
     }
 
     public function getSKPDReport(Request $request)
     {
-        $query = $this->basicQuery('skpd_number');
-
         try {
-            $sortBy = $request->sort_by ?? 'id';
+            $query = $this->basicQuery('skpd_number', $request);
+
+            $allowedSort = [
+                'id', 'process_date', 'customer_delivery_date', 'skpd_payment_date',
+                'skpd_received_date', 'skpd_physical_status', 'created_at'
+            ];
+            $sortBy = in_array($request->sort_by, $allowedSort) ? $request->sort_by : 'id';
             $sortOrder = $request->sort_order === 'asc' ? 'asc' : 'desc';
 
             $data = $query->orderBy($sortBy, $sortOrder)->paginate($request->per_page ?? 10);
 
-            return $this->responseSuccess($data, 'Vehicle Registrations retrieved successfully');
+            return $this->responseSuccess($data, 'SKPD Report retrieved successfully');
         } catch (ModelNotFoundException $err) {
             $model = class_basename($err->getModel() ?: 'Data');
             $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
             return $this->responseError(null, $friendlyModel . ' not found', 404);
         } catch (Exception $err) {
-            Log::error('Error while retrieving Vehicle Registrations: ' . $err->getMessage());
-            return $this->responseError($err->getMessage(), 'Failed to retrieve Vehicle Registrations', 500);
+            Log::error('Error while retrieving SKPD Report: ' . $err->getMessage());
+            return $this->responseError($err->getMessage(), 'Failed to retrieve SKPD Report', 500);
         }
     }
 
     public function getTNKBReport(Request $request)
     {
-        $query = $this->basicQuery('tnkb_number');
-
         try {
-            $sortBy = $request->sort_by ?? 'id';
+            $query = $this->basicQuery('tnkb_number', $request);
+
+            $allowedSort = [
+                'id', 'process_date', 'customer_delivery_date', 'tnkb_received_date',
+                'tnkb_physical_status', 'created_at'
+            ];
+            $sortBy = in_array($request->sort_by, $allowedSort) ? $request->sort_by : 'id';
             $sortOrder = $request->sort_order === 'asc' ? 'asc' : 'desc';
 
             $data = $query->orderBy($sortBy, $sortOrder)->paginate($request->per_page ?? 10);
 
-            return $this->responseSuccess($data, 'Vehicle Registrations retrieved successfully');
+            return $this->responseSuccess($data, 'TNKB Report retrieved successfully');
         } catch (ModelNotFoundException $err) {
             $model = class_basename($err->getModel() ?: 'Data');
             $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
             return $this->responseError(null, $friendlyModel . ' not found', 404);
         } catch (Exception $err) {
-            Log::error('Error while retrieving Vehicle Registrations: ' . $err->getMessage());
-            return $this->responseError($err->getMessage(), 'Failed to retrieve Vehicle Registrations', 500);
+            Log::error('Error while retrieving TNKB Report: ' . $err->getMessage());
+            return $this->responseError($err->getMessage(), 'Failed to retrieve TNKB Report', 500);
         }
     }
 }

@@ -103,6 +103,18 @@ class VehicleRegistration extends Model
         return $this->belongsTo(VehicleData::class);
     }
 
+    public function vendor()
+    {
+        return $this->hasOneThrough(
+            Person::class,
+            DitlantasProcess::class,
+            'id',
+            'id',
+            'ditlantas_process_id',
+            'vendor_id'
+        );
+    }
+
     protected static function booted()
     {
         static::creating(function ($model) {
