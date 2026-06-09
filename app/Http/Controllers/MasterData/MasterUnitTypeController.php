@@ -28,7 +28,7 @@ class MasterUnitTypeController extends Controller
 {
     use ResponseTrait, GlobalCodeNumberTrait;
 
-    protected $unitTypeTable;
+    protected array $unitTypeTable;
 
     protected AuthRepository $authRepository;
 
@@ -181,15 +181,13 @@ class MasterUnitTypeController extends Controller
             'capacity' => 'nullable|decimal:0,2|max:100',
             'unit_type' => 'nullable|string|max:255',
             'unit_model' => 'nullable|string|max:255',
-            'netto_weight' => 'nullable|integer|max:500',
-            // 'bruto_weight' => 'nullable|integer|max:500',
+            'netto_weight' => 'nullable|integer|max:1000',
+            'bruto_weight' => 'nullable|integer|max:1000',
             'buy_price' => 'nullable|integer',
             'sell_price' => 'nullable|integer',
             'description' => 'nullable|string',
         ]);
 
-        // bruto formula
-        $validated['bruto_weight'] = $validated['netto_weight'] + 3;
 
         try {
             $unitType = DB::transaction(function () use ($validated) {
