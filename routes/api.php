@@ -362,6 +362,10 @@ Route::group(
             // Material Report
             Route::get('receipt-material', [GoodsTransactionStockController::class, 'receiptMaterial']);
             Route::get('issue-material', [GoodsTransactionStockController::class, 'issueMaterial']);
+
+            // Vehicle Equipment Report
+            Route::get('receipt-vehicle-equipment', [GoodsTransactionStockController::class, 'receiptVehicleEquipment']);
+            Route::get('issue-vehicle-equipment', [GoodsTransactionStockController::class, 'issueVehicleEquipment']);
         });
 
 	// Stats

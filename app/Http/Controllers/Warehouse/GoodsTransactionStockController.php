@@ -353,4 +353,164 @@ class GoodsTransactionStockController extends Controller
             return $this->responseError(null, $err->getMessage(), 500);
         }
     }
+
+    public function receiptVehicleEquipment(Request $request)
+    {
+        $request->validate([
+            'company_id' => 'required|exists:companies,id',
+        ]);
+
+        try {
+            $companyId = (int) $request->company_id;
+            $warehouseId = Company::findOrFail($companyId)->warehouse->id;
+
+            $query = GoodsTransactionDetail::query()
+                ->with(['goodsTransaction:id,code,transaction_date,type', 'vehicleEquipment:id,code,name'])
+                ->whereHas('goodsTransaction', function ($q) use ($companyId) {
+                    $q->where('type', 'receipt')
+                      ->where('company_id', $companyId);
+                })
+                ->whereNotNull('vehicle_equipment_id');
+
+            $query->select('goods_transaction_details.*')
+                ->selectSub(function ($q) use ($warehouseId) {
+                    $q->from('goods_transaction_details as gtd')
+                        ->join('warehouse_movements', 'warehouse_movements.goods_transaction_detail_id', '=', 'gtd.id')
+                        ->join('warehouse_activities', 'warehouse_movements.warehouse_activity_id', '=', 'warehouse_activities.id')
+                        ->whereColumn('gtd.vehicle_equipment_id', 'goods_transaction_details.vehicle_equipment_id')
+                        ->where('warehouse_activities.warehouse_id', $warehouseId)
+                        ->where('warehouse_movements.status', 'in')
+                        ->selectRaw('COALESCE(SUM(gtd.qty), 0)');
+                }, 'equipment_stock_in')
+                ->selectSub(function ($q) use ($warehouseId) {
+                    $q->from('goods_transaction_details as gtd')
+                        ->join('warehouse_movements', 'warehouse_movements.goods_transaction_detail_id', '=', 'gtd.id')
+                        ->join('warehouse_activities', 'warehouse_movements.warehouse_activity_id', '=', 'warehouse_activities.id')
+                        ->whereColumn('gtd.vehicle_equipment_id', 'goods_transaction_details.vehicle_equipment_id')
+                        ->where('warehouse_activities.warehouse_id', $warehouseId)
+                        ->where('warehouse_movements.status', 'out')
+                        ->selectRaw('COALESCE(SUM(gtd.qty), 0)');
+                }, 'equipment_stock_out');
+
+            if ($request->filled('search')) {
+                $search = $request->search;
+                $query->where(function ($q) use ($search) {
+                    $q->whereHas('vehicleEquipment', function ($sub) use ($search) {
+                        $sub->where('name', 'like', "%{$search}%")
+                            ->orWhere('code', 'like', "%{$search}%");
+                    })->orWhereHas('goodsTransaction', function ($sub) use ($search) {
+                        $sub->where('code', 'like', "%{$search}%");
+                    });
+                });
+            }
+
+            $sortBy = $request->sort_by ?? 'id';
+            $sortOrder = $request->sort_order === 'asc' ? 'asc' : 'desc';
+
+            $query->orderBy($sortBy, $sortOrder);
+
+            $data = $query->paginate($request->per_page ?? 10);
+
+            $data->getCollection()->transform(function ($item) {
+                $item->current_stock = (int)$item->equipment_stock_in - (int)$item->equipment_stock_out;
+                unset($item->equipment_stock_in, $item->equipment_stock_out);
+                
+                if ($item->goodsTransaction) {
+                    $item->goodsTransaction->makeHidden(['goodsTransactionDetails', 'goods_transaction_details']);
+                }
+                
+                $item->makeHidden([
+                    'id', 'goods_transaction_id', 'material_id', 'vehicle_equipment_id',
+                    'in_stock', 'is_forecast', 'price', 'created_at', 'updated_at'
+                ]);
+                
+                return $item;
+            });
+
+            return $this->responseSuccess($data, 'Successfully fetch received vehicle equipment stock data', 200);
+        } catch (Exception $err) {
+            Log::error('Error while fetch received vehicle equipment stock data : '.$err->getMessage());
+            return $this->responseError(null, $err->getMessage(), 500);
+        }
+    }
+
+    public function issueVehicleEquipment(Request $request)
+    {
+        $request->validate([
+            'company_id' => 'required|exists:companies,id',
+        ]);
+
+        try {
+            $companyId = (int) $request->company_id;
+            $warehouseId = Company::findOrFail($companyId)->warehouse->id;
+
+            $query = GoodsTransactionDetail::query()
+                ->with(['goodsTransaction:id,code,transaction_date,type', 'vehicleEquipment:id,code,name'])
+                ->whereHas('goodsTransaction', function ($q) use ($companyId) {
+                    $q->where('type', 'issue')
+                      ->where('company_id', $companyId);
+                })
+                ->whereNotNull('vehicle_equipment_id');
+
+            $query->select('goods_transaction_details.*')
+                ->selectSub(function ($q) use ($warehouseId) {
+                    $q->from('goods_transaction_details as gtd')
+                        ->join('warehouse_movements', 'warehouse_movements.goods_transaction_detail_id', '=', 'gtd.id')
+                        ->join('warehouse_activities', 'warehouse_movements.warehouse_activity_id', '=', 'warehouse_activities.id')
+                        ->whereColumn('gtd.vehicle_equipment_id', 'goods_transaction_details.vehicle_equipment_id')
+                        ->where('warehouse_activities.warehouse_id', $warehouseId)
+                        ->where('warehouse_movements.status', 'in')
+                        ->selectRaw('COALESCE(SUM(gtd.qty), 0)');
+                }, 'equipment_stock_in')
+                ->selectSub(function ($q) use ($warehouseId) {
+                    $q->from('goods_transaction_details as gtd')
+                        ->join('warehouse_movements', 'warehouse_movements.goods_transaction_detail_id', '=', 'gtd.id')
+                        ->join('warehouse_activities', 'warehouse_movements.warehouse_activity_id', '=', 'warehouse_activities.id')
+                        ->whereColumn('gtd.vehicle_equipment_id', 'goods_transaction_details.vehicle_equipment_id')
+                        ->where('warehouse_activities.warehouse_id', $warehouseId)
+                        ->where('warehouse_movements.status', 'out')
+                        ->selectRaw('COALESCE(SUM(gtd.qty), 0)');
+                }, 'equipment_stock_out');
+
+            if ($request->filled('search')) {
+                $search = $request->search;
+                $query->where(function ($q) use ($search) {
+                    $q->whereHas('vehicleEquipment', function ($sub) use ($search) {
+                        $sub->where('name', 'like', "%{$search}%")
+                            ->orWhere('code', 'like', "%{$search}%");
+                    })->orWhereHas('goodsTransaction', function ($sub) use ($search) {
+                        $sub->where('code', 'like', "%{$search}%");
+                    });
+                });
+            }
+
+            $sortBy = $request->sort_by ?? 'id';
+            $sortOrder = $request->sort_order === 'asc' ? 'asc' : 'desc';
+
+            $query->orderBy($sortBy, $sortOrder);
+
+            $data = $query->paginate($request->per_page ?? 10);
+
+            $data->getCollection()->transform(function ($item) {
+                $item->current_stock = (int)$item->equipment_stock_in - (int)$item->equipment_stock_out;
+                unset($item->equipment_stock_in, $item->equipment_stock_out);
+                
+                if ($item->goodsTransaction) {
+                    $item->goodsTransaction->makeHidden(['goodsTransactionDetails', 'goods_transaction_details']);
+                }
+                
+                $item->makeHidden([
+                    'id', 'goods_transaction_id', 'material_id', 'vehicle_equipment_id',
+                    'in_stock', 'is_forecast', 'price', 'created_at', 'updated_at'
+                ]);
+                
+                return $item;
+            });
+
+            return $this->responseSuccess($data, 'Successfully fetch issued vehicle equipment stock data', 200);
+        } catch (Exception $err) {
+            Log::error('Error while fetch issued vehicle equipment stock data : '.$err->getMessage());
+            return $this->responseError(null, $err->getMessage(), 500);
+        }
+    }
 }
