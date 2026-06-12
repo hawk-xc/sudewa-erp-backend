@@ -350,15 +350,18 @@ Route::group(
             Route::get('stnk-report', [VehicleRegistrationReport::class, 'getSTNKReport']);
             Route::get('skpd-report', [VehicleRegistrationReport::class, 'getSKPDReport']);
             Route::get('tnkb-report', [VehicleRegistrationReport::class, 'getTNKBReport']);
+            Route::get('outstanding-report', [VehicleRegistrationReport::class, 'getOutstandingReport']);
 
             // BPKB Report
             Route::get('bpkb-receipt', [VehicleRegisterReceiptReport::class, 'getBPKBReceipt']);
             Route::get('stnk-receipt', [VehicleRegisterReceiptReport::class, 'getSTNKReceipt']);
             Route::get('skpd-receipt', [VehicleRegisterReceiptReport::class, 'getSKPDReceipt']);
             Route::get('tnkb-receipt', [VehicleRegisterReceiptReport::class, 'getTNKBReceipt']);
+            Route::get('receipt-report', [VehicleRegisterReceiptReport::class, 'index']);
 
-            // Vehicle Registration Submission
-            Route::get('vehicle-registration-submission', [VehicleRegistrationSubmissionReport::class, 'index']);
+            // Material Report
+            Route::get('receipt-material', [GoodsTransactionStockController::class, 'receiptMaterial']);
+            Route::get('issue-material', [GoodsTransactionStockController::class, 'issueMaterial']);
         });
 
 	// Stats

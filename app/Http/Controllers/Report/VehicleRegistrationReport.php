@@ -24,12 +24,7 @@ class VehicleRegistrationReport extends Controller
     }
 
     protected function basicQuery(string $dataType, Request $request) {
-        $query = VehicleRegistration::query()->with([
-            'vendor:persons.id,persons.name,persons.code',
-            'vehicleData',
-            'vehicleData.region:id,name',
-            'vehicleData.dealer:id,name',
-        ]);
+        $query = VehicleRegistration::query()->with(['vendor:persons.id,persons.name,persons.code', 'vehicleData']);
 
         // Map placeholder fields to actual columns
         $column = match ($dataType) {
@@ -264,4 +259,66 @@ class VehicleRegistrationReport extends Controller
             return $this->responseError($err->getMessage(), 'Failed to retrieve TNKB Report', 500);
         }
     }
+
+    public function getOutstandingReport(Request $request)
+    {
+        try {
+            $query = VehicleRegistration::query()->with(['vendor:persons.id,persons.name,persons.code', 'vehicleData']);
+
+            // Filter outstanding: bpkb, stnk, skpd, tnkb receipt dates are null
+            $query->whereNull('bpkb_received_date')
+                  ->whereNull('stnk_received_date')
+                  ->whereNull('skpd_received_date')
+                  ->whereNull('tnkb_received_date');
+
+            // Filter: Vendor
+            if ($request->filled('vendor_id')) {
+                $query->whereHas('ditlantasProcess', function ($q) use ($request) {
+                    $q->where('vendor_id', $request->vendor_id);
+                });
+            }
+
+            // Filter: Dealer
+            if ($request->filled('dealer_id')) {
+                $query->whereHas('vehicleData', function ($q) use ($request) {
+                    $q->where('dealer_id', $request->dealer_id);
+                });
+            }
+
+            // Filter: Search query (across chassis, machine, brand, type, invoice, stnk name, bpkb number, tnkb number)
+            if ($request->filled('search')) {
+                $search = $request->search;
+                $query->where(function ($q) use ($search) {
+                    $q->where('bpkb_number', 'like', "%$search%")
+                      ->orWhere('tnkb_number', 'like', "%$search%")
+                      ->orWhereHas('vehicleData', function ($q2) use ($search) {
+                          $q2->where('stnk_name', 'like', "%$search%")
+                             ->orWhere('chassis_number', 'like', "%$search%")
+                             ->orWhere('machine_number', 'like', "%$search%")
+                             ->orWhere('invoice_number', 'like', "%$search%")
+                             ->orWhere('motorcycle_brand', 'like', "%$search%")
+                             ->orWhere('motorcycle_type', 'like', "%$search%");
+                      });
+                });
+            }
+
+            $allowedSort = [
+                'id', 'process_date', 'customer_delivery_date', 'created_at'
+            ];
+            $sortBy = in_array($request->sort_by, $allowedSort) ? $request->sort_by : 'id';
+            $sortOrder = $request->sort_order === 'asc' ? 'asc' : 'desc';
+
+            $data = $query->orderBy($sortBy, $sortOrder)->paginate($request->per_page ?? 10);
+
+            return $this->responseSuccess($data, 'Outstanding Report retrieved successfully');
+        } catch (ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
+        } catch (Exception $err) {
+            Log::error('Error while retrieving Outstanding Report: ' . $err->getMessage());
+            return $this->responseError($err->getMessage(), 'Failed to retrieve Outstanding Report', 500);
+        }
+    }
 }
+

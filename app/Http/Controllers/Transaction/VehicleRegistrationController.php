@@ -32,7 +32,9 @@ class VehicleRegistrationController extends Controller
         $this->middleware(['permission:transaction:edit'])->only('update');
 
         $this->fillable = [
-            'vendor_id',
+            'ditlantas_process_id',
+            'vehicle_data_id',
+            'customer_delivery_date',
             'process_date',
             'is_already_processed',
             'is_update_additional_data',
@@ -71,13 +73,19 @@ class VehicleRegistrationController extends Controller
      */
     public function index(Request $request)
     {
-        $query = VehicleRegistration::query()->with(['vendor:id,name,code', 'vehicleData']);
+        $query = VehicleRegistration::query()->with(['vendor:persons.id,persons.name,persons.code', 'vehicleData']);
 
         try {
             foreach ($this->fillable as $field) {
                 if ($request->filled($field)) {
                     $query->where($field, $request->$field);
                 }
+            }
+
+            if ($request->filled('vendor_id')) {
+                $query->whereHas('ditlantasProcess', function ($q) use ($request) {
+                    $q->where('vendor_id', $request->vendor_id);
+                });
             }
 
             $sortBy = $request->sort_by ?? 'id';
