@@ -39,6 +39,11 @@ class DitlantasProcess extends Model
         return $this->hasMany(VehicleRegistration::class, 'ditlantas_process_id', 'id');
     }
 
+    public function vehicleDocument()
+    {
+        return $this->hasOne(VehicleDocument::class, 'ditlantas_process_id', 'id');
+    }
+
     protected static function booted()
     {
         static::creating(function ($model) {

@@ -63,6 +63,7 @@ use App\Http\Controllers\Transaction\UnitTransactionItemDetailController;
 use App\Http\Controllers\Transaction\UnitTransactionItemSalesController;
 use App\Http\Controllers\Transaction\UnitTransactionRefundController;
 use App\Http\Controllers\Transaction\UnitTransactionRefundPaymentController;
+use App\Http\Controllers\Transaction\DitlantasProcessController;
 use App\Http\Controllers\Transaction\VehicleDataController;
 use App\Http\Controllers\Transaction\VehicleDocumentController;
 use App\Http\Controllers\Transaction\VehicleRegistrationController;
@@ -261,9 +262,8 @@ Route::group(
             });
 
             // Vehicle Data
-            Route::post('vehicle-data/assign-registration', [VehicleDataController::class, 'assignRegistration']);
-            Route::post('vehicle-data/ditlantas-process', [VehicleDataController::class, 'ditlantasProcess']);
             Route::apiResource('vehicle-data', VehicleDataController::class);
+            Route::apiResource('ditlantas-process', DitlantasProcessController::class);
             Route::apiResource('vehicle-document', VehicleDocumentController::class);
             Route::apiResource('vehicle-registration', VehicleRegistrationController::class);
 
