@@ -16,6 +16,7 @@ class AccountGroup extends Model
         'uuid',
         'company_id',
         'group_code',
+        'is_lock',
         'description',
     ];
 

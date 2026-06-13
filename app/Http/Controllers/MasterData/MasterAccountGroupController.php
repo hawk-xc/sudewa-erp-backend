@@ -40,7 +40,7 @@ class MasterAccountGroupController extends Controller
 
         $this->authRepository = $ar;
 
-        $this->accountGroupTable = ['id', 'uuid', 'company_id', 'group_code', 'description', 'created_at'];
+        $this->accountGroupTable = ['id', 'uuid', 'company_id', 'group_code', 'is_lock', 'description', 'created_at'];
     }
 
     /**
@@ -176,6 +176,10 @@ class MasterAccountGroupController extends Controller
         try {
             $account = AccountGroup::findOrFail($id);
 
+            if ($account->is_lock) {
+                return $this->responseError(null, 'Account Group is locked and cannot be updated.', 422);
+            }
+
             $validated = $request->validate([
                 'group_code' => 'nullable|string|max:50|unique:account_groups,group_code,'.$id,
                 'description' => 'nullable|string',
@@ -213,6 +217,10 @@ class MasterAccountGroupController extends Controller
             $accountGroup = AccountGroup::find((int) $id);
 
             if ($accountGroup) {
+                if ($accountGroup->is_lock) {
+                    return $this->responseError(null, 'Account Group is locked and cannot be deleted.', 422);
+                }
+
                 DB::transaction(function () use ($accountGroup) {
                     $accountGroup->delete();       
                 });

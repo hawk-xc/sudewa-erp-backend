@@ -1089,6 +1089,7 @@ class DefaultAccountSeeder extends Seeder
                     ],
                     [
                         'company_id' => 1,
+                        'is_lock' => true,
                         'description' => $item['name']
                     ]
                 );

@@ -37,7 +37,8 @@ class GoodsTransactionStockReportTest extends TestCase
         $this->material = Material::create([
             'code' => 'MAT01',
             'name' => 'Semen Padang 50kg',
-            'type' => 'pcs'
+            'type' => 'pcs',
+            'price' => 75000,
         ]);
 
         $this->vehicleEquipment = VehicleEquipment::create([
