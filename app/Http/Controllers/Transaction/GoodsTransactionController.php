@@ -170,15 +170,15 @@ class GoodsTransactionController extends Controller
             'company_id' => 'required|exists:companies,id',
             'supplier_id' => [
                 $request->company_id == 4 ? 'required_if:type,receipt' : 'nullable',
-                new RightPersonRule('supplier')
+                new RightPersonRule('supplier', $request->company_id),
             ],
             'customer_id' => [
                 $request->company_id == 4 ? 'nullable' : 'required_if:type,issue',
-                new RightPersonRule('customer')
+                new RightPersonRule('customer', $request->company_id)
             ],
             'driver_id' => [
                 $request->company_id == 4 ? 'required_if:type,issue' : 'nullable',
-                new RightPersonRule('driver'),
+                new RightPersonRule('driver', $request->company_id),
             ],
             'vehicle_fleet_id' => [
                 $request->company_id == 4 ? 'required_if:type,issue' : 'nullable',
@@ -314,11 +314,11 @@ class GoodsTransactionController extends Controller
                 'company_id' => 'sometimes|exists:companies,id',
                 'supplier_id' => [
                     'sometimes',
-                    new RightPersonRule(($request->type ?? $transaction->type) === 'receipt' ? 'supplier' : 'customer')
+                    new RightPersonRule(($request->type ?? $transaction->type) === 'receipt' ? 'supplier' : 'customer', $request->company_id ?? $transaction->company_id)
                 ],
                 'driver_id' => [
                     'sometimes',
-                    new RightPersonRule('driver')
+                    new RightPersonRule('driver', $request->company_id ?? $transaction->company_id)
                 ],
                 'vehicle_fleet_id' => [
                     'sometimes',
