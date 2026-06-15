@@ -9,9 +9,11 @@ use Illuminate\Contracts\Validation\ValidationRule;
 class RightPersonRule implements ValidationRule
 {
     protected string $type;
-    
-    public function __construct(string $type) {
+    protected ?string $companyId;
+
+    public function __construct(string $type, ?string $companyId = null) {
         $this->type = $type;
+        $this->companyId = $companyId;
     }
 
     /**
@@ -34,6 +36,10 @@ class RightPersonRule implements ValidationRule
 
         if ($person->type !== $this->type) {
             $fail("The selected :attribute must be of type {$this->type}.");
+        }
+
+        if (isset($this->companyId) && $person->company_id != $this->companyId) {
+            $fail("Person {$this->type} not match to company");
         }
     }
 }
