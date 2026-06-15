@@ -7,6 +7,7 @@ use App\Models\DOExpedition;
 use App\Models\DOInvoice;
 use App\Models\DOOrderList;
 use App\Models\Person;
+use App\Models\TransactionFlow;
 use App\Rules\RightPersonRule;
 use App\Traits\GlobalCodeNumberTrait;
 use App\Traits\ResponseTrait;
@@ -72,7 +73,7 @@ class DOInvoiceController extends Controller
         $validated = $request->validate([
             'customer_id' => [
                 'required',
-                new RightPersonRule('customer'),
+                new RightPersonRule('customer', 4),
             ],
             'date' => 'nullable|date',
             'subject' => 'nullable|string',
@@ -90,7 +91,9 @@ class DOInvoiceController extends Controller
                 return $this->responseError('Customer already has an unprinted invoice', 'Validation Error', 422);
             }
 
-            $orderLists = DOOrderList::where('customer_id', $validated['customer_id'])->get();
+            $orderLists = DOOrderList::with(['expeditions.vehicle', 'expeditions.order_list_tarifs.tarif', 'tarifs'])
+                ->where('customer_id', $validated['customer_id'])
+                ->get();
             if ($orderLists->isEmpty()) {
                 return $this->responseError('Customer does not have any order lists', 'Validation Error', 422);
             }
@@ -106,7 +109,7 @@ class DOInvoiceController extends Controller
                         continue;
                     }
 
-                    $invoices[] = DOInvoice::create([
+                    $invoice = DOInvoice::create([
                         'code' => $this->code($companySlug, 'invoice'),
                         'customer_id' => $validated['customer_id'],
                         'do_order_list_id' => $order->id,
@@ -118,6 +121,19 @@ class DOInvoiceController extends Controller
                         'additional_fee' => $validated['additional_fee'] ?? 0,
                         'is_already_print' => false,
                     ]);
+
+                    $totalAmount = (int) ($order->bill_invoice ?? 0) + (int) ($order->ppn ?? 0) + (int) ($invoice->other_fee ?? 0) + (int) ($invoice->additional_fee ?? 0);
+
+                    TransactionFlow::create([
+                        'company_id' => $customer->company_id,
+                        'transaction_date' => $invoice->date ?? now(),
+                        'name' => "Arus Transaksi {$invoice->code} Customer a.n {$customer->name}",
+                        'description' => "Invoice issued: {$invoice->code}" . ($invoice->subject ? " - {$invoice->subject}" : ""),
+                        'bank_idr_debit' => $totalAmount,
+                        'bank_idr_credit' => (int) ($order->uj_driver ?? 0),
+                    ]);
+
+                    $invoices[] = $invoice;
                 }
                 return $invoices;
             });

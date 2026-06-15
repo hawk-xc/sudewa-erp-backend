@@ -84,7 +84,7 @@ class DOOrderListController extends Controller
         $validated = $request->validate([
             'customer_id' => [
                 'required',
-                new RightPersonRule('customer'),
+                new RightPersonRule('customer', 4),
             ],
             'status' => 'sometimes|in:deliver,process,pending,reject',
             'vehicle_type' => 'required|in:fuso,cdd,towing',
@@ -143,7 +143,7 @@ class DOOrderListController extends Controller
             'customer_id' => [
                 'sometimes',
                 'required',
-                new RightPersonRule('customer'),
+                new RightPersonRule('customer', 4),
             ],
             'status' => 'sometimes|required|in:deliver,process,pending,reject',
             'vehicle_type' => 'sometimes|in:cdd,fuso,towing',
@@ -168,7 +168,7 @@ class DOOrderListController extends Controller
         }
     }
 
-    public function destroy($id)
+    public function destroy(string $id)
     {
         try {
             $orderList = DOOrderList::findOrFail($id);
