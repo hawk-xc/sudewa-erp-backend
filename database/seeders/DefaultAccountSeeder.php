@@ -1065,16 +1065,18 @@ class DefaultAccountSeeder extends Seeder
             ],
         ];
 
-        $this->insertAccounts($accounts);
+        $companies = [1, 2, 3, 4];
+        foreach ($companies as $companyId) {
+            $this->insertAccounts($accounts, $companyId);
+        }
     }
 
     private function insertAccounts(
         array $items,
+        int $companyId,
         ?string $mainGroup = null
     ): void {
-
         foreach ($items as $item) {
-
             // Group utama (1 AKTIVA, 2 HUTANG, dst)
             if (
                 $item['type'] === 'group'
@@ -1085,10 +1087,10 @@ class DefaultAccountSeeder extends Seeder
 
                 AccountGroup::firstOrCreate(
                     [
+                        'company_id' => $companyId,
                         'group_code' => $item['code']
                     ],
                     [
-                        'company_id' => 1,
                         'is_lock' => true,
                         'description' => $item['name']
                     ]
@@ -1098,17 +1100,16 @@ class DefaultAccountSeeder extends Seeder
 
             if ($mainGroup) {
 
-                $group = AccountGroup::where(
-                    'description',
-                    $mainGroup
-                )->first();
+                $group = AccountGroup::where('company_id', $companyId)
+                    ->where('description', $mainGroup)
+                    ->first();
 
                 Account::updateOrCreate(
                     [
+                        'account_group_id' => $group?->id,
                         'code' => $item['code']
                     ],
                     [
-                        'account_group_id' => $group?->id,
                         'name' => $item['name'],
                         'description' => null,
                         'is_lock' => true,
@@ -1121,6 +1122,7 @@ class DefaultAccountSeeder extends Seeder
 
                 $this->insertAccounts(
                     $item['children'],
+                    $companyId,
                     $mainGroup
                 );
 
