@@ -7,10 +7,6 @@ use App\Models\VehicleRegistration;
 use App\Traits\ResponseTrait;
 use Exception;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
-use App\Models\VehicleRegistration;
-use App\Traits\ResponseTrait;
-use Exception;
-use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
