@@ -11,6 +11,7 @@ use App\Imports\PersonImport;
 use App\Models\Person;
 use App\Repositories\AuthRepository;
 use App\Traits\ResponseTrait;
+use App\Traits\FileTrait;
 use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -24,7 +25,7 @@ use Maatwebsite\Excel\Facades\Excel;
  */
 class MasterSupplierController extends Controller
 {
-    use ResponseTrait, GlobalCodeNumberTrait;
+    use ResponseTrait, FileTrait, GlobalCodeNumberTrait;
 
     protected AuthRepository $authRepository;
 
@@ -43,7 +44,29 @@ class MasterSupplierController extends Controller
 
         $this->authRepository = $ar;
 
-        $this->personTable = ['id', 'uuid', 'code', 'type', 'name', 'address', 'npwp', 'phone', 'created_at', 'pic_name'];
+        $this->personTable = [
+            'id',
+            'uuid',
+            'company_id',
+            'pic_name',
+            'code',
+            'type',
+            'name',
+            'address',
+            'npwp',
+            'phone',
+            'identity_number',
+            'drive_license_identity_number',
+            'image',
+            'map_link',
+            'join_date',
+            'social_media_1_link',
+            'social_media_2_link',
+            'social_media_3_link',
+            'social_media_4_link',
+            'website_link',
+            'created_at'
+        ];
     }
 
     /**
@@ -53,7 +76,9 @@ class MasterSupplierController extends Controller
     {
         $query = Person::query();
 
-        $query->select($this->personTable)->where('type', 'supplier');
+        $query->with(['company:id,uuid,code,slug,name'])
+            ->select($this->personTable)
+            ->where('type', 'supplier');
 
         try {
             if ($request->filled('search')) {
@@ -67,21 +92,50 @@ class MasterSupplierController extends Controller
                         $q->where('name', 'LIKE BINARY', "%$search%")
                             ->orWhere('code', 'LIKE BINARY', "%$search%")
                             ->orWhere('phone', 'LIKE BINARY', "%$search%")
-                            ->orWhere('npwp', 'LIKE BINARY', "%$search%");
+                            ->orWhere('npwp', 'LIKE BINARY', "%$search%")
+                            ->orWhere('pic_name', 'LIKE BINARY', "%$search%")
+                            ->orWhere('address', 'LIKE BINARY', "%$search%")
+                            ->orWhere('identity_number', 'LIKE BINARY', "%$search%")
+                            ->orWhere('drive_license_identity_number', 'LIKE BINARY', "%$search%");
                     } else {
                         $q->where('name', 'like', "%$search%")
                             ->orWhere('code', 'like', "%$search%")
                             ->orWhere('phone', 'like', "%$search%")
-                            ->orWhere('npwp', 'like', "%$search%");
+                            ->orWhere('npwp', 'like', "%$search%")
+                            ->orWhere('pic_name', 'like', "%$search%")
+                            ->orWhere('address', 'like', "%$search%")
+                            ->orWhere('identity_number', 'like', "%$search%")
+                            ->orWhere('drive_license_identity_number', 'like', "%$search%");
                     }
 
                 });
             }
 
+            if ($request->filled('company_id')) {
+                $query->where('company_id', $request->company_id);
+            }
+
             foreach ($this->personTable as $field) {
+                if ($field === 'company_id') {
+                    continue;
+                }
                 if ($request->filled($field)) {
                     $query->where($field, $request->$field);
                 }
+            }
+
+            // Date filters
+            if ($request->filled('start_join_date')) {
+                $query->whereDate('join_date', '>=', $request->start_join_date);
+            }
+            if ($request->filled('end_join_date')) {
+                $query->whereDate('join_date', '<=', $request->end_join_date);
+            }
+            if ($request->filled('start_created_at')) {
+                $query->whereDate('created_at', '>=', $request->start_created_at);
+            }
+            if ($request->filled('end_created_at')) {
+                $query->whereDate('created_at', '<=', $request->end_created_at);
             }
 
             $allowedSort = $this->personTable;
@@ -116,7 +170,11 @@ class MasterSupplierController extends Controller
     public function show(string $id)
     {
         try {
-            $person = Person::where('type', 'supplier')->where('id', $id)->select($this->personTable)->first();
+            $person = Person::where('type', 'supplier')
+                ->where('id', $id)
+                ->with(['company:id,uuid,code,slug,name'])
+                ->select($this->personTable)
+                ->first();
 
             if (! $person) {
                 return $this->responseError('The requested resource could not be found.', 'Resource Not Found', 404);
@@ -146,7 +204,24 @@ class MasterSupplierController extends Controller
             'phone' => 'sometimes|string|max:249',
             'npwp' => 'sometimes|string',
             'pic_name' => 'nullable|string',
+            'identity_number' => 'nullable|string|max:255|unique:persons,identity_number',
+            'drive_license_identity_number' => 'nullable|string|max:255|unique:persons,drive_license_identity_number',
+            'image' => 'nullable|file|mimes:jpg,jpeg,png,webp|max:2048',
+            'map_link' => 'nullable|string',
+            'social_media_1_link' => 'nullable|string',
+            'social_media_2_link' => 'nullable|string',
+            'social_media_3_link' => 'nullable|string',
+            'social_media_4_link' => 'nullable|string',
+            'website_link' => 'nullable|string',
+            'join_date' => 'nullable|date',
         ]);
+
+        if ($request->hasFile('image')) {
+            $validated['image'] = $this->storeFile(
+                $request->file('image'),
+                'person_images'
+            );
+        }
 
         try {
             $person = DB::transaction(function () use ($validated) {
@@ -184,18 +259,55 @@ class MasterSupplierController extends Controller
             'phone' => 'sometimes|string|max:249',
             'npwp' => 'sometimes|string',
             'pic_name' => 'nullable|string',
+            'identity_number' => 'nullable|string|max:255|unique:persons,identity_number,'.$id,
+            'drive_license_identity_number' => 'nullable|string|max:255|unique:persons,drive_license_identity_number,'.$id,
+            'image' => 'nullable|file|mimes:jpg,jpeg,png,webp|max:2048',
+            'map_link' => 'nullable|string',
+            'social_media_1_link' => 'nullable|string',
+            'social_media_2_link' => 'nullable|string',
+            'social_media_3_link' => 'nullable|string',
+            'social_media_4_link' => 'nullable|string',
+            'website_link' => 'nullable|string',
+            'join_date' => 'nullable|date',
         ]);
 
         try {
-            $data = array_filter($request->only(['name', 'address', 'phone', 'pic_name', 'npwp']), fn ($value) => ! is_null($value) && $value !== '');
+            $person = Person::findOrFail($id);
+
+            $data = array_filter($request->only([
+                'company_id',
+                'name',
+                'address',
+                'phone',
+                'npwp',
+                'pic_name',
+                'identity_number',
+                'drive_license_identity_number',
+                'map_link',
+                'social_media_1_link',
+                'social_media_2_link',
+                'social_media_3_link',
+                'social_media_4_link',
+                'website_link',
+                'join_date',
+            ]), fn ($value) => ! is_null($value) && $value !== '');
+
+            if ($request->hasFile('image')) {
+                if ($person->image) {
+                    $this->destroyFile($person->image);
+                }
+
+                $data['image'] = $this->storeFile(
+                    $request->file('image'),
+                    'person_images'
+                );
+            }
 
             if (empty($data)) {
                 return $this->responseError(null, 'No data provided to update', 422);
             }
 
-            $person = DB::transaction(function () use ($id, $data) {
-                $person = Person::findOrFail($id);
-
+            $person = DB::transaction(function () use ($person, $data) {
                 $person->update($data);
 
                 return $person->fresh();
@@ -220,6 +332,11 @@ class MasterSupplierController extends Controller
     {
         try {
             $person = Person::where('type', 'supplier')->findOrFail($id);
+
+            if ($person->image) {
+                $this->destroyFile($person->image);
+            }
+
             $person->delete();
 
             return $this->responseSuccess([], 'Supplier Deleted Successfully', 200);

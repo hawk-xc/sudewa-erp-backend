@@ -7,6 +7,7 @@ use App\Models\Account;
 use App\Models\Cash;
 use App\Models\CashFlow;
 use App\Rules\RightCashRule;
+use App\Rules\RightAccountRule;
 use App\Traits\FileTrait;
 use App\Traits\ResponseTrait;
 use Exception;
@@ -108,7 +109,12 @@ class DailyCashFlowController extends Controller
         try {
             $validated = $request->validate([
                 'company_id' => 'required|integer|exists:companies,id',
-                'account_id' => 'required|integer|exists:accounts,id',
+                'account_id' => [
+                    'required',
+                    'integer',
+                    'exists:accounts,id',
+                    new RightAccountRule($request->company_id),
+                ],
                 'cash_id' => [
                     'nullable',
                     'integer',
@@ -122,16 +128,6 @@ class DailyCashFlowController extends Controller
                 'transaction_category' => 'nullable|string|in:general,operational,director_receivable,shareholder_receivable,receivable,inventory',
                 'payment_proof' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:2048',
             ]);
-
-            $companyId = (int) $validated['company_id'];
-
-            // Check if account_id belongs to company_id
-            $account = Account::with('accountGroup')->find($validated['account_id']);
-            if (!$account || !$account->accountGroup || (int) $account->accountGroup->company_id !== $companyId) {
-                throw ValidationException::withMessages([
-                    'account_id' => ['The selected account_id does not belong to the selected company.'],
-                ]);
-            }
 
             if ($request->hasFile('payment_proof')) {
                 $validated['payment_proof'] = $this->storeFile(
@@ -173,7 +169,12 @@ class DailyCashFlowController extends Controller
 
             $validated = $request->validate([
                 'company_id' => 'sometimes|integer|exists:companies,id',
-                'account_id' => 'sometimes|integer|exists:accounts,id',
+                'account_id' => [
+                    'sometimes',
+                    'integer',
+                    'exists:accounts,id',
+                    new RightAccountRule(fn () => isset($request->company_id) ? (int) $request->company_id : (int) $cashFlow->company_id),
+                ],
                 'cash_id' => [
                     'sometimes',
                     'nullable',
@@ -188,20 +189,6 @@ class DailyCashFlowController extends Controller
                 'transaction_category' => 'sometimes|string|in:general,operational,director_receivable,shareholder_receivable,receivable,inventory',
                 'payment_proof' => 'sometimes|nullable|file|mimes:jpg,jpeg,png,pdf|max:2048',
             ]);
-
-            // Determine active company_id
-            $companyId = isset($validated['company_id']) ? (int) $validated['company_id'] : (int) $cashFlow->company_id;
-
-            // Determine active account_id
-            $accountId = isset($validated['account_id']) ? (int) $validated['account_id'] : (int) $cashFlow->account_id;
-
-            // Check if account_id belongs to company_id
-            $account = Account::with('accountGroup')->find($accountId);
-            if (!$account || !$account->accountGroup || (int) $account->accountGroup->company_id !== $companyId) {
-                throw ValidationException::withMessages([
-                    'account_id' => ['The selected account_id does not belong to the selected company.'],
-                ]);
-            }
 
             $data = array_filter($request->only(['company_id', 'account_id', 'cash_id', 'date', 'note', 'debet', 'credit', 'transaction_category']), fn ($value) => ! is_null($value) && $value !== '');
 
@@ -232,10 +219,10 @@ class DailyCashFlowController extends Controller
                     $newCashId = $cf->cash_id;
                     $newDebet = (float) $cf->debet;
                     $newCredit = (float) $cf->credit;
-
+ 
                     if ($oldCashId === $newCashId) {
                         if ($newCashId) {
-                            $cash = Cash::find($newCashId);
+                            $cash = Cash::findOrFail($newCashId);
                             if ($cash) {
                                 $diffDebet = $newDebet - $oldDebet;
                                 $diffCredit = $newCredit - $oldCredit;
@@ -250,7 +237,7 @@ class DailyCashFlowController extends Controller
                         }
                     } else {
                         if ($oldCashId) {
-                            $oldCash = Cash::find($oldCashId);
+                            $oldCash = Cash::findOrFail($oldCashId);
                             if ($oldCash) {
                                 if ($oldDebet > 0) {
                                     $oldCash->adjustAmount(-$oldDebet, 'debet');
@@ -261,7 +248,7 @@ class DailyCashFlowController extends Controller
                             }
                         }
                         if ($newCashId) {
-                            $newCash = Cash::find($newCashId);
+                            $newCash = Cash::findOrFail($newCashId);
                             if ($newCash) {
                                 if ($newDebet > 0) {
                                     $newCash->adjustAmount($newDebet, 'debet');
