@@ -78,10 +78,18 @@ class CompanySeeder extends Seeder
 
         foreach ($companies as $company) {
             foreach ($cashes as $cash) {
+                $code = (string) $cash[0];
+                $parts = explode('_', $code);
+                $name = $parts[0];
+                $currency = isset($parts[1]) ? strtoupper($parts[1]) : '';
+                $formattedName = strtolower($name) === 'cash' ? 'Cash' : strtoupper($name);
+                $cashName = $currency ? "{$formattedName} {$currency}" : $formattedName;
+
                 Cash::create([
                     'company_id' => (int) $company->id,
-                    'code' => (string) $cash[0],
-                    'description' => (string) "Kas " . $cash[0] . " " . $company['name'],
+                    'code' => $code,
+                    'cash_name' => $cashName,
+                    'description' => (string) "Kas " . $code . " " . $company['name'],
                     'type' => (string) $cash[1],
                     'amount' => (int) 0,
                 ]);

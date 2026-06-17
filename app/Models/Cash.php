@@ -17,6 +17,7 @@ class Cash extends Model
         'company_id',
         'account_id',
         'code',
+        'cash_name',
         'description',
         'amount',
         'type',
