@@ -221,12 +221,15 @@ class MasterVehicleEquipmentController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
+            'code' => 'sometimes|string',
             'name' => 'required|string|max:249',
         ]);
 
         try {
             $equipment = DB::transaction(function () use ($validated) {
-                $validated['code'] = $this->code('', 'perlengkapan');
+                if (empty($validated['code'])) {
+                    $validated['code'] = $this->code('', 'perlengkapan');
+                }
                 return VehicleEquipment::create($validated);
             });
 
@@ -244,11 +247,12 @@ class MasterVehicleEquipmentController extends Controller
     public function update(Request $request, string $id)
     {
         $request->validate([
+            'code' => 'sometimes|string|max:249',
             'name' => 'sometimes|string|max:249',
         ]);
 
         try {
-            $data = array_filter($request->only(['name']), fn ($value) => ! is_null($value) && $value !== '');
+            $data = array_filter($request->only(['name', 'code']), fn ($value) => ! is_null($value) && $value !== '');
 
             if (empty($data)) {
                 return $this->responseError(null, 'No data provided to update', 422);
