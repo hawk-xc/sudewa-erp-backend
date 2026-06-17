@@ -55,6 +55,7 @@ class BBNBillBillingItemControllerTest extends TestCase
         $this->cash = Cash::create([
             'company_id' => $this->company->id,
             'code' => 'cash_idr',
+            'cash_name' => 'CASH IDR',
             'type' => 'cash',
             'amount' => 100000000
         ]);
@@ -62,6 +63,7 @@ class BBNBillBillingItemControllerTest extends TestCase
         $this->bankIdr = Cash::create([
             'company_id' => $this->company->id,
             'code' => 'bca_idr',
+            'cash_name' => 'BCA IDR',
             'type' => 'bank',
             'amount' => 100000000
         ]);
@@ -69,6 +71,7 @@ class BBNBillBillingItemControllerTest extends TestCase
         $this->bankUsd = Cash::create([
             'company_id' => $this->company->id,
             'code' => 'bca_usd',
+            'cash_name' => 'BCA USD',
             'type' => 'bank',
             'amount' => 100000
         ]);
