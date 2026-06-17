@@ -2,18 +2,18 @@
 
 namespace App\Http\Controllers\MasterData;
 
-use Illuminate\Database\Eloquent\ModelNotFoundException;
-
-use App\Traits\GlobalCodeNumberTrait;
 use App\Http\Controllers\Controller;
 use App\Imports\AccountImport;
 use App\Models\Account;
 use App\Repositories\AuthRepository;
+use App\Traits\GlobalCodeNumberTrait;
 use App\Traits\ResponseTrait;
 use Exception;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
 use Maatwebsite\Excel\Facades\Excel;
 
 /**
@@ -154,7 +154,7 @@ class MasterAccountController extends Controller
             });
 
             return $this->responseSuccess($account->fresh(), 'Account created successfully', 201);
-        } catch (\Illuminate\Validation\ValidationException $e) {
+        } catch (ValidationException $e) {
             return $this->responseError($e->errors(), 'Validation failed', 422);
         } catch (ModelNotFoundException $err) {
             $model = class_basename($err->getModel() ?: 'Data');
@@ -200,7 +200,7 @@ class MasterAccountController extends Controller
             } else {
                 return $this->responseError('The requested resource could not be found.', 'Resource Not Found', 404);
             }
-        } catch (\Illuminate\Validation\ValidationException $e) {
+        } catch (ValidationException $e) {
             return $this->responseError($e->errors(), 'Validation failed', 422);
         } catch (ModelNotFoundException $err) {
             $model = class_basename($err->getModel() ?: 'Data');
@@ -236,14 +236,14 @@ class MasterAccountController extends Controller
                 }
 
                 if (isset($validated['account_group_id'])) {
-                    Account::whereIn('id', $validated['account_id'])
+                    Account::findOrFail($validated['account_id'])
                         ->where('is_lock', false)
                         ->update(['account_group_id' => $validated['account_group_id']]);
                 }
             });
 
             return $this->responseSuccess(null, 'Accounts updated successfully in bulk', 200);
-        } catch (\Illuminate\Validation\ValidationException $e) {
+        } catch (ValidationException $e) {
             return $this->responseError($e->errors(), 'Validation failed', 422);
         } catch (ModelNotFoundException $err) {
             $model = class_basename($err->getModel() ?: 'Data');

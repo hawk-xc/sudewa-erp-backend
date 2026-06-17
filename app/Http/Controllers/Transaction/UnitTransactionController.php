@@ -316,6 +316,7 @@ class UnitTransactionController extends Controller
                         'price' => $request->price,
                         'bbn_price' => $request->bbn_price ?? 0,
                         'other_fee' => $request->other_fee ?? 0,
+                        'expedition_fee' => $request->expedition_fee ?? 0,
 
                         'hpp_per_unit_price' => $hpp,
                         'dpp_per_unit_price' => $dpp,
