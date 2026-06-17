@@ -51,9 +51,9 @@ class TransactionWarehouseFlowTest extends TestCase
         ]);
         
         // Create Cash records to avoid errors during billing history creation
-        Cash::create(['company_id' => $this->company->id, 'code' => 'cash_idr', 'type' => 'cash', 'amount' => 0]);
-        Cash::create(['company_id' => $this->company->id, 'code' => 'bca_idr', 'type' => 'bank', 'amount' => 0]);
-        Cash::create(['company_id' => $this->company->id, 'code' => 'bca_usd', 'type' => 'bank', 'amount' => 0]);
+        Cash::create(['company_id' => $this->company->id, 'code' => 'cash_idr', 'cash_name' =>  'CASH IDR', 'type' => 'cash', 'amount' => 0]);
+        Cash::create(['company_id' => $this->company->id, 'code' => 'bca_idr', 'cash_name' =>  'BCA IDR', 'type' => 'bank', 'amount' => 0]);
+        Cash::create(['company_id' => $this->company->id, 'code' => 'bca_usd', 'cash_name' =>  'BCA USD', 'type' => 'bank', 'amount' => 0]);
 
         $this->supplier = Person::create([
             'company_id' => $this->company->id,
