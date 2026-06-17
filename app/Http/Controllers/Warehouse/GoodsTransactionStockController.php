@@ -47,7 +47,7 @@ class GoodsTransactionStockController extends Controller
                             ->where('warehouse_movements.status', 'out')
                             ->selectRaw('COALESCE(SUM(goods_transaction_details.qty), 0)');
                     }, 'stock_out');
-            } elseif ($companyId == 5) {
+            } elseif ($companyId == 3) {
                 // Material for company 5
                 $query = Material::select('materials.*')
                     ->selectSub(function ($query) use ($warehouseId) {
