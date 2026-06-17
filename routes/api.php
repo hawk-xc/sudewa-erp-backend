@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\HealthCheckController;
 use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\Dashboard\BillingStatController;
 use App\Http\Controllers\Finance\DailyCashFlowController;
@@ -83,6 +84,9 @@ Route::group(
         'middleware' => 'api',
     ],
     function () {
+        // Health Check
+        Route::get('health', [HealthCheckController::class, 'check']);
+
         // Auth API
         Route::group(['prefix' => 'auth', 'as' => 'users.'], function () {
             Route::post('login', [AuthController::class, 'login']);

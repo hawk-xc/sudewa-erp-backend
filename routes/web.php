@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Welcome\WelcomeController;
+use App\Http\Controllers\HealthCheckController;
 
 /*
 |--------------------------------------------------------------------------
@@ -16,3 +17,4 @@ use App\Http\Controllers\Welcome\WelcomeController;
 // 
 
 Route::get('/', [WelcomeController::class, 'welcome']);
+Route::get('/health', [HealthCheckController::class, 'check']);
