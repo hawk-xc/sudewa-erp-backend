@@ -22,6 +22,7 @@ class Tarif extends Model
         'uj_fuso',
         'inv_cdd',
         'inv_fuso',
+        'inv_towing',
         'is_active',
     ];
 
@@ -32,6 +33,7 @@ class Tarif extends Model
         'uj_fuso'=> 'integer',
         'inv_cdd'=> 'integer',
         'inv_fuso'=> 'integer',
+        'inv_towing'=> 'integer',
         'is_active' => 'integer'
     ];
 

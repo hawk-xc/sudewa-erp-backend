@@ -26,7 +26,7 @@ class MasterTarifController extends Controller
 {
     use ResponseTrait, GlobalCodeNumberTrait;
 
-    protected $tarifTable;
+    protected array $tarifTable;
 
     public function __construct()
     {
@@ -130,6 +130,7 @@ class MasterTarifController extends Controller
             'uj_fuso' => 'nullable|integer',
             'inv_cdd' => 'nullable|integer',
             'inv_fuso' => 'nullable|integer',
+            'inv_towing' => 'nullable|integer',
             'is_active' => 'sometimes|boolean',
         ]);
 
@@ -165,6 +166,7 @@ class MasterTarifController extends Controller
             'uj_fuso' => 'nullable|integer',
             'inv_cdd' => 'nullable|integer',
             'inv_fuso' => 'nullable|integer',
+            'inv_towing' => 'nullable|integer',
             'is_active' => 'sometimes|boolean',
         ]);
 
@@ -177,7 +179,8 @@ class MasterTarifController extends Controller
                 'uj_cdd', 
                 'uj_fuso', 
                 'inv_cdd', 
-                'inv_fuso', 
+                'inv_fuso',
+                'inv_towing', 
                 'is_active'
             ]);
 
