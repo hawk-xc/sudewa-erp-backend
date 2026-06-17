@@ -138,6 +138,9 @@ class VehicleDocumentController extends Controller
                 $companySlug = $vendor?->company?->slug ?? '';
                 $code = $this->code($companySlug, 'penerimaan_input_stnk_bpkb');
 
+                // Update ditlantas processed column
+                DitlantasProcess::findOrFail((int) $request->ditlantas_process_id)->update(['is_processed' => true]);
+
                 $document = VehicleDocument::create([
                     'code' => $code,
                     'ditlantas_process_id' => $request->ditlantas_process_id,
@@ -241,7 +244,13 @@ class VehicleDocumentController extends Controller
         try {
             $document = DB::transaction(function () use ($request, $id) {
                 $document = VehicleDocument::findOrFail($id);
+
+                // Update ditlantas processed
+                $document->ditlantasProcess->update(['is_processed' => false]);
+                DitlantasProcess::findOrFail($request->ditlantas_process_id)->update(['is_processed' => true]);
+
                 $document->update($request->only(['ditlantas_process_id', 'receipt_date', 'description']));
+                
                 return $document->fresh();
             });
 

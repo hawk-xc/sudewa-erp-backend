@@ -17,12 +17,14 @@ class DitlantasProcess extends Model
         'code',
         'vendor_id',
         'process_date',
+        'is_processed',
         'note'
     ];
 
     protected $casts = [
         'vendor_id' => 'integer',
-        'process_date' => 'date'
+        'process_date' => 'date',
+        'is_processed' => 'boolean',
     ];
 
     public function vehicleDatas() {
