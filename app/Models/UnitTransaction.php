@@ -58,6 +58,11 @@ class UnitTransaction extends Model
         return $this->hasMany(UnitTransactionAdjustment::class);
     }
 
+    public function withholdingTaxes()
+    {
+        return $this->hasMany(WithholdingTax::class);
+    }
+
     public function getBrutoAmount()
     {
         $unitTransactionItems = $this->unitTransactionItems();

@@ -61,6 +61,11 @@ class Cash extends Model
             ->withTimestamps();
     }
 
+    public function withholdingTaxes()
+    {
+        return $this->hasMany(WithholdingTax::class);
+    }
+
     public function adjustAmount(float $amount, string $type)
     {
         $shouldAdd = match ($type) {

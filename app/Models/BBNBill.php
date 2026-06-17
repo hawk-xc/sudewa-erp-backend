@@ -125,4 +125,9 @@ class BBNBill extends Model
     {
         return $this->hasMany(BBNBillBilling::class, 'bbn_bill_id');
     }
+
+    public function withholdingTaxes()
+    {
+        return $this->hasMany(WithholdingTax::class, 'bbn_bill_id');
+    }
 }

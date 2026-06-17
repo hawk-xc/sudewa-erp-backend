@@ -52,6 +52,11 @@ class DOInvoice extends Model
         return $this->hasOne(FinanceInvoiceBillingPayment::class, 'do_invoice_id', 'id');
     }
 
+    public function withholdingTaxes()
+    {
+        return $this->hasMany(WithholdingTax::class, 'do_invoice_id');
+    }
+
     protected static function booted()
     {
         static::creating(function ($model) {
