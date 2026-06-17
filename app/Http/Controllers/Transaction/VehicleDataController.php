@@ -145,7 +145,7 @@ class VehicleDataController extends Controller
             'ktp_number' => 'sometimes|string|max:249',
             'phone_number' => 'sometimes|string|max:249',
             'occupation' => 'sometimes|string|max:249',
-            'stnk_name' => 'sometimes|string|max:249',
+            'stnk_name' => 'required|string|max:249',
             'stnk_address' => 'sometimes|string|max:249',
             'village' => 'sometimes|string|max:249',
             'district' => 'sometimes|string|max:249',
