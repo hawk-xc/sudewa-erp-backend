@@ -120,6 +120,7 @@ class DOExpeditionController extends Controller
                     }
                 }),
             ],
+            'driver_note' => 'nullable|string',
             'driver_id' => [
                 'sometimes',
                 'required',
