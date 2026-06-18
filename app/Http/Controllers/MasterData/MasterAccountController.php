@@ -110,7 +110,7 @@ class MasterAccountController extends Controller
             $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
             return $this->responseError(null, $friendlyModel . ' not found', 404);
         } catch (Exception $err) {
-            Log::error('Error While retrieved Account data : '.$err->getMessage());
+            Log::error('Error While retrieved Account data : ' . $err->getMessage());
 
             return $this->responseError($err->getMessage(), 'Account list retrieved Failed', 500);
         }
@@ -161,7 +161,7 @@ class MasterAccountController extends Controller
             $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
             return $this->responseError(null, $friendlyModel . ' not found', 404);
         } catch (Exception $err) {
-            Log::error('Error While storing Account data : '.$err->getMessage());
+            Log::error('Error While storing Account data : ' . $err->getMessage());
 
             return $this->responseError($err->getMessage(), 'Account creation failed', 500);
         }
@@ -184,7 +184,7 @@ class MasterAccountController extends Controller
                 } else {
                     $validated = $request->validate([
                         'account_group_id' => 'sometimes|integer|exists:account_groups,id',
-                        'code' => 'sometimes|required|string|max:50|unique:accounts,code,'.$id,
+                        'code' => 'sometimes|required|string|max:50|unique:accounts,code,' . $id,
                         'name' => 'sometimes|required|string|max:255',
                         'description' => 'nullable|string',
                         'type' => 'sometimes|required|in:debet,credit',
@@ -207,7 +207,7 @@ class MasterAccountController extends Controller
             $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
             return $this->responseError(null, $friendlyModel . ' not found', 404);
         } catch (Exception $err) {
-            Log::error('Error While updating Account data : '.$err->getMessage());
+            Log::error('Error While updating Account data : ' . $err->getMessage());
 
             return $this->responseError($err->getMessage(), 'Account update failed', 500);
         }
@@ -231,15 +231,7 @@ class MasterAccountController extends Controller
             ]);
 
             DB::transaction(function () use ($validated) {
-                if (isset($validated['category'])) {
-                    Account::whereIn('id', $validated['account_id'])->update(['category' => $validated['category']]);
-                }
-
-                if (isset($validated['account_group_id'])) {
-                    Account::findOrFail($validated['account_id'])
-                        ->where('is_lock', false)
-                        ->update(['account_group_id' => $validated['account_group_id']]);
-                }
+                Account::whereIn('id', $validated['account_id'])->update(['category' => $validated['category'], 'account_group_id' => $validated['account_group_id']]);
             });
 
             return $this->responseSuccess(null, 'Accounts updated successfully in bulk', 200);
@@ -250,7 +242,7 @@ class MasterAccountController extends Controller
             $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
             return $this->responseError(null, $friendlyModel . ' not found', 404);
         } catch (Exception $err) {
-            Log::error('Error While bulk updating Account data : '.$err->getMessage());
+            Log::error('Error While bulk updating Account data : ' . $err->getMessage());
 
             return $this->responseError($err->getMessage(), 'Bulk account update failed', 500);
         }
