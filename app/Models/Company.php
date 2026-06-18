@@ -48,6 +48,11 @@ class Company extends Model
         return $this->hasMany(Cash::class, 'company_id', 'id');
     }
 
+    public function withholdingTaxes()
+    {
+        return $this->hasMany(WithholdingTax::class);
+    }
+
     public function warehouse()
     {
         return $this->hasOne(Warehouse::class, 'company_id', 'id');

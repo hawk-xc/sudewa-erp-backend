@@ -3,14 +3,17 @@
 namespace App\Http\Controllers\Finance;
 
 use App\Http\Controllers\Controller;
-use App\Models\WithholdingTax;
 use App\Models\Cash;
+use App\Models\UnitTransaction;
+use App\Models\WithholdingTax;
+use App\Rules\RightCashRule;
 use App\Traits\ResponseTrait;
 use Exception;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
 
 class WithHoldingTaxController extends Controller
 {
@@ -28,6 +31,7 @@ class WithHoldingTaxController extends Controller
         $this->withholdingTaxTable = [
             'id',
             'source',
+            'company_id',
             'cash_id',
             'unit_transaction_id',
             'bbn_bill_id',
@@ -48,7 +52,13 @@ class WithHoldingTaxController extends Controller
      */
     public function index(Request $request)
     {
-        $query = WithholdingTax::with(['cash', 'unitTransaction', 'bbnBill', 'doInvoice']);
+        $query = WithholdingTax::with([
+            'company:id,name,slug',
+            'cash:id,uuid,company_id,code,cash_name,type',
+            'unitTransaction:id,uuid,warehouse_id,code,type',
+            'bbnBill',
+            'doInvoice:id,uuid,code,customer_id,date'
+        ]);
 
         try {
             foreach ($this->withholdingTaxTable as $field) {
@@ -63,6 +73,14 @@ class WithHoldingTaxController extends Controller
                     $q->where('withholding_number', 'like', "%$search%")
                       ->orWhere('pph_description', 'like', "%$search%");
                 });
+            }
+
+            if ($request->filled('start_date')) {
+                $query->whereDate('payment_date', '>=', $request->start_date);
+            }
+
+            if ($request->filled('end_date')) {
+                $query->whereDate('payment_date', '<=', $request->end_date);
             }
 
             $sortBy = in_array($request->sort_by, $this->withholdingTaxTable) ? $request->sort_by : 'id';
@@ -82,12 +100,49 @@ class WithHoldingTaxController extends Controller
      */
     public function store(Request $request)
     {
+        $filledRelations = collect([
+            $request->unit_transaction_id,
+            $request->bbn_bill_id,
+            $request->do_invoice_id,
+        ])->filter();
+
+        if ($filledRelations->count() !== 1) {
+            throw ValidationException::withMessages([
+                'unit_transaction_id' => ['Exactly one of unit_transaction_id, bbn_bill_id, or do_invoice_id must be provided.'],
+                'bbn_bill_id' => ['Exactly one of unit_transaction_id, bbn_bill_id, or do_invoice_id must be provided.'],
+                'do_invoice_id' => ['Exactly one of unit_transaction_id, bbn_bill_id, or do_invoice_id must be provided.'],
+            ]);
+        }
+
         $validated = $request->validate([
             'source' => 'required|in:internal,external',
-            'cash_id' => 'required|exists:cashes,id',
-            'unit_transaction_id' => 'nullable|exists:unit_transactions,id',
-            'bbn_bill_id' => 'nullable|exists:bbn_bills,id',
-            'do_invoice_id' => 'nullable|exists:do_invoices,id',
+            'cash_id' => [
+                'required',
+                'exists:cashes,id',
+                new RightCashRule(function () use ($request) {
+                    if ($request->filled('unit_transaction_id')) {
+                        $unitTransaction = UnitTransaction::find((int) $request->unit_transaction_id);
+                        if ($unitTransaction && $unitTransaction->warehouse && $unitTransaction->warehouse->company) {
+                            $request['company_id'] = $unitTransaction->warehouse->company->id;
+                            return [1, 2, 5];
+                        }
+                        return null;
+                    }
+                    if ($request->filled('bbn_bill_id')) {
+                        $request['company_id'] = 3;
+                        return 3;
+                    }
+                    if ($request->filled('do_invoice_id')) {
+                        $request['company_id'] = 4;
+
+                        return 4;
+                    }
+                    return null;
+                }),
+            ],
+            'unit_transaction_id' => 'nullable|exists:unit_transactions,id|unique:withholding_taxes,unit_transaction_id',
+            'bbn_bill_id' => 'nullable|exists:bbn_bills,id|unique:withholding_taxes,bbn_bill_id',
+            'do_invoice_id' => 'nullable|exists:do_invoices,id|unique:withholding_taxes,do_invoice_id',
             'withholding_number' => 'required|string|max:100|unique:withholding_taxes,withholding_number',
             'withholding_age' => 'required|integer',
             'pph_amount' => 'required|numeric|min:0',
@@ -97,7 +152,8 @@ class WithHoldingTaxController extends Controller
         ]);
 
         try {
-            $data = DB::transaction(function () use ($validated) {
+            $data = DB::transaction(function () use ($validated, $request) {
+                $validated['company_id'] = $request->company_id;
                 $withholdingTax = WithholdingTax::create($validated);
 
                 // If internal, deduct cash (credit)
@@ -142,10 +198,30 @@ class WithHoldingTaxController extends Controller
 
             $validated = $request->validate([
                 'source' => 'sometimes|required|in:internal,external',
-                'cash_id' => 'sometimes|required|exists:cashes,id',
-                'unit_transaction_id' => 'nullable|exists:unit_transactions,id',
-                'bbn_bill_id' => 'nullable|exists:bbn_bills,id',
-                'do_invoice_id' => 'nullable|exists:do_invoices,id',
+                'cash_id' => [
+                    'sometimes',
+                    'required',
+                    'exists:cashes,id',
+                    new RightCashRule(function () use ($request, $withholdingTax) {
+                        $unitTransactionId = $request->has('unit_transaction_id') ? $request->unit_transaction_id : $withholdingTax->unit_transaction_id;
+                        $bbnBillId = $request->has('bbn_bill_id') ? $request->bbn_bill_id : $withholdingTax->bbn_bill_id;
+                        $doInvoiceId = $request->has('do_invoice_id') ? $request->do_invoice_id : $withholdingTax->do_invoice_id;
+
+                        if (!empty($unitTransactionId)) {
+                            return [1, 2, 3];
+                        }
+                        if (!empty($bbnBillId)) {
+                            return 3;
+                        }
+                        if (!empty($doInvoiceId)) {
+                            return 4;
+                        }
+                        return null;
+                    }),
+                ],
+                'unit_transaction_id' => 'nullable|exists:unit_transactions,id|unique:withholding_taxes,unit_transaction_id,' . $id,
+                'bbn_bill_id' => 'nullable|exists:bbn_bills,id|unique:withholding_taxes,bbn_bill_id,' . $id,
+                'do_invoice_id' => 'nullable|exists:do_invoices,id|unique:withholding_taxes,do_invoice_id,' . $id,
                 'withholding_number' => 'sometimes|required|string|max:100|unique:withholding_taxes,withholding_number,' . $id,
                 'withholding_age' => 'sometimes|required|integer',
                 'pph_amount' => 'sometimes|required|numeric|min:0',
@@ -172,7 +248,7 @@ class WithHoldingTaxController extends Controller
                 // Apply the new cash deduction if it is internal
                 if ($withholdingTax->source === 'internal') {
                     $newCash = Cash::findOrFail($withholdingTax->cash_id);
-                    $newCash->adjustAmount((float)$withholdingTax->pph_amount, 'credit'); // Deduct the new amount (credit)
+                    $newCash->adjustAmount((float)$withholdingTax->payment_amount, 'credit'); // Deduct the new amount (credit)
                 }
 
                 return $withholdingTax;
@@ -199,7 +275,7 @@ class WithHoldingTaxController extends Controller
                 // Reverse the cash deduction if it was internal before deleting
                 if ($withholdingTax->source === 'internal') {
                     $cash = Cash::findOrFail($withholdingTax->cash_id);
-                    $cash->adjustAmount((float)$withholdingTax->pph_amount, 'debet'); // Add back the amount (debet)
+                    $cash->adjustAmount((float)$withholdingTax->payment_amount, 'debet'); // Add back the amount (debet)
                 }
 
                 $withholdingTax->delete();

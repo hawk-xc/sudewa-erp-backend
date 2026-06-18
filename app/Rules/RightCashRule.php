@@ -42,8 +42,16 @@ class RightCashRule implements ValidationRule
             ? ($this->companyId)()
             : $this->companyId;
 
-        if ($expectedCompanyId && (int) $cash->company_id !== (int) $expectedCompanyId) {
-            $fail("The selected :attribute does not belong to the selected company.");
+        if ($expectedCompanyId) {
+            if (is_array($expectedCompanyId)) {
+                if (!in_array((int) $cash->company_id, array_map('intval', $expectedCompanyId))) {
+                    $fail("The selected :attribute does not belong to the selected company.");
+                }
+            } else {
+                if ((int) $cash->company_id !== (int) $expectedCompanyId) {
+                    $fail("The selected :attribute does not belong to the selected company.");
+                }
+            }
         }
     }
 }

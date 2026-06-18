@@ -13,6 +13,7 @@ return new class extends Migration
     {
         Schema::create('withholding_taxes', function (Blueprint $table) {
             $table->id();
+            $table->foreignId('company_id')->constrained('companies')->onDelete('cascade');
             $table->enum('source', ['internal', 'external'])->default('internal')->nullable(false);
             $table->foreignId('cash_id')->nullable(false)->constrained('cashes')->onDelete('cascade');
             $table->foreignId('unit_transaction_id')->nullable(true)->constrained('unit_transactions')->onDelete('cascade');

@@ -337,7 +337,7 @@ Route::group(
             Route::get('bbn-billing/{id}', [FinanceBBNBillController::class, 'show']);
             Route::put('bbn-billing/{id}', [FinanceBBNBillController::class, 'update']);
             
-            // hold
+            // Withholding Tax
             Route::apiResource('withholding-tax', WithHoldingTaxController::class);
         });
 

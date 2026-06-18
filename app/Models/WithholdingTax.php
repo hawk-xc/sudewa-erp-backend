@@ -14,6 +14,7 @@ class WithholdingTax extends Model
 
     protected $fillable = [
         'source',
+        'company_id',
         'cash_id',
         'unit_transaction_id',
         'bbn_bill_id',
@@ -27,6 +28,7 @@ class WithholdingTax extends Model
     ];
 
     protected $casts = [
+        'company_id' => 'integer',
         'cash_id' => 'integer',
         'unit_transaction_id' => 'integer',
         'bbn_bill_id' => 'integer',
@@ -36,6 +38,14 @@ class WithholdingTax extends Model
         'payment_amount' => 'integer',
         'payment_date' => 'date',
     ];
+
+    /**
+     * Get the company associated with the withholding tax.
+     */
+    public function company(): BelongsTo
+    {
+        return $this->belongsTo(Company::class);
+    }
 
     /**
      * Get the cash associated with the withholding tax.
