@@ -176,72 +176,87 @@ class UnitTransactionBillingHistoryController extends Controller
                     }
                 }
 
-                $unitTransaction = $billing->unitTransaction;
-                $itemDetails = $unitTransaction->unitTransactionItems->map(function ($item) {
-                    $name = $item->unitType?->name ?? $item->sparepart?->name ?? 'Unknown';
-                    return "{$item->qty_total} {$name}";
-                })->implode(', ');
+                // Always ensure FinanceBilling exists on the first payment so finance department can process it
+                $existsFinanceBilling = FinanceBilling::where('unit_transaction_billing_id', $billing->id)->exists();
+                if (!$existsFinanceBilling) {
+                    FinanceBilling::create([
+                        'unit_transaction_billing_id' => $billing->id,
+                        'cash_flow_id' => null,
+                        'grand_total' => $billing->grand_total,
+                        'last_payment_at' => now(),
+                        'is_valid' => false,
+                    ]);
+                }
 
-                $itemCount = $unitTransaction->unitTransactionItems->count();
-                $transactionTypeLabel = $unitTransaction->type === 'sales' ? 'Penjualan' : 'Pembelian';
-                $prefixLabel = $unitTransaction->type === 'sales' ? 'diterima' : 'dibayar';
+                if ($remaining <= 0) {
+                    $billing->load(['unitTransactionBillingHistories.cashes', 'financeBilling.financeBillingItems']);
+                    $financeBilling = $billing->financeBilling;
 
-                TransactionFlow::updateOrCreate(
-                    ['unit_transaction_id' => $unitTransaction->id],
-                    [
-                        'company_id' => $companyId,
-                        'code' => $unitTransaction->code,
-                        'transaction_date' => now(),
-                        'name' => $unitTransaction->person->name ?? null,
-                        'description' => "{$transactionTypeLabel} {$prefixLabel} dimuka ke-{$itemCount} unit spm: {$itemDetails}",
-                        'bank_idr_debit' => $unitTransaction->type === 'sales' ? $unitTransaction->getBrutoAmount() : 0,
-                        'bank_idr_credit' => $unitTransaction->type === 'purchase' ? $unitTransaction->getBrutoAmount() : 0,
-                    ]
-                );
+                    $totalBca = 0;
+                    $totalCash = 0;
+                    $totalBcaUsd = 0;
 
-                // Create a SINGLE CashFlow and FinanceBilling for the TOTAL BRUTO on the first payment
-                $existsCashFlow = CashFlow::where('unit_transaction_billing_id', $billing->id)->exists();
-                if (!$existsCashFlow) {
-                    $primaryCashCode = null;
-                    foreach ($cashSlug as $slug) {
-                        $amt = match ($slug) {
-                            'cash_idr' => $validated['cash_payment_amount'] ?? 0,
-                            'bca_idr' => $validated['bca_payment_amount'] ?? 0,
-                            'bca_usd' => $validated['bca_payment_usd_amount'] ?? 0,
-                            default => 0,
-                        };
-                        if ($amt > 0) {
-                            $primaryCashCode = $slug;
-                            break;
-                        }
+                    if ($financeBilling && $financeBilling->financeBillingItems->isNotEmpty()) {
+                        $totalBca = (int) $financeBilling->financeBillingItems->sum('bca_payment_amount');
+                        $totalCash = (int) $financeBilling->financeBillingItems->sum('cash_payment_amount');
+                        $totalBcaUsd = (int) $financeBilling->financeBillingItems->sum('bca_payment_usd_amount');
                     }
 
-                    // Fallback to first available if none in current payment (e.g. lunas by adjustment)
-                    if (!$primaryCashCode) $primaryCashCode = 'cash_idr';
+                    if ($totalBca == 0 && $totalCash == 0 && $totalBcaUsd == 0) {
+                        $totalBca = (int) $billing->getTotalBcaCashPayment();
+                        $totalCash = (int) $billing->getTotalCashPayment();
+                        $totalBcaUsd = (int) $billing->getTotalBcaUsdPayment();
+                    }
 
-                    $cash = Cash::where('company_id', $companyId)
-                        ->where('code', $primaryCashCode)
-                        ->first();
+                    $totalIdrPayment = $totalBca + $totalCash;
+                    if ($totalIdrPayment <= 0) {
+                        $totalIdrPayment = (int) $billing->grand_total;
+                    }
 
-                    if ($cash) {
-                        $cashFlow = CashFlow::create([
+                    $cashFlow = CashFlow::updateOrCreate(
+                        ['unit_transaction_billing_id' => $billing->id],
+                        [
                             'company_id' => $companyId,
                             'code' => $billing->unitTransaction->code,
-                            'unit_transaction_billing_id' => $billing->id,
                             'date' => $validated['payment_at'] ?? now(),
                             'note' => "Pelunasan Total " . $billing->unitTransaction->code,
-                            'debet' => $billing->unitTransaction->type === 'sales' ? $billing->grand_total : 0,
-                            'credit' => $billing->unitTransaction->type === 'purchase' ? $billing->grand_total : 0,
-                        ]);
+                            'debet' => $billing->unitTransaction->type === 'sales' ? $totalIdrPayment : 0,
+                            'credit' => $billing->unitTransaction->type === 'purchase' ? $totalIdrPayment : 0,
+                        ]
+                    );
 
-                        FinanceBilling::create([
-                            'unit_transaction_billing_id' => $billing->id,
+                    if ($financeBilling) {
+                        $financeBilling->update([
                             'cash_flow_id' => $cashFlow->id,
-                            'grand_total' => $billing->grand_total,
-                            'last_payment_at' => now(),
-                            'is_valid' => false,
                         ]);
                     }
+
+                    $unitTransaction = $billing->unitTransaction;
+                    $itemDetails = $unitTransaction->unitTransactionItems->map(function ($item) {
+                        $name = $item->unitType?->name ?? $item->sparepart?->name ?? 'Unknown';
+                        return "{$item->qty_total} {$name}";
+                    })->implode(', ');
+
+                    $itemCount = $unitTransaction->unitTransactionItems->count();
+                    $transactionTypeLabel = $unitTransaction->type === 'sales' ? 'Penjualan' : 'Pembelian';
+                    $prefixLabel = $unitTransaction->type === 'sales' ? 'diterima' : 'dibayar';
+
+                    TransactionFlow::updateOrCreate(
+                        ['unit_transaction_id' => $unitTransaction->id],
+                        [
+                            'company_id' => $companyId,
+                            'code' => $unitTransaction->code,
+                            'transaction_date' => now(),
+                            'name' => $unitTransaction->person->name ?? null,
+                            'description' => "{$transactionTypeLabel} {$prefixLabel} dimuka ke-{$itemCount} unit spm: {$itemDetails}",
+                            'bank_usd_debit' => $unitTransaction->type === 'sales' ? $totalBcaUsd : 0,
+                            'bank_usd_credit' => $unitTransaction->type === 'purchase' ? $totalBcaUsd : 0,
+                            'bank_idr_debit' => $unitTransaction->type === 'sales' ? $totalBca : 0,
+                            'bank_idr_credit' => $unitTransaction->type === 'purchase' ? $totalBca : 0,
+                            'cash_idr_debit' => $unitTransaction->type === 'sales' ? $totalCash : 0,
+                            'cash_idr_credit' => $unitTransaction->type === 'purchase' ? $totalCash : 0,
+                        ]
+                    );
                 }
             });
 

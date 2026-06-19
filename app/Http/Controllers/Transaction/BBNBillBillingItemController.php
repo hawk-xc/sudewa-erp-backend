@@ -84,8 +84,8 @@ class BBNBillBillingItemController extends Controller
         $billing = BBNBillBilling::findOrFail($validated['bbn_bill_billing_id']);
         $remainingBefore = $billing->getRemainingAmount();
 
-        if ((int) $validated['amount'] !== (int) $remainingBefore) {
-            return $this->responseError('Payment must be paid in full. Remaining balance is ' . number_format($remainingBefore), 'Validation failed', 422);
+        if ((int) $validated['amount'] > (int) $remainingBefore) {
+            return $this->responseError('Payment amount exceeds remaining balance. Remaining balance is ' . number_format($remainingBefore), 'Validation failed', 422);
         }
 
         try {
@@ -97,31 +97,57 @@ class BBNBillBillingItemController extends Controller
                 $item->remaining_payment = $remainingPayment;
 
                 $cash = Cash::findOrFail($validated['cash_id']);
-                $bankUsdDebit = 0;
-                $bankIdrDebit = 0;
-                $cashIdrDebit = 0;
 
-                if ($cash->type === 'bank') {
-                    if (str_contains(strtolower($cash->code), 'usd')) {
-                        $bankUsdDebit = $item->amount;
-                    } else {
-                        $bankIdrDebit = $item->amount;
+                if ($remainingPayment <= 0) {
+                    $billingItems = BBNBillBillingItem::with('cash')
+                        ->where('bbn_bill_billing_id', $billing->id)
+                        ->get();
+
+                    $bankUsdDebit = 0;
+                    $bankIdrDebit = 0;
+                    $cashIdrDebit = 0;
+
+                    foreach ($billingItems as $bItem) {
+                        $bCash = $bItem->cash;
+                        if ($bCash) {
+                            if ($bCash->type === 'bank') {
+                                if (str_contains(strtolower($bCash->code), 'usd')) {
+                                    $bankUsdDebit += $bItem->amount;
+                                } else {
+                                    $bankIdrDebit += $bItem->amount;
+                                }
+                            } else {
+                                $cashIdrDebit += $bItem->amount;
+                            }
+                        }
                     }
-                } else {
-                    $cashIdrDebit = $item->amount;
+
+                    if ($bankUsdDebit == 0 && $bankIdrDebit == 0 && $cashIdrDebit == 0) {
+                        if ($cash->type === 'bank') {
+                            if (str_contains(strtolower($cash->code), 'usd')) {
+                                $bankUsdDebit = $item->amount;
+                            } else {
+                                $bankIdrDebit = $item->amount;
+                            }
+                        } else {
+                            $cashIdrDebit = $item->amount;
+                        }
+                    }
+
+                    TransactionFlow::updateOrCreate(
+                        [
+                            'company_id' => $cash->company_id,
+                            'description' => "Pelunasan BBN Bill: " . ($billing->bbnBill?->code ?? ''),
+                        ],
+                        [
+                            'transaction_date' => $item->paid_date,
+                            'name' => $billing->bbnBill?->ditlantasProcess?->vendor?->name ?? null,
+                            'bank_usd_debit' => $bankUsdDebit,
+                            'bank_idr_debit' => $bankIdrDebit,
+                            'cash_idr_debit' => $cashIdrDebit,
+                        ]
+                    );
                 }
-
-                $prefix = $remainingPayment <= 0 ? 'Pelunasan' : 'Pembayaran';
-
-                TransactionFlow::create([
-                    'company_id' => $cash->company_id,
-                    'transaction_date' => $item->paid_date,
-                    'name' => $billing->bbnBill?->ditlantasProcess?->vendor?->name ?? null,
-                    'description' => "{$prefix} BBN Bill: " . ($billing->bbnBill?->code ?? ''),
-                    'bank_usd_debit' => $bankUsdDebit,
-                    'bank_idr_debit' => $bankIdrDebit,
-                    'cash_idr_debit' => $cashIdrDebit,
-                ]);
 
                 FinanceBBNBilling::create([
                     'bbn_bill_id' => $billing->bbn_bill_id,
