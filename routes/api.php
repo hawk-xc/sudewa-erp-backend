@@ -133,6 +133,7 @@ Route::group(
             // Additional Route
             Route::put('company-assign-module/{id}', [GlobalCompanyController::class, 'assignModule']);
             Route::get('convert-idr-to-usd', [GlobalCompanyController::class, 'covertIdrToUsd']);
+            Route::get('convert-usd-to-idr', [GlobalCompanyController::class, 'convertUsdToIdr']);
             Route::group(['prefix' => 'company', 'as' => 'company.id'], function () {
                 Route::get('slug/{slug}', [GlobalCompanyController::class, 'showBySlug'])->name('by-slug');
             });

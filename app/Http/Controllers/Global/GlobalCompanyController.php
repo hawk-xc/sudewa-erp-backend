@@ -281,4 +281,25 @@ class GlobalCompanyController extends Controller
             return $this->responseError([], 'Currency Convert Service Error', 500);
         }
     }
+
+    public function convertUsdToIdr(CurrencyService $currencyService, Request $request)
+    {
+        $request->validate([
+            'amount' => 'required|integer',
+        ]);
+
+        $idrAmount = $currencyService->convertUsdToIdr($request->amount);
+
+        if ($idrAmount) {
+            return $this->responseSuccess(
+                [
+                    'result' => $idrAmount,
+                ],
+                'USD converted to IDR',
+                200
+            );
+        } else {
+            return $this->responseError([], 'Currency Convert Service Error', 500);
+        }
+    }
 }

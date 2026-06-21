@@ -123,8 +123,8 @@ class FinanceBillingController extends Controller
                 'unitTransactionBilling.unitTransactionBillingHistories',
                 'financeBillingItems'
             ])
-            ->select($this->financeBillingTable)
-            ->findOrFail($id);
+                ->select($this->financeBillingTable)
+                ->findOrFail($id);
 
             $items = $data->financeBillingItems;
 
@@ -222,11 +222,11 @@ class FinanceBillingController extends Controller
                 'unitTransactionBilling.unitTransaction.unitTransactionItems.unitTypeSoldDetails'
             ])->findOrFail($unit_transaction_billing_id);
             $newPayment = ($validated['cash_payment_amount'] ?? 0) + ($validated['bca_payment_amount'] ?? 0);
-            
+
             $alreadyAllocated = $financeBilling->financeBillingItems->sum(function ($item) {
                 return ($item->cash_payment_amount ?? 0) + ($item->bca_payment_amount ?? 0);
             });
-            
+
             $remainingAllowed = $financeBilling->grand_total - $alreadyAllocated;
 
             if ($newPayment > $remainingAllowed) {
@@ -278,14 +278,13 @@ class FinanceBillingController extends Controller
                     }
                 }
 
-                // 2. Check if fully allocated
                 if (($alreadyAllocated + $newPayment) >= $financeBilling->grand_total) {
                     $financeBilling->update(['is_valid' => true]);
 
                     $utBilling = $financeBilling->unitTransactionBilling;
                     if ($utBilling && $utBilling->unitTransaction) {
                         $unitTransaction = $utBilling->unitTransaction;
-                        
+
                         $unitTransaction->update([
                             'stock_state' => 'inbound_incoming_goods',
                         ]);
@@ -365,13 +364,13 @@ class FinanceBillingController extends Controller
                 );
             }
 
-                DB::transaction(function () use ($item, $validated) {
+            DB::transaction(function () use ($item, $validated) {
                 $oldBca = (float) ($item->bca_payment_amount ?? 0);
                 $oldBcaUsd = (float) ($item->bca_payment_usd_amount ?? 0);
                 $oldCash = (float) ($item->cash_payment_amount ?? 0);
 
                 $item->update($validated);
-                
+
                 $newBca = (float) ($item->bca_payment_amount ?? 0);
                 $newBcaUsd = (float) ($item->bca_payment_usd_amount ?? 0);
                 $newCash = (float) ($item->cash_payment_amount ?? 0);
@@ -408,7 +407,7 @@ class FinanceBillingController extends Controller
                         }
                     }
                 }
-                
+
                 $cashFlow = $financeBilling->cashFlow;
 
                 if ($cashFlow) {
@@ -419,7 +418,7 @@ class FinanceBillingController extends Controller
                         'note' => $item->note ?? $cashFlow->note,
                         'date' => $item->payment_at ?? $cashFlow->date,
                     ]);
-                    
+
                     $financeBilling->update([
                         'grand_total' => $newAmount,
                         'last_payment_at' => $item->payment_at
@@ -451,7 +450,7 @@ class FinanceBillingController extends Controller
                 if ($item->payment_proof) {
                     $this->destroyFile('finance_billing_proof/' . $item->payment_proof);
                 }
-                
+
                 $financeBilling = $item->financeBilling;
                 $utBilling = $financeBilling->unitTransactionBilling;
                 if ($utBilling && $utBilling->unitTransaction) {
@@ -501,8 +500,8 @@ class FinanceBillingController extends Controller
     private function updateValidity(FinanceBilling $financeBilling)
     {
         $financeBilling->load(['unitTransactionBilling', 'financeBillingItems']);
-        
-        $totalPaid = $financeBilling->financeBillingItems->sum(function($item) {
+
+        $totalPaid = $financeBilling->financeBillingItems->sum(function ($item) {
             return $item->bca_payment_amount + $item->cash_payment_amount;
         });
 
@@ -513,4 +512,3 @@ class FinanceBillingController extends Controller
         ]);
     }
 }
-

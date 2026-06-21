@@ -108,7 +108,7 @@ class UnitTransactionBillingController extends Controller
 
             $totalUsd = $data->getTotalBcaUsdPayment();
 
-            $totalPaid = $totalCash + $totalBca;
+            $totalPaid = $totalCash + $totalBca + $data->getTotalBcaUsdPaymentInIdr();
 
             $remaining = $data->grand_total - $totalPaid;
 

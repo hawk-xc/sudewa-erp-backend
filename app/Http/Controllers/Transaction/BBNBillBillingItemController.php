@@ -84,8 +84,8 @@ class BBNBillBillingItemController extends Controller
         $billing = BBNBillBilling::findOrFail($validated['bbn_bill_billing_id']);
         $remainingBefore = $billing->getRemainingAmount();
 
-        if ((int) $validated['amount'] > (int) $remainingBefore) {
-            return $this->responseError('Payment amount exceeds remaining balance. Remaining balance is ' . number_format($remainingBefore), 'Validation failed', 422);
+        if ((int) $validated['amount'] !== (int) $remainingBefore) {
+            return $this->responseError('Payment amount must equal the remaining balance of ' . number_format($remainingBefore) . '. Partial payment is not allowed.', 'Validation failed', 422);
         }
 
         try {

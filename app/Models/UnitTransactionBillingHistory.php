@@ -38,7 +38,7 @@ class UnitTransactionBillingHistory extends Model
     {
         return $this->belongsToMany(Cash::class, 'cash_unit_transaction_billing_history', 'unit_transaction_billing_history_id', 'cash_id')
             ->using(CashUnitTransactionBillingHistory::class)
-            ->withPivot('amount')
+            ->withPivot(['amount', 'original_amount', 'exchange_amount'])
             ->withTimestamps();
     }
 
