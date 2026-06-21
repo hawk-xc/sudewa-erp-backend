@@ -174,7 +174,7 @@ Route::group(
             Route::get('vehicle-equipment/export', [MasterVehicleEquipmentController::class, 'export']);
             Route::get('vehicle-fleet/export', [VehicleFleetController::class, 'export']);
             // Route::get('material/export', [MasterMaterialController::class, 'export']);
-    
+
             // Master Data
             Route::apiResource('account-group', MasterAccountGroupController::class);
             Route::put('account/bulk-update', [MasterAccountController::class, 'bulkUpdate']);
@@ -284,7 +284,7 @@ Route::group(
             ]);
 
             // DO Transaction API    
-            Route::group(['prefix' => 'do-invoice', 'as' => 'do-invoice.'], function() {
+            Route::group(['prefix' => 'do-invoice', 'as' => 'do-invoice.'], function () {
                 Route::post('process-invoice/{id}', [DOInvoiceController::class, 'processInvoice']);
                 Route::post('process-expedition/{id}', [DOInvoiceController::class, 'processExpedition']);
             });
@@ -329,7 +329,7 @@ Route::group(
 
             // UJ Driver Billing Payment
             Route::apiResource('uj-driver-billing-payment', UJDriverBillingPaymentController::class)->except(['index', 'show', 'destroy', 'update']);
-            
+
             // Invoice Finance Payment
             Route::apiResource('finance-invoice-billing-payment', FinanceInvoiceBillingPaymentController::class)->except(['index', 'show', 'destroy', 'update']);
 
@@ -337,7 +337,7 @@ Route::group(
             Route::get('bbn-billing', [FinanceBBNBillController::class, 'index']);
             Route::get('bbn-billing/{id}', [FinanceBBNBillController::class, 'show']);
             Route::put('bbn-billing/{id}', [FinanceBBNBillController::class, 'update']);
-            
+
             // Withholding Tax
             Route::apiResource('withholding-tax', WithHoldingTaxController::class);
         });
@@ -346,10 +346,11 @@ Route::group(
         Route::group(['prefix' => 'report', 'as' => 'report.'], function () {
             Route::get('transaction-purchase-report', [TransactionReportController::class, 'purchaseTransactionReport']);
             Route::get('transaction-sales-report', [TransactionReportController::class, 'salesTransactionReport']);
+            Route::apiResource('liability-report', LiabilityController::class)->only(['index', 'show']);
             Route::get('unit-type-detail-report', [UnitTypeDetailReportController::class, 'index']);
             Route::get('unit-type-detail-stock', [UnitTransactionController::class, 'getStock']);
             Route::get('unit-type-detail-stock/export', [UnitTransactionController::class, 'exportStock']);
-            
+
             // BPKB Report
             Route::get('bpkb-report', [VehicleRegistrationReport::class, 'getBPKBReport']);
             Route::get('stnk-report', [VehicleRegistrationReport::class, 'getSTNKReport']);
@@ -373,11 +374,11 @@ Route::group(
             Route::get('issue-vehicle-equipment', [GoodsTransactionStockController::class, 'issueVehicleEquipment']);
         });
 
-	// Stats
-	Route::group(['prefix'=> 'stats','as'=> 'stats.'], function () {
-    		Route::get('billing-stats', [BillingStatController::class, 'billingStat']);
-    		Route::get('customer-stats', [BillingStatController::class, 'customerOverview']);
-    		Route::get('unit-type-stats', [BillingStatController::class, 'unitTypeOverview']);
-	});
+        // Stats
+        Route::group(['prefix' => 'stats', 'as' => 'stats.'], function () {
+            Route::get('billing-stats', [BillingStatController::class, 'billingStat']);
+            Route::get('customer-stats', [BillingStatController::class, 'customerOverview']);
+            Route::get('unit-type-stats', [BillingStatController::class, 'unitTypeOverview']);
+        });
     },
 );

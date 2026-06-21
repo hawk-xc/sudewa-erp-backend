@@ -74,7 +74,7 @@ class UnitTransactionController extends Controller
                     'warehouse:id,uuid,name,capacity',
                     'person:id,uuid,code,name,type',
                     'transactionFlow:id,uuid,transaction_date,description',
-                    'unitTransactionBilling.unitTransactionBillingHistories',
+                    'unitTransactionBilling:id,uuid,unit_transaction_id,grand_total,last_payment_at,is_paid'
                 ]);
 
             if ($request->filled('is_paid')) {
