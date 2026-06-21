@@ -57,7 +57,6 @@ class UnitTransactionBillingHistoryController extends Controller
                 'Billing history retrieved successfully',
                 200
             );
-
         } catch (ModelNotFoundException $err) {
             $model = class_basename($err->getModel() ?: 'Data');
             $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
@@ -78,7 +77,6 @@ class UnitTransactionBillingHistoryController extends Controller
             ])->findOrFail($id);
 
             return $this->responseSuccess($data, 'Billing history retrieved successfully', 200);
-
         } catch (ModelNotFoundException $err) {
             $model = class_basename($err->getModel() ?: 'Data');
             $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
@@ -91,7 +89,7 @@ class UnitTransactionBillingHistoryController extends Controller
     public function store(Request $request)
     {
         $cashSlug = ['cash_idr', 'bca_idr', 'bca_usd'];
-        
+
         try {
             $validated = $request->validate([
                 'unit_transaction_billing_id' => 'required|exists:unit_transaction_billings,id',
@@ -238,26 +236,72 @@ class UnitTransactionBillingHistoryController extends Controller
 
                     $totalBcaUsdInIdr = (int) $billing->getTotalBcaUsdPaymentInIdr();
 
-                    $totalIdrPayment = $totalBca + $totalCash + $totalBcaUsdInIdr;
-                    if ($totalIdrPayment <= 0) {
-                        $totalIdrPayment = (int) $billing->grand_total;
+                    $createdCashFlowIds = [];
+                    $primaryCashFlowId = null;
+
+                    if ($totalBca > 0 || $totalCash > 0 || $totalBcaUsd > 0) {
+                        $paymentMethods = [
+                            'bca_idr' => $totalBca,
+                            'cash_idr' => $totalCash,
+                            'bca_usd' => $totalBcaUsd,
+                        ];
+
+                        foreach ($paymentMethods as $slug => $amount) {
+                            if ($amount > 0) {
+                                $cashObj = Cash::where('company_id', $companyId)->where('code', $slug)->first();
+                                $cashId = $cashObj ? $cashObj->id : null;
+                                $cashName = $cashObj ? $cashObj->name : strtoupper(str_replace('_', ' ', $slug));
+
+                                $cf = CashFlow::updateOrCreate(
+                                    [
+                                        'unit_transaction_billing_id' => $billing->id,
+                                        'cash_id' => $cashId,
+                                    ],
+                                    [
+                                        'company_id' => $companyId,
+                                        'code' => $billing->unitTransaction->code . '-' . $slug,
+                                        'date' => $validated['payment_at'] ?? now(),
+                                        'note' => "Pelunasan Total " . $billing->unitTransaction->code . " (" . $cashName . ")",
+                                        'debet' => $billing->unitTransaction->type === 'sales' ? $amount : 0,
+                                        'credit' => $billing->unitTransaction->type === 'purchase' ? $amount : 0,
+                                    ]
+                                );
+                                $createdCashFlowIds[] = $cf->id;
+                                if (is_null($primaryCashFlowId)) {
+                                    $primaryCashFlowId = $cf->id;
+                                }
+                            }
+                        }
+                    } else {
+                        $cashObj = Cash::where('company_id', $companyId)->where('code', 'cash_idr')->first();
+                        $cashId = $cashObj ? $cashObj->id : null;
+                        $cashName = $cashObj ? $cashObj->name : 'CASH IDR';
+
+                        $cf = CashFlow::updateOrCreate(
+                            [
+                                'unit_transaction_billing_id' => $billing->id,
+                                'cash_id' => $cashId,
+                            ],
+                            [
+                                'company_id' => $companyId,
+                                'code' => $billing->unitTransaction->code . '-cash_idr',
+                                'date' => $validated['payment_at'] ?? now(),
+                                'note' => "Pelunasan Total " . $billing->unitTransaction->code . " (" . $cashName . ")",
+                                'debet' => $billing->unitTransaction->type === 'sales' ? $billing->grand_total : 0,
+                                'credit' => $billing->unitTransaction->type === 'purchase' ? $billing->grand_total : 0,
+                            ]
+                        );
+                        $createdCashFlowIds[] = $cf->id;
+                        $primaryCashFlowId = $cf->id;
                     }
 
-                    $cashFlow = CashFlow::updateOrCreate(
-                        ['unit_transaction_billing_id' => $billing->id],
-                        [
-                            'company_id' => $companyId,
-                            'code' => $billing->unitTransaction->code,
-                            'date' => $validated['payment_at'] ?? now(),
-                            'note' => "Pelunasan Total " . $billing->unitTransaction->code,
-                            'debet' => $billing->unitTransaction->type === 'sales' ? $totalIdrPayment : 0,
-                            'credit' => $billing->unitTransaction->type === 'purchase' ? $totalIdrPayment : 0,
-                        ]
-                    );
+                    CashFlow::where('unit_transaction_billing_id', $billing->id)
+                        ->whereNotIn('id', $createdCashFlowIds)
+                        ->delete();
 
-                    if ($financeBilling) {
+                    if ($financeBilling && $primaryCashFlowId) {
                         $financeBilling->update([
-                            'cash_flow_id' => $cashFlow->id,
+                            'cash_flow_id' => $primaryCashFlowId,
                         ]);
                     }
 
@@ -299,7 +343,6 @@ class UnitTransactionBillingHistoryController extends Controller
                 'Payment history created successfully',
                 201
             );
-
         } catch (ValidationException $err) {
             return $this->responseError($err->errors(), 'Validation failed', 422);
         } catch (ModelNotFoundException $err) {
@@ -373,7 +416,7 @@ class UnitTransactionBillingHistoryController extends Controller
 
                 foreach (['cash_idr', 'bca_idr', 'bca_usd'] as $slug) {
                     $diff = $diffs[$slug];
-                    $newVal = match($slug) {
+                    $newVal = match ($slug) {
                         'cash_idr' => array_key_exists('cash_payment_amount', $validated) ? $validated['cash_payment_amount'] : $historyCashPaymentAmount,
                         'bca_idr' => array_key_exists('bca_payment_amount', $validated) ? $validated['bca_payment_amount'] : $historyBcaPaymentAmount,
                         'bca_usd' => array_key_exists('bca_payment_usd_amount', $validated) ? $validated['bca_payment_usd_amount'] : $historyBcaUsdPaymentAmount,
@@ -384,7 +427,7 @@ class UnitTransactionBillingHistoryController extends Controller
                         if ($diff != 0) {
                             $cash->increment('amount', $diff);
                         }
-                        
+
                         if ($newVal > 0) {
                             $existingPivot = $history->cashes->where('id', $cash->id)->first();
                             $pivotData = ['amount' => $newVal];
@@ -415,7 +458,7 @@ class UnitTransactionBillingHistoryController extends Controller
                     ->whereIn('cashes.code', ['cash_idr', 'bca_idr', 'bca_usd'])
                     ->select('cashes.code', 'cash_unit_transaction_billing_history.amount', 'cash_unit_transaction_billing_history.original_amount')
                     ->get();
-                
+
                 $totalPaid = 0;
                 foreach ($totalPaidList as $item) {
                     if ($item->code === 'bca_usd') {
@@ -424,7 +467,7 @@ class UnitTransactionBillingHistoryController extends Controller
                         $totalPaid += $item->amount;
                     }
                 }
-                
+
                 $remaining = $billing->grand_total - $totalPaid;
 
                 $billing->update([
@@ -435,7 +478,6 @@ class UnitTransactionBillingHistoryController extends Controller
             });
 
             return $this->responseSuccess($history->fresh(), 'History updated successfully', 200);
-
         } catch (ValidationException $err) {
             return $this->responseError($err->errors(), 'Validation failed', 422);
         } catch (ModelNotFoundException $err) {
@@ -485,7 +527,7 @@ class UnitTransactionBillingHistoryController extends Controller
                     ->whereIn('cashes.code', ['cash_idr', 'bca_idr', 'bca_usd'])
                     ->select('cashes.code', 'cash_unit_transaction_billing_history.amount', 'cash_unit_transaction_billing_history.original_amount')
                     ->get();
-                
+
                 $totalPaid = 0;
                 foreach ($totalPaidList as $item) {
                     if ($item->code === 'bca_usd') {
@@ -494,7 +536,7 @@ class UnitTransactionBillingHistoryController extends Controller
                         $totalPaid += $item->amount;
                     }
                 }
-                
+
                 $remaining = $billing->grand_total - $totalPaid;
 
                 $billing->update([
@@ -505,7 +547,6 @@ class UnitTransactionBillingHistoryController extends Controller
             });
 
             return $this->responseSuccess([], 'History deleted successfully', 200);
-
         } catch (ModelNotFoundException $err) {
             $model = class_basename($err->getModel() ?: 'Data');
             $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
