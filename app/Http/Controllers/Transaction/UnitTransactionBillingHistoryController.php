@@ -237,7 +237,7 @@ class UnitTransactionBillingHistoryController extends Controller
                     $totalBcaUsdInIdr = (int) $billing->getTotalBcaUsdPaymentInIdr();
 
                     $createdCashFlowIds = [];
-                    $primaryCashFlowId = null;
+                    $createdFinanceBillingIds = [];
 
                     if ($totalBca > 0 || $totalCash > 0 || $totalBcaUsd > 0) {
                         $paymentMethods = [
@@ -267,9 +267,31 @@ class UnitTransactionBillingHistoryController extends Controller
                                     ]
                                 );
                                 $createdCashFlowIds[] = $cf->id;
-                                if (is_null($primaryCashFlowId)) {
-                                    $primaryCashFlowId = $cf->id;
+
+                                $fb = FinanceBilling::where('unit_transaction_billing_id', $billing->id)
+                                    ->where(function ($q) use ($cf) {
+                                        $q->where('cash_flow_id', $cf->id)
+                                          ->orWhereNull('cash_flow_id');
+                                    })
+                                    ->first();
+
+                                if ($fb) {
+                                    $fb->update([
+                                        'cash_flow_id' => $cf->id,
+                                        'grand_total' => $billing->grand_total,
+                                        'last_payment_at' => now(),
+                                        'is_valid' => false,
+                                    ]);
+                                } else {
+                                    $fb = FinanceBilling::create([
+                                        'unit_transaction_billing_id' => $billing->id,
+                                        'cash_flow_id' => $cf->id,
+                                        'grand_total' => $billing->grand_total,
+                                        'last_payment_at' => now(),
+                                        'is_valid' => false,
+                                    ]);
                                 }
+                                $createdFinanceBillingIds[] = $fb->id;
                             }
                         }
                     } else {
@@ -292,18 +314,28 @@ class UnitTransactionBillingHistoryController extends Controller
                             ]
                         );
                         $createdCashFlowIds[] = $cf->id;
-                        $primaryCashFlowId = $cf->id;
+
+                        $fb = FinanceBilling::updateOrCreate(
+                            [
+                                'unit_transaction_billing_id' => $billing->id,
+                                'cash_flow_id' => $cf->id,
+                            ],
+                            [
+                                'grand_total' => $billing->grand_total,
+                                'last_payment_at' => now(),
+                                'is_valid' => false,
+                            ]
+                        );
+                        $createdFinanceBillingIds[] = $fb->id;
                     }
 
                     CashFlow::where('unit_transaction_billing_id', $billing->id)
                         ->whereNotIn('id', $createdCashFlowIds)
                         ->delete();
 
-                    if ($financeBilling && $primaryCashFlowId) {
-                        $financeBilling->update([
-                            'cash_flow_id' => $primaryCashFlowId,
-                        ]);
-                    }
+                    FinanceBilling::where('unit_transaction_billing_id', $billing->id)
+                        ->whereNotIn('id', $createdFinanceBillingIds)
+                        ->delete();
 
                     $unitTransaction = $billing->unitTransaction;
                     $itemDetails = $unitTransaction->unitTransactionItems->map(function ($item) {

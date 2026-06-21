@@ -18,6 +18,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
+use App\Services\CurrencyService;
 
 class FinanceBillingController extends Controller
 {
@@ -99,7 +100,8 @@ class FinanceBillingController extends Controller
                 $items = $item->financeBillingItems;
                 $totalCash = $items->sum('cash_payment_amount');
                 $totalBca = $items->sum('bca_payment_amount');
-                $totalPaid = $totalCash + $totalBca;
+                $totalBcaUsdOriginal = $items->sum('bca_payment_usd_amount_original');
+                $totalPaid = $totalCash + $totalBca + $totalBcaUsdOriginal;
                 $remaining = ($item->unitTransactionBilling->grand_total ?? 0) - $totalPaid;
 
                 $item->remaining_payment = $remaining;
@@ -131,13 +133,15 @@ class FinanceBillingController extends Controller
             $totalCash = $items->sum('cash_payment_amount');
             $totalBca = $items->sum('bca_payment_amount');
             $totalUsd = $items->sum('bca_payment_usd_amount');
+            $totalUsdOriginal = $items->sum('bca_payment_usd_amount_original');
 
-            $totalPaid = $totalCash + $totalBca;
+            $totalPaid = $totalCash + $totalBca + $totalUsdOriginal;
             $remaining = ($data->unitTransactionBilling->grand_total ?? 0) - $totalPaid;
 
             $data->total_cash_payment = $totalCash;
             $data->total_bca_payment = $totalBca;
             $data->total_usd_payment = $totalUsd;
+            $data->total_usd_payment_original = $totalUsdOriginal;
             $data->total_paid = $totalPaid;
             $data->remaining_payment = $remaining;
             $data->total_payment_count = $items->count();
@@ -201,9 +205,9 @@ class FinanceBillingController extends Controller
     {
         try {
             $validated = $request->validate([
-                'bca_payment_amount' => 'nullable|integer|min:0|required_without:cash_payment_amount',
-                'bca_payment_usd_amount' => 'nullable|integer|min:0',
-                'cash_payment_amount' => 'nullable|integer|min:0|required_without:bca_payment_amount',
+                'bca_payment_amount' => 'nullable|integer|min:0|required_without_all:cash_payment_amount,bca_payment_usd_amount',
+                'bca_payment_usd_amount' => 'nullable|integer|min:0|required_without_all:bca_payment_amount,cash_payment_amount',
+                'cash_payment_amount' => 'nullable|integer|min:0|required_without_all:bca_payment_amount,bca_payment_usd_amount',
                 'payment_proof' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:2048',
                 'payment_at' => 'nullable|date',
                 'note' => 'nullable|string',
@@ -221,10 +225,23 @@ class FinanceBillingController extends Controller
                 'unitTransactionBilling.unitTransaction.unitTransactionItems.unitTransactionItemDetails',
                 'unitTransactionBilling.unitTransaction.unitTransactionItems.unitTypeSoldDetails'
             ])->findOrFail($unit_transaction_billing_id);
-            $newPayment = ($validated['cash_payment_amount'] ?? 0) + ($validated['bca_payment_amount'] ?? 0);
+
+            $bcaUsd = $validated['bca_payment_usd_amount'] ?? 0;
+            $usdInIdr = 0;
+            if ($bcaUsd > 0) {
+                $currencyService = app(CurrencyService::class);
+                $exchangeRate = (int) $currencyService->convertUsdToIdr('1');
+                if (!$exchangeRate) {
+                    return $this->responseError([], 'Failed to convert USD to IDR via Unirate API.', 500);
+                }
+                $usdInIdr = (int) ($bcaUsd * $exchangeRate);
+            }
+            $validated['bca_payment_usd_amount_original'] = $usdInIdr;
+
+            $newPayment = ($validated['cash_payment_amount'] ?? 0) + ($validated['bca_payment_amount'] ?? 0) + $usdInIdr;
 
             $alreadyAllocated = $financeBilling->financeBillingItems->sum(function ($item) {
-                return ($item->cash_payment_amount ?? 0) + ($item->bca_payment_amount ?? 0);
+                return ($item->cash_payment_amount ?? 0) + ($item->bca_payment_amount ?? 0) + ($item->bca_payment_usd_amount_original ?? 0);
             });
 
             $remainingAllowed = $financeBilling->grand_total - $alreadyAllocated;
@@ -319,7 +336,7 @@ class FinanceBillingController extends Controller
 
             $financeBillingFresh = $financeBilling->fresh('financeBillingItems');
             $totalAllocatedNow = $financeBillingFresh->financeBillingItems->sum(function ($item) {
-                return ($item->cash_payment_amount ?? 0) + ($item->bca_payment_amount ?? 0);
+                return ($item->cash_payment_amount ?? 0) + ($item->bca_payment_amount ?? 0) + ($item->bca_payment_usd_amount_original ?? 0);
             });
             $remainingAmount = $financeBillingFresh->grand_total - $totalAllocatedNow;
 
@@ -362,6 +379,22 @@ class FinanceBillingController extends Controller
                     $request->file('payment_proof'),
                     'finance_billing_proof'
                 );
+            }
+
+            $usdInIdr = $item->bca_payment_usd_amount_original;
+            if (array_key_exists('bca_payment_usd_amount', $validated) && $validated['bca_payment_usd_amount'] != $item->bca_payment_usd_amount) {
+                $newUsdVal = $validated['bca_payment_usd_amount'];
+                if ($newUsdVal > 0) {
+                    $currencyService = app(CurrencyService::class);
+                    $exchangeRate = (int) $currencyService->convertUsdToIdr('1');
+                    if (!$exchangeRate) {
+                        return $this->responseError([], 'Failed to convert USD to IDR via Unirate API.', 500);
+                    }
+                    $usdInIdr = (int) ($newUsdVal * $exchangeRate);
+                } else {
+                    $usdInIdr = 0;
+                }
+                $validated['bca_payment_usd_amount_original'] = $usdInIdr;
             }
 
             DB::transaction(function () use ($item, $validated) {
@@ -411,7 +444,7 @@ class FinanceBillingController extends Controller
                 $cashFlow = $financeBilling->cashFlow;
 
                 if ($cashFlow) {
-                    $newAmount = ($item->cash_payment_amount ?? 0) + ($item->bca_payment_amount ?? 0);
+                    $newAmount = ($item->cash_payment_amount ?? 0) + ($item->bca_payment_amount ?? 0) + ($item->bca_payment_usd_amount_original ?? 0);
                     $cashFlow->update([
                         'debet' => $cashFlow->debet > 0 ? $newAmount : 0,
                         'credit' => $cashFlow->credit > 0 ? $newAmount : 0,
@@ -502,7 +535,7 @@ class FinanceBillingController extends Controller
         $financeBilling->load(['unitTransactionBilling', 'financeBillingItems']);
 
         $totalPaid = $financeBilling->financeBillingItems->sum(function ($item) {
-            return $item->bca_payment_amount + $item->cash_payment_amount;
+            return $item->bca_payment_amount + $item->cash_payment_amount + ($item->bca_payment_usd_amount_original ?? 0);
         });
 
         $grandTotal = $financeBilling->unitTransactionBilling->grand_total;

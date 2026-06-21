@@ -15,6 +15,7 @@ class FinanceBillingItem extends Model
         'finance_billing_id',
         'bca_payment_amount',
         'bca_payment_usd_amount',
+        'bca_payment_usd_amount_original',
         'cash_payment_amount',
         'payment_proof',
         'payment_at',
@@ -24,6 +25,7 @@ class FinanceBillingItem extends Model
     protected $casts = [
         'bca_payment_amount' => 'integer',
         'bca_payment_usd_amount' => 'integer',
+        'bca_payment_usd_amount_original' => 'integer',
         'cash_payment_amount' => 'integer',
         'payment_at' => 'date',
     ];
