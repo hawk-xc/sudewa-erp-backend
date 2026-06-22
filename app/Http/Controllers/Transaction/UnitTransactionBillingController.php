@@ -70,6 +70,7 @@ class UnitTransactionBillingController extends Controller
                 $item->total_bca_cash_payment = $item->getTotalBcaCashPayment();
                 $item->total_paid = $item->getTotalPaid();
                 $item->remaining_payment = $item->getRemainingPayment();
+                $item->remaining_payment_usd = $item->getRemainingPaymentUsd();
 
                 return $item;
             });
@@ -119,6 +120,7 @@ class UnitTransactionBillingController extends Controller
 
             $data->total_paid = $totalPaid;
             $data->remaining_payment = $remaining;
+            $data->remaining_payment_usd = $data->getRemainingPaymentUsd();
 
             $data->total_usd_payment = $totalUsd;
 
@@ -246,8 +248,12 @@ class UnitTransactionBillingController extends Controller
                 }
             });
 
+            $billingFresh = $billing->fresh('unitTransactionBillingHistories');
+            $billingFresh->remaining_payment = $billingFresh->getRemainingPayment();
+            $billingFresh->remaining_payment_usd = $billingFresh->getRemainingPaymentUsd();
+
             return $this->responseSuccess(
-                $billing->fresh('unitTransactionBillingHistories'),
+                $billingFresh,
                 'Payment added successfully',
                 200
             );

@@ -20,11 +20,24 @@ class BillingStatController extends Controller
     public function billingStat(Request $request)
     {
         try {
+            $startDate = $request->start_date ? date('Y-m-d 00:00:00', strtotime($request->start_date)) : null;
+            $endDate   = $request->end_date ? date('Y-m-d 23:59:59', strtotime($request->end_date)) : null;
+
+            if ($request->filled('date')) {
+                $startDate = date('Y-m-d 00:00:00', strtotime($request->date));
+                $endDate   = date('Y-m-d 23:59:59', strtotime($request->date));
+            }
+
             $query = UnitTransactionBilling::query();
 
             $query->with([
                 'unitTransaction:id,uuid,code,type,warehouse_id,person_id,created_at',
                 'unitTransaction.warehouse:id,company_id',
+                'unitTransactionBillingHistories' => function ($q) use ($endDate) {
+                    if ($endDate) {
+                        $q->where('payment_at', '<=', $endDate);
+                    }
+                },
                 'unitTransactionBillingHistories.cashes'
             ]);
 
@@ -62,9 +75,6 @@ class BillingStatController extends Controller
             $query->where('is_paid', true);
 
             $billings = $query->get();
-
-            $startDate = $request->start_date ? date('Y-m-d 00:00:00', strtotime($request->start_date)) : null;
-            $endDate   = $request->end_date ? date('Y-m-d 23:59:59', strtotime($request->end_date)) : null;
 
             // Fetch relevant cash records to dynamically build keys based on Cash model relation
             $cashQuery = Cash::query();
@@ -175,9 +185,9 @@ class BillingStatController extends Controller
                     'type' => $request->type,
                     'start_date' => $request->start_date,
                     'end_date' => $request->end_date,
+                    'date' => $request->date,
                 ]
             ]);
-
         } catch (Exception $e) {
             return response()->json([
                 'status' => false,
@@ -285,7 +295,6 @@ class BillingStatController extends Controller
                     'customers' => $paginated,
                 ],
             ]);
-
         } catch (\Exception $e) {
             return response()->json([
                 'status' => false,
@@ -362,14 +371,10 @@ class BillingStatController extends Controller
                 ],
                 'data' => $paginated,
             ], 'Unit Type overview retrieved successfully', 200);
-
         } catch (Exception $err) {
             return $this->responseError(null, 'Failed to retrieve data', 500);
         }
     }
 
-    public function revenueOverview(Request $request) 
-    {
-        
-    }
+    public function revenueOverview(Request $request) {}
 }
