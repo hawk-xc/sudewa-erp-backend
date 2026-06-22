@@ -94,11 +94,44 @@ class BillingStatController extends Controller
                 $mutation['kredit'][$code] = 0;
             }
 
+            $dates = [];
+            if ($startDate && $endDate) {
+                $current = strtotime(date('Y-m-d', strtotime($startDate)));
+                $last = strtotime(date('Y-m-d', strtotime($endDate)));
+                while ($current <= $last) {
+                    $dates[] = date('Y-m-d', $current);
+                    $current = strtotime('+1 day', $current);
+                }
+            } else {
+                $uniqueDates = [];
+                foreach ($billings as $billing) {
+                    foreach ($billing->unitTransactionBillingHistories as $history) {
+                        $paymentDate = $history->payment_at ?? $billing->created_at;
+                        $uniqueDates[] = date('Y-m-d', strtotime($paymentDate));
+                    }
+                }
+                $dates = array_values(array_unique($uniqueDates));
+                sort($dates);
+            }
+
+            $dailyMutation = [];
+            foreach ($dates as $date) {
+                $dailyMutation[$date] = [
+                    'debet' => [],
+                    'kredit' => [],
+                ];
+                foreach ($uniqueCodes as $code) {
+                    $dailyMutation[$date]['debet'][$code] = 0;
+                    $dailyMutation[$date]['kredit'][$code] = 0;
+                }
+            }
+
             foreach ($billings as $billing) {
                 $type = $billing->unitTransaction->type === 'purchase' ? 'debet' : 'kredit';
 
                 foreach ($billing->unitTransactionBillingHistories as $history) {
                     $paymentDate = $history->payment_at ?? $billing->created_at;
+                    $paymentDateStr = date('Y-m-d', strtotime($paymentDate));
 
                     foreach ($history->cashes as $cashRelation) {
                         // Apply filters inside cash aggregation
@@ -118,10 +151,20 @@ class BillingStatController extends Controller
                             $openingBalance['kredit'][$code] = 0;
                             $mutation['debet'][$code] = 0;
                             $mutation['kredit'][$code] = 0;
+
+                            foreach ($dates as $d) {
+                                if (!isset($dailyMutation[$d]['debet'][$code])) {
+                                    $dailyMutation[$d]['debet'][$code] = 0;
+                                    $dailyMutation[$d]['kredit'][$code] = 0;
+                                }
+                            }
                         }
 
                         if (!$startDate && !$endDate) {
                             $openingBalance[$type][$code] += $amount;
+                            if (isset($dailyMutation[$paymentDateStr])) {
+                                $dailyMutation[$paymentDateStr][$type][$code] += $amount;
+                            }
                             continue;
                         }
 
@@ -134,6 +177,9 @@ class BillingStatController extends Controller
                             (!$endDate || $paymentDate <= $endDate)
                         ) {
                             $mutation[$type][$code] += $amount;
+                            if (isset($dailyMutation[$paymentDateStr])) {
+                                $dailyMutation[$paymentDateStr][$type][$code] += $amount;
+                            }
                         }
                     }
                 }
@@ -148,16 +194,21 @@ class BillingStatController extends Controller
                 return $percentages;
             };
 
-            $percentage = [
-                'opening_balance' => [
-                    'debet' => $calculatePercentage($openingBalance['debet']),
-                    'kredit' => $calculatePercentage($openingBalance['kredit']),
-                ],
-                'mutation' => [
-                    'debet' => $calculatePercentage($mutation['debet']),
-                    'kredit' => $calculatePercentage($mutation['kredit']),
-                ],
-            ];
+            $dailyPercentage = [];
+            foreach ($dates as $date) {
+                $debetData = $dailyMutation[$date]['debet'] ?? [];
+                $kreditData = $dailyMutation[$date]['kredit'] ?? [];
+
+                $dailyPercentage[] = [
+                    'date' => $date,
+                    'debet' => $debetData,
+                    'kredit' => $kreditData,
+                    'debet_percentage' => $calculatePercentage($debetData),
+                    'kredit_percentage' => $calculatePercentage($kreditData),
+                ];
+            }
+
+            $percentage = $dailyPercentage;
 
             return response()->json([
                 'status' => true,
@@ -177,7 +228,6 @@ class BillingStatController extends Controller
                     'end_date' => $request->end_date,
                 ]
             ]);
-
         } catch (Exception $e) {
             return response()->json([
                 'status' => false,
@@ -285,7 +335,6 @@ class BillingStatController extends Controller
                     'customers' => $paginated,
                 ],
             ]);
-
         } catch (\Exception $e) {
             return response()->json([
                 'status' => false,
@@ -362,14 +411,10 @@ class BillingStatController extends Controller
                 ],
                 'data' => $paginated,
             ], 'Unit Type overview retrieved successfully', 200);
-
         } catch (Exception $err) {
             return $this->responseError(null, 'Failed to retrieve data', 500);
         }
     }
 
-    public function revenueOverview(Request $request) 
-    {
-        
-    }
+    public function revenueOverview(Request $request) {}
 }
