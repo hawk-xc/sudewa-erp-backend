@@ -27,6 +27,8 @@ class CashFlow extends Model
         'note',
         'debet',
         'credit',
+        'debet_original',
+        'credit_original',
         'payment_proof'
     ];
 
@@ -38,6 +40,8 @@ class CashFlow extends Model
         'date' => 'date',
         'debet' => 'integer',
         'credit' => 'integer',
+        'debet_original' => 'integer',
+        'credit_original' => 'integer',
     ];
 
     public function company()

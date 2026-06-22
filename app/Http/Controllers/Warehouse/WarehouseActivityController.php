@@ -103,8 +103,7 @@ class WarehouseActivityController extends Controller
         ]);
 
         try {
-            $data = DB::transaction(fn () => WarehouseActivity::create($validated)
-            );
+            $data = DB::transaction(fn () => WarehouseActivity::create($validated));
 
             return $this->responseSuccess($data, 'Warehouse activity created successfully', 201);
 

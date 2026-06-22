@@ -263,7 +263,9 @@ class UnitTransactionBillingHistoryController extends Controller
                                         'date' => $validated['payment_at'] ?? now(),
                                         'note' => "Pelunasan Total " . $billing->unitTransaction->code . " (" . $cashName . ")",
                                         'debet' => $billing->unitTransaction->type === 'sales' ? $amount : 0,
+                                        'debet_original' => $billing->unitTransaction->type === 'sales' ? ($slug === 'bca_usd' ? $totalBcaUsdInIdr : $amount) : 0,
                                         'credit' => $billing->unitTransaction->type === 'purchase' ? $amount : 0,
+                                        'credit_original' => $billing->unitTransaction->type === 'purchase' ? ($slug === 'bca_usd' ? $totalBcaUsdInIdr : $amount) : 0,
                                     ]
                                 );
                                 $createdCashFlowIds[] = $cf->id;
@@ -310,7 +312,9 @@ class UnitTransactionBillingHistoryController extends Controller
                                 'date' => $validated['payment_at'] ?? now(),
                                 'note' => "Pelunasan Total " . $billing->unitTransaction->code . " (" . $cashName . ")",
                                 'debet' => $billing->unitTransaction->type === 'sales' ? $billing->grand_total : 0,
+                                'debet_original' => $billing->unitTransaction->type === 'sales' ? $billing->grand_total : 0,
                                 'credit' => $billing->unitTransaction->type === 'purchase' ? $billing->grand_total : 0,
+                                'credit_original' => $billing->unitTransaction->type === 'purchase' ? $billing->grand_total : 0,
                             ]
                         );
                         $createdCashFlowIds[] = $cf->id;
@@ -353,13 +357,16 @@ class UnitTransactionBillingHistoryController extends Controller
                             'company_id' => $companyId,
                             'code' => $unitTransaction->code,
                             'transaction_date' => now(),
+                            'unit_transaction_id' => $unitTransaction->id,
                             'name' => $unitTransaction->person->name ?? null,
                             'description' => "{$transactionTypeLabel} {$prefixLabel} dimuka ke-{$itemCount} unit spm: {$itemDetails}",
                             'bank_usd_debit' => $unitTransaction->type === 'sales' ? $totalBcaUsd : 0,
-                            'bank_usd_credit' => $unitTransaction->type === 'purchase' ? $totalBcaUsd : 0,
+                            'bank_usd_debit_original' => $unitTransaction->type === 'sales' ? $totalBcaUsdInIdr : 0,
                             'bank_idr_debit' => $unitTransaction->type === 'sales' ? $totalBca : 0,
-                            'bank_idr_credit' => $unitTransaction->type === 'purchase' ? $totalBca : 0,
                             'cash_idr_debit' => $unitTransaction->type === 'sales' ? $totalCash : 0,
+                            'bank_idr_credit' => $unitTransaction->type === 'purchase' ? $totalBca : 0,
+                            'bank_usd_credit' => $unitTransaction->type === 'purchase' ? $totalBcaUsd : 0,
+                            'bank_usd_credit_original' => $unitTransaction->type === 'purchase' ? $totalBcaUsdInIdr : 0,
                             'cash_idr_credit' => $unitTransaction->type === 'purchase' ? $totalCash : 0,
                         ]
                     );
