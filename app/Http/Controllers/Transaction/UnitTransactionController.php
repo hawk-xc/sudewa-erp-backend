@@ -348,6 +348,46 @@ class UnitTransactionController extends Controller
         }
     }
 
+    public function update(Request $request, string $id)
+    {
+        try {
+            $unitTransaction = UnitTransaction::findOrFail($id);
+
+            $validated = $request->validate([
+                'person_id' => [
+                    'sometimes',
+                    'required',
+                    'integer',
+                    'exists:persons,id',
+                    new RightPersonRule(($request->type ?? $unitTransaction->type) === 'purchase' ? 'supplier' : 'customer')
+                ],
+                'code' => 'sometimes|required|string|max:255|unique:unit_transactions,code,' . $id,
+                'type' => 'sometimes|required|string|in:purchase,sales',
+                'stock_state' => 'sometimes|required|string',
+            ]);
+
+            DB::transaction(function () use ($unitTransaction, $validated) {
+                $unitTransaction->update($validated);
+            });
+
+            return $this->responseSuccess(
+                $unitTransaction->fresh(),
+                'Unit Transaction updated successfully',
+                200
+            );
+        } catch (ValidationException $e) {
+            return $this->responseError($e->errors(), 'Validation failed', 422);
+        } catch (ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
+        } catch (Exception $err) {
+            Log::error('Error While updating Unit Transaction: ' . $err->getMessage());
+
+            return $this->responseError($err->getMessage(), 'Failed to update Unit Transaction', 500);
+        }
+    }
+
     public function destroy(string $id)
     {
         try {
