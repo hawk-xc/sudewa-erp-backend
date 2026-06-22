@@ -101,6 +101,20 @@ class UnitTransactionBilling extends Model
         return (int) ($this->grand_total - $this->getTotalPaid());
     }
 
+    public function getRemainingPaymentUsd(): float
+    {
+        try {
+            $currencyService = app(\App\Services\CurrencyService::class);
+            $exchangeRate = (int) $currencyService->convertUsdToIdr('1');
+            if ($exchangeRate > 0) {
+                return round($this->getRemainingPayment() / $exchangeRate, 2);
+            }
+        } catch (\Exception $e) {
+            // Fallback if conversion fails
+        }
+        return 0.0;
+    }
+
     protected static function booted()
     {
         static::creating(function ($model) {

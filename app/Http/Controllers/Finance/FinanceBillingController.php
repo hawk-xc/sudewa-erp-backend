@@ -96,7 +96,10 @@ class FinanceBillingController extends Controller
 
             $data = $query->paginate($request->per_page ?? 10);
 
-            $data->getCollection()->transform(function ($item) {
+            $currencyService = app(CurrencyService::class);
+            $exchangeRate = (int) $currencyService->convertUsdToIdr('1');
+
+            $data->getCollection()->transform(function ($item) use ($exchangeRate) {
                 $items = $item->financeBillingItems;
                 $totalCash = $items->sum('cash_payment_amount');
                 $totalBca = $items->sum('bca_payment_amount');
@@ -105,6 +108,7 @@ class FinanceBillingController extends Controller
                 $remaining = ($item->unitTransactionBilling->grand_total ?? 0) - $totalPaid;
 
                 $item->remaining_payment = $remaining;
+                $item->remaining_payment_usd = $exchangeRate > 0 ? round($remaining / $exchangeRate, 2) : 0.0;
 
                 return $item;
             });
@@ -138,12 +142,17 @@ class FinanceBillingController extends Controller
             $totalPaid = $totalCash + $totalBca + $totalUsdOriginal;
             $remaining = ($data->unitTransactionBilling->grand_total ?? 0) - $totalPaid;
 
+            $currencyService = app(CurrencyService::class);
+            $exchangeRate = (int) $currencyService->convertUsdToIdr('1');
+            $remainingUsd = $exchangeRate > 0 ? round($remaining / $exchangeRate, 2) : 0.0;
+
             $data->total_cash_payment = $totalCash;
             $data->total_bca_payment = $totalBca;
             $data->total_usd_payment = $totalUsd;
             $data->total_usd_payment_original = $totalUsdOriginal;
             $data->total_paid = $totalPaid;
             $data->remaining_payment = $remaining;
+            $data->remaining_payment_usd = $remainingUsd;
             $data->total_payment_count = $items->count();
 
             return $this->responseSuccess($data, 'Finance Billing retrieved successfully', 200);
@@ -340,8 +349,13 @@ class FinanceBillingController extends Controller
             });
             $remainingAmount = $financeBillingFresh->grand_total - $totalAllocatedNow;
 
+            $currencyService = app(CurrencyService::class);
+            $exchangeRate = (int) $currencyService->convertUsdToIdr('1');
+            $remainingAmountUsd = $exchangeRate > 0 ? round($remainingAmount / $exchangeRate, 2) : 0.0;
+
             $itemArray = $item->toArray();
             $itemArray['remaining_amount'] = $remainingAmount;
+            $itemArray['remaining_amount_usd'] = $remainingAmountUsd;
 
             return $this->responseSuccess($itemArray, 'Finance Billing Item created successfully', 201);
         } catch (ValidationException $e) {

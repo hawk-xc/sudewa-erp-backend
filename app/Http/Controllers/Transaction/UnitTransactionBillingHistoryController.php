@@ -376,6 +376,7 @@ class UnitTransactionBillingHistoryController extends Controller
             $billingFresh = $billing->fresh('unitTransactionBillingHistories');
 
             $billingFresh->remaining_payment = $billingFresh->getRemainingPayment();
+            $billingFresh->remaining_payment_usd = $billingFresh->getRemainingPaymentUsd();
 
             return $this->responseSuccess(
                 $billingFresh,
