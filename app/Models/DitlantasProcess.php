@@ -46,6 +46,11 @@ class DitlantasProcess extends Model
         return $this->hasOne(VehicleDocument::class, 'ditlantas_process_id', 'id');
     }
 
+    public function bbnBill()
+    {
+        return $this->hasOne(BBNBill::class, 'ditlantas_process_id', 'id');
+    }
+
     protected static function booted()
     {
         static::creating(function ($model) {

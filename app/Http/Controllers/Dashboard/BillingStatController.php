@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Dashboard;
 
 use App\Http\Controllers\Controller;
+use App\Models\Cash;
 use App\Models\UnitTransaction;
 use App\Models\UnitTransactionBilling;
 use App\Models\UnitTransactionItem;
@@ -22,13 +23,39 @@ class BillingStatController extends Controller
             $query = UnitTransactionBilling::query();
 
             $query->with([
-                'unitTransaction:id,uuid,code,type,created_at',
+                'unitTransaction:id,uuid,code,type,warehouse_id,person_id,created_at',
+                'unitTransaction.warehouse:id,company_id',
                 'unitTransactionBillingHistories.cashes'
             ]);
 
             if ($request->filled('type') && in_array($request->type, ['purchase', 'sales'])) {
                 $query->whereHas('unitTransaction', function ($q) use ($request) {
                     $q->where('type', $request->type);
+                });
+            }
+
+            // Apply detail filters
+            if ($request->filled('company_id')) {
+                $query->whereHas('unitTransaction.warehouse', function ($q) use ($request) {
+                    $q->where('company_id', $request->company_id);
+                });
+            }
+
+            if ($request->filled('cash_id')) {
+                $query->whereHas('unitTransactionBillingHistories.cashes', function ($q) use ($request) {
+                    $q->where('cashes.id', $request->cash_id);
+                });
+            }
+
+            if ($request->filled('warehouse_id')) {
+                $query->whereHas('unitTransaction', function ($q) use ($request) {
+                    $q->where('warehouse_id', $request->warehouse_id);
+                });
+            }
+
+            if ($request->filled('person_id')) {
+                $query->whereHas('unitTransaction', function ($q) use ($request) {
+                    $q->where('person_id', $request->person_id);
                 });
             }
 
@@ -39,59 +66,86 @@ class BillingStatController extends Controller
             $startDate = $request->start_date ? date('Y-m-d 00:00:00', strtotime($request->start_date)) : null;
             $endDate   = $request->end_date ? date('Y-m-d 23:59:59', strtotime($request->end_date)) : null;
 
+            // Fetch relevant cash records to dynamically build keys based on Cash model relation
+            $cashQuery = Cash::query();
+            if ($request->filled('company_id')) {
+                $cashQuery->where('company_id', $request->company_id);
+            }
+            if ($request->filled('cash_id')) {
+                $cashQuery->where('id', $request->cash_id);
+            }
+            $cashes = $cashQuery->get();
+            $uniqueCodes = $cashes->pluck('code')->unique()->toArray();
+
             $openingBalance = [
-                'debet' => ['cash' => 0, 'bca_idr' => 0, 'bca_usd' => 0],
-                'kredit' => ['cash' => 0, 'bca_idr' => 0, 'bca_usd' => 0],
+                'debet' => [],
+                'kredit' => [],
             ];
 
             $mutation = [
-                'debet' => ['cash' => 0, 'bca_idr' => 0, 'bca_usd' => 0],
-                'kredit' => ['cash' => 0, 'bca_idr' => 0, 'bca_usd' => 0],
+                'debet' => [],
+                'kredit' => [],
             ];
+
+            foreach ($uniqueCodes as $code) {
+                $openingBalance['debet'][$code] = 0;
+                $openingBalance['kredit'][$code] = 0;
+                $mutation['debet'][$code] = 0;
+                $mutation['kredit'][$code] = 0;
+            }
 
             foreach ($billings as $billing) {
                 $type = $billing->unitTransaction->type === 'purchase' ? 'debet' : 'kredit';
 
                 foreach ($billing->unitTransactionBillingHistories as $history) {
-
                     $paymentDate = $history->payment_at ?? $billing->created_at;
-                    
-                    $cashAmt = $history->cashes->where('code', 'cash_idr')->sum('pivot.amount');
-                    $bcaAmt = $history->cashes->where('code', 'bca_idr')->sum('pivot.amount');
-                    $usdAmt = $history->cashes->where('code', 'bca_usd')->sum('pivot.amount');
 
-                    if (!$startDate && !$endDate) {
-                        $openingBalance[$type]['cash'] += $cashAmt;
-                        $openingBalance[$type]['bca_idr'] += $bcaAmt;
-                        $openingBalance[$type]['bca_usd'] += $usdAmt;
-                        continue;
-                    }
+                    foreach ($history->cashes as $cashRelation) {
+                        // Apply filters inside cash aggregation
+                        if ($request->filled('cash_id') && $cashRelation->id != $request->cash_id) {
+                            continue;
+                        }
+                        if ($request->filled('company_id') && $cashRelation->company_id != $request->company_id) {
+                            continue;
+                        }
 
-                    if ($startDate && $paymentDate < $startDate) {
-                        $openingBalance[$type]['cash'] += $cashAmt;
-                        $openingBalance[$type]['bca_idr'] += $bcaAmt;
-                        $openingBalance[$type]['bca_usd'] += $usdAmt;
-                    }
+                        $code = $cashRelation->code;
+                        $amount = (int) $cashRelation->pivot->amount;
 
-                    if (
-                        (!$startDate || $paymentDate >= $startDate) &&
-                        (!$endDate || $paymentDate <= $endDate)
-                    ) {
-                        $mutation[$type]['cash'] += $cashAmt;
-                        $mutation[$type]['bca_idr'] += $bcaAmt;
-                        $mutation[$type]['bca_usd'] += $usdAmt;
+                        // Ensure dynamic key initialization in case a history references a code not in the filtered cashes list
+                        if (!isset($openingBalance['debet'][$code])) {
+                            $openingBalance['debet'][$code] = 0;
+                            $openingBalance['kredit'][$code] = 0;
+                            $mutation['debet'][$code] = 0;
+                            $mutation['kredit'][$code] = 0;
+                        }
+
+                        if (!$startDate && !$endDate) {
+                            $openingBalance[$type][$code] += $amount;
+                            continue;
+                        }
+
+                        if ($startDate && $paymentDate < $startDate) {
+                            $openingBalance[$type][$code] += $amount;
+                        }
+
+                        if (
+                            (!$startDate || $paymentDate >= $startDate) &&
+                            (!$endDate || $paymentDate <= $endDate)
+                        ) {
+                            $mutation[$type][$code] += $amount;
+                        }
                     }
                 }
             }
 
             $calculatePercentage = function ($data) {
                 $total = array_sum($data);
-
-                return [
-                    'cash' => $total > 0 ? round(($data['cash'] / $total) * 100, 2) : 0,
-                    'bca_idr' => $total > 0 ? round(($data['bca_idr'] / $total) * 100, 2) : 0,
-                    'bca_usd' => $total > 0 ? round(($data['bca_usd'] / $total) * 100, 2) : 0,
-                ];
+                $percentages = [];
+                foreach ($data as $code => $value) {
+                    $percentages[$code] = $total > 0 ? round(($value / $total) * 100, 2) : 0;
+                }
+                return $percentages;
             };
 
             $percentage = [
@@ -113,6 +167,15 @@ class BillingStatController extends Controller
                     'mutation' => $mutation,
                     'percentage' => $percentage,
                 ],
+                'filters' => [
+                    'company_id' => $request->company_id,
+                    'cash_id' => $request->cash_id,
+                    'warehouse_id' => $request->warehouse_id,
+                    'person_id' => $request->person_id,
+                    'type' => $request->type,
+                    'start_date' => $request->start_date,
+                    'end_date' => $request->end_date,
+                ]
             ]);
 
         } catch (Exception $e) {

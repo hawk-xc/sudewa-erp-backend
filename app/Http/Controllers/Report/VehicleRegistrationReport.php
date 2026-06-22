@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Report;
 
 use App\Http\Controllers\Controller;
+use App\Models\BBNBill;
 use App\Models\VehicleRegistration;
 use App\Repositories\AuthRepository;
 use App\Traits\ResponseTrait;
@@ -23,7 +24,8 @@ class VehicleRegistrationReport extends Controller
         $this->middleware(['permission:report:list'])->only(['getBPKBReport', 'getSTNKReport', 'getSKPDReport', 'getTNKBReport']);
     }
 
-    protected function basicQuery(string $dataType, Request $request) {
+    protected function basicQuery(string $dataType, Request $request)
+    {
         $query = VehicleRegistration::query()->with(['vendor:persons.id,persons.name,persons.code', 'vehicleData']);
 
         // Map placeholder fields to actual columns
@@ -109,15 +111,15 @@ class VehicleRegistrationReport extends Controller
             $search = $request->search;
             $query->where(function ($q) use ($search) {
                 $q->where('bpkb_number', 'like', "%$search%")
-                  ->orWhere('tnkb_number', 'like', "%$search%")
-                  ->orWhereHas('vehicleData', function ($q2) use ($search) {
-                      $q2->where('stnk_name', 'like', "%$search%")
-                         ->orWhere('chassis_number', 'like', "%$search%")
-                         ->orWhere('machine_number', 'like', "%$search%")
-                         ->orWhere('invoice_number', 'like', "%$search%")
-                         ->orWhere('motorcycle_brand', 'like', "%$search%")
-                         ->orWhere('motorcycle_type', 'like', "%$search%");
-                  });
+                    ->orWhere('tnkb_number', 'like', "%$search%")
+                    ->orWhereHas('vehicleData', function ($q2) use ($search) {
+                        $q2->where('stnk_name', 'like', "%$search%")
+                            ->orWhere('chassis_number', 'like', "%$search%")
+                            ->orWhere('machine_number', 'like', "%$search%")
+                            ->orWhere('invoice_number', 'like', "%$search%")
+                            ->orWhere('motorcycle_brand', 'like', "%$search%")
+                            ->orWhere('motorcycle_type', 'like', "%$search%");
+                    });
             });
         }
 
@@ -162,8 +164,13 @@ class VehicleRegistrationReport extends Controller
             $query = $this->basicQuery('bpkb_number', $request);
 
             $allowedSort = [
-                'id', 'process_date', 'customer_delivery_date', 'bpkb_registration_date',
-                'bpkb_received_date', 'bpkb_physical_status', 'created_at'
+                'id',
+                'process_date',
+                'customer_delivery_date',
+                'bpkb_registration_date',
+                'bpkb_received_date',
+                'bpkb_physical_status',
+                'created_at'
             ];
             $sortBy = in_array($request->sort_by, $allowedSort) ? $request->sort_by : 'id';
             $sortOrder = $request->sort_order === 'asc' ? 'asc' : 'desc';
@@ -188,8 +195,13 @@ class VehicleRegistrationReport extends Controller
             $query = $this->basicQuery('stnk_number', $request);
 
             $allowedSort = [
-                'id', 'process_date', 'customer_delivery_date', 'stnk_registration_date',
-                'stnk_received_date', 'stnk_physical_status', 'created_at'
+                'id',
+                'process_date',
+                'customer_delivery_date',
+                'stnk_registration_date',
+                'stnk_received_date',
+                'stnk_physical_status',
+                'created_at'
             ];
             $sortBy = in_array($request->sort_by, $allowedSort) ? $request->sort_by : 'id';
             $sortOrder = $request->sort_order === 'asc' ? 'asc' : 'desc';
@@ -214,8 +226,13 @@ class VehicleRegistrationReport extends Controller
             $query = $this->basicQuery('skpd_number', $request);
 
             $allowedSort = [
-                'id', 'process_date', 'customer_delivery_date', 'skpd_payment_date',
-                'skpd_received_date', 'skpd_physical_status', 'created_at'
+                'id',
+                'process_date',
+                'customer_delivery_date',
+                'skpd_payment_date',
+                'skpd_received_date',
+                'skpd_physical_status',
+                'created_at'
             ];
             $sortBy = in_array($request->sort_by, $allowedSort) ? $request->sort_by : 'id';
             $sortOrder = $request->sort_order === 'asc' ? 'asc' : 'desc';
@@ -240,8 +257,12 @@ class VehicleRegistrationReport extends Controller
             $query = $this->basicQuery('tnkb_number', $request);
 
             $allowedSort = [
-                'id', 'process_date', 'customer_delivery_date', 'tnkb_received_date',
-                'tnkb_physical_status', 'created_at'
+                'id',
+                'process_date',
+                'customer_delivery_date',
+                'tnkb_received_date',
+                'tnkb_physical_status',
+                'created_at'
             ];
             $sortBy = in_array($request->sort_by, $allowedSort) ? $request->sort_by : 'id';
             $sortOrder = $request->sort_order === 'asc' ? 'asc' : 'desc';
@@ -267,9 +288,9 @@ class VehicleRegistrationReport extends Controller
 
             // Filter outstanding: bpkb, stnk, skpd, tnkb receipt dates are null
             $query->whereNull('bpkb_received_date')
-                  ->whereNull('stnk_received_date')
-                  ->whereNull('skpd_received_date')
-                  ->whereNull('tnkb_received_date');
+                ->whereNull('stnk_received_date')
+                ->whereNull('skpd_received_date')
+                ->whereNull('tnkb_received_date');
 
             // Filter: Vendor
             if ($request->filled('vendor_id')) {
@@ -290,20 +311,23 @@ class VehicleRegistrationReport extends Controller
                 $search = $request->search;
                 $query->where(function ($q) use ($search) {
                     $q->where('bpkb_number', 'like', "%$search%")
-                      ->orWhere('tnkb_number', 'like', "%$search%")
-                      ->orWhereHas('vehicleData', function ($q2) use ($search) {
-                          $q2->where('stnk_name', 'like', "%$search%")
-                             ->orWhere('chassis_number', 'like', "%$search%")
-                             ->orWhere('machine_number', 'like', "%$search%")
-                             ->orWhere('invoice_number', 'like', "%$search%")
-                             ->orWhere('motorcycle_brand', 'like', "%$search%")
-                             ->orWhere('motorcycle_type', 'like', "%$search%");
-                      });
+                        ->orWhere('tnkb_number', 'like', "%$search%")
+                        ->orWhereHas('vehicleData', function ($q2) use ($search) {
+                            $q2->where('stnk_name', 'like', "%$search%")
+                                ->orWhere('chassis_number', 'like', "%$search%")
+                                ->orWhere('machine_number', 'like', "%$search%")
+                                ->orWhere('invoice_number', 'like', "%$search%")
+                                ->orWhere('motorcycle_brand', 'like', "%$search%")
+                                ->orWhere('motorcycle_type', 'like', "%$search%");
+                        });
                 });
             }
 
             $allowedSort = [
-                'id', 'process_date', 'customer_delivery_date', 'created_at'
+                'id',
+                'process_date',
+                'customer_delivery_date',
+                'created_at'
             ];
             $sortBy = in_array($request->sort_by, $allowedSort) ? $request->sort_by : 'id';
             $sortOrder = $request->sort_order === 'asc' ? 'asc' : 'desc';
@@ -320,5 +344,235 @@ class VehicleRegistrationReport extends Controller
             return $this->responseError($err->getMessage(), 'Failed to retrieve Outstanding Report', 500);
         }
     }
-}
 
+    protected function getStatsQuery(Request $request)
+    {
+        $query = VehicleRegistration::query()->with(['vendor:persons.id,persons.name,persons.code', 'vehicleData']);
+
+        // Filter: Vendor
+        if ($request->filled('vendor_id')) {
+            $query->whereHas('ditlantasProcess', function ($q) use ($request) {
+                $q->where('vendor_id', $request->vendor_id);
+            });
+        }
+
+        // Filter: Dealer
+        if ($request->filled('dealer_id')) {
+            $query->whereHas('vehicleData', function ($q) use ($request) {
+                $q->where('dealer_id', $request->dealer_id);
+            });
+        }
+
+        // Filter: Physical Status (bpkb_physical_status, stnk_physical_status, etc.)
+        foreach (['bpkb_physical_status', 'stnk_physical_status', 'skpd_physical_status', 'tnkb_physical_status'] as $field) {
+            if ($request->filled($field)) {
+                $query->where($field, $request->boolean($field));
+            }
+        }
+
+        // Filter: Dates and Date Ranges
+        $dateFields = [
+            'process_date',
+            'customer_delivery_date',
+            'bpkb_registration_date',
+            'bpkb_received_date',
+            'stnk_registration_date',
+            'stnk_received_date',
+            'skpd_payment_date',
+            'skpd_received_date',
+            'tnkb_received_date',
+        ];
+
+        foreach ($dateFields as $field) {
+            if ($request->filled($field)) {
+                $query->whereDate($field, $request->$field);
+            }
+            if ($request->filled($field . '_start')) {
+                $query->whereDate($field, '>=', $request->input($field . '_start'));
+            }
+            if ($request->filled($field . '_end')) {
+                $query->whereDate($field, '<=', $request->input($field . '_end'));
+            }
+        }
+
+        // Filter: Processing Status
+        if ($request->filled('is_already_processed')) {
+            $query->where('is_already_processed', $request->boolean('is_already_processed'));
+        }
+
+        // Filter: Search query
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('bpkb_number', 'like', "%$search%")
+                    ->orWhere('tnkb_number', 'like', "%$search%")
+                    ->orWhereHas('vehicleData', function ($q2) use ($search) {
+                        $q2->where('stnk_name', 'like', "%$search%")
+                            ->orWhere('chassis_number', 'like', "%$search%")
+                            ->orWhere('machine_number', 'like', "%$search%")
+                            ->orWhere('invoice_number', 'like', "%$search%")
+                            ->orWhere('motorcycle_brand', 'like', "%$search%")
+                            ->orWhere('motorcycle_type', 'like', "%$search%");
+                    });
+            });
+        }
+
+        return $query;
+    }
+
+    private function getDocColumn(string $doc)
+    {
+        return match ($doc) {
+            'bpkb' => 'bpkb_registration_date',
+            'stnk' => 'stnk_registration_date',
+            'skpd' => 'skpd_payment_date',
+            'tnkb' => 'tnkb_received_date',
+            default => null,
+        };
+    }
+
+    public function vehicleDocumentStats(Request $request)
+    {
+        try {
+            $documents = ['bpkb', 'stnk', 'skpd', 'tnkb'];
+
+            $submissionStats = [];
+            $completeStats = [];
+            $processStats = [];
+            $pendingStats = [];
+
+            foreach ($documents as $doc) {
+                $column = $this->getDocColumn($doc);
+
+                // 1. Submission Stats: customer_delivery_date is null
+                $submissionStats[$doc] = $this->getStatsQuery($request)
+                    ->whereNull('customer_delivery_date')
+                    ->count();
+
+                // 2. Complete Stats: doc date is not null, customer_delivery_date is not null, BBN bill remaining amount is 0
+                $completeQuery = $this->getStatsQuery($request)
+                    ->whereNotNull($column)
+                    ->whereNotNull('customer_delivery_date')
+                    ->with('ditlantasProcess.bbnBill.bbnBillBillings.bbnBillBillingItems');
+
+                $completeStats[$doc] = $completeQuery->get()->filter(function ($reg) {
+                    $bbnBill = $reg->ditlantasProcess?->bbnBill;
+                    if (!$bbnBill) return false;
+                    $billings = $bbnBill->bbnBillBillings;
+                    if ($billings->isEmpty()) return false;
+                    return $billings->contains(function ($billing) {
+                        return $billing->getRemainingAmount() === 0;
+                    });
+                })->count();
+
+                // 3. Process Stats: doc date is null
+                $processStats[$doc] = $this->getStatsQuery($request)
+                    ->whereNull($column)
+                    ->count();
+
+                // 4. Pending Stats: doc date is not null, customer_delivery_date is not null, BBN bill remaining amount is not 0
+                $pendingQuery = $this->getStatsQuery($request)
+                    ->whereNotNull($column)
+                    ->whereNotNull('customer_delivery_date')
+                    ->with('ditlantasProcess.bbnBill.bbnBillBillings.bbnBillBillingItems');
+
+                $pendingStats[$doc] = $pendingQuery->get()->filter(function ($reg) {
+                    $bbnBill = $reg->ditlantasProcess?->bbnBill;
+                    if (!$bbnBill) return false;
+                    $billings = $bbnBill->bbnBillBillings;
+                    if ($billings->isEmpty()) return false;
+                    return $billings->contains(function ($billing) {
+                        return $billing->getRemainingAmount() !== 0;
+                    });
+                })->count();
+            }
+
+            return $this->responseSuccess([
+                'submission_stats' => $submissionStats,
+                'complete_stats' => $completeStats,
+                'process_stats' => $processStats,
+                'pending_stats' => $pendingStats,
+            ], 'Vehicle document statistics retrieved successfully');
+        } catch (Exception $err) {
+            Log::error('Error while retrieving vehicle document stats: ' . $err->getMessage());
+            return $this->responseError($err->getMessage(), 'Failed to retrieve vehicle document stats', 500);
+        }
+    }
+
+    public function VehicleRegistrationStats(Request $request)
+    {
+        try {
+            $baseQuery = $this->getStatsQuery($request);
+
+            // BBNBill query with filters
+            $bbnQuery = BBNBill::query();
+            if ($request->filled('vendor_id')) {
+                $bbnQuery->whereHas('ditlantasProcess', function ($q) use ($request) {
+                    $q->where('vendor_id', $request->vendor_id);
+                });
+            }
+            if ($request->filled('dealer_id')) {
+                $bbnQuery->whereHas('ditlantasProcess.vehicleRegistrations.vehicleData', function ($q) use ($request) {
+                    $q->where('dealer_id', $request->dealer_id);
+                });
+            }
+
+            $invoice_stats = $bbnQuery->count();
+
+            $bpkb_register_stats = (clone $baseQuery)
+                ->whereNotNull('bpkb_registration_date')
+                ->whereNotNull('bpkb_received_date')
+                ->where('bpkb_physical_status', true)
+                ->count();
+
+            $stnk_register_stats = (clone $baseQuery)
+                ->whereNotNull('stnk_registration_date')
+                ->whereNotNull('stnk_received_date')
+                ->where('stnk_physical_status', true)
+                ->count();
+
+            $skpd_register_stats = (clone $baseQuery)
+                ->whereNotNull('skpd_payment_date')
+                ->whereNotNull('skpd_received_date')
+                ->where('skpd_physical_status', true)
+                ->count();
+
+            $bpkb_outstanding_stats = (clone $baseQuery)
+                ->where(function ($q) {
+                    $q->whereNull('bpkb_registration_date')
+                      ->orWhereNull('bpkb_received_date')
+                      ->orWhere('bpkb_physical_status', false);
+                })
+                ->count();
+
+            $stnk_outstanding_stats = (clone $baseQuery)
+                ->where(function ($q) {
+                    $q->whereNull('stnk_registration_date')
+                      ->orWhereNull('stnk_received_date')
+                      ->orWhere('stnk_physical_status', false);
+                })
+                ->count();
+
+            $skpd_outstanding_stats = (clone $baseQuery)
+                ->where(function ($q) {
+                    $q->whereNull('skpd_payment_date')
+                      ->orWhereNull('skpd_received_date')
+                      ->orWhere('skpd_physical_status', false);
+                })
+                ->count();
+
+            return $this->responseSuccess([
+                'invoice_stats' => $invoice_stats,
+                'bpkb_register_stats' => $bpkb_register_stats,
+                'stnk_register_stats' => $stnk_register_stats,
+                'skpd_register_stats' => $skpd_register_stats,
+                'bpkb_outstanding_stats' => $bpkb_outstanding_stats,
+                'stnk_outstanding_stats' => $stnk_outstanding_stats,
+                'skpd_outstanding_stats' => $skpd_outstanding_stats,
+            ], 'Vehicle registration statistics retrieved successfully');
+        } catch (Exception $err) {
+            Log::error('Error while retrieving vehicle registration stats: ' . $err->getMessage());
+            return $this->responseError($err->getMessage(), 'Failed to retrieve vehicle registration stats', 500);
+        }
+    }
+}
