@@ -379,8 +379,8 @@ Route::group(
             Route::get('billing-stats', [BillingStatController::class, 'billingStat']);
             Route::get('customer-stats', [BillingStatController::class, 'customerOverview']);
             Route::get('unit-type-stats', [BillingStatController::class, 'unitTypeOverview']);
-            Route::get('vehicle-document-stats', [VehicleRegistrationReport::class, 'vehicleDocumentStats']);
-            Route::get('vehicle-registration-stats', [VehicleRegistrationReport::class, 'VehicleRegistrationStats']);
+            Route::get('vehicle-document-stats', [BillingStatController::class, 'vehicleDocumentStats']);
+            Route::get('vehicle-registration-stats', [BillingStatController::class, 'vehicleRegistrationStats']);
         });
     },
 );

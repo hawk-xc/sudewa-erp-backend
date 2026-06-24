@@ -165,13 +165,13 @@ trait GlobalCodeNumberTrait
                 $modelClass = WarehouseActivity::class;
                 $column = 'activity_number';
                 $additionalConstraints = [['activity_type', '=', 'receipt']];
-                $prefix = 'TRM-' . strtoupper($compKey) . '/' . date('Ymd') . '-';
+                $prefix = 'TMU-' . strtoupper($compKey) . '/' . date('Ymd') . '-';
                 break;
             case 'pengeluaran_unit':
                 $modelClass = WarehouseActivity::class;
                 $column = 'activity_number';
                 $additionalConstraints = [['activity_type', '=', 'issue']];
-                $prefix = 'SIJ-' . strtoupper($compKey) . '/' . date('Ymd') . '-';
+                $prefix = 'OUT-' . strtoupper($compKey) . '/' . date('Ymd') . '-';
                 break;
 
             // Warehouse TR
