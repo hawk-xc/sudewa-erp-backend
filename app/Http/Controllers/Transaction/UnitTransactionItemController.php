@@ -36,6 +36,8 @@ class UnitTransactionItemController extends Controller
             'sparepart_id',
             'qty_total',
             'price',
+            'price_per_unit_usd',
+            'price_usd',
             'bbn_price',
             'hpp_per_unit_price',
             'dpp_per_unit_price',
@@ -66,7 +68,9 @@ class UnitTransactionItemController extends Controller
                 $query->where(function ($q) use ($search) {
                     $q->where('uuid', 'like', "%$search%")
                         ->orWhere('qty_total', 'like', "%$search%")
-                        ->orWhere('price', 'like', "%$search%");
+                        ->orWhere('price', 'like', "%$search%")
+                        ->orWhere('price_per_unit_usd', 'like', "%$search%")
+                        ->orWhere('price_usd', 'like', "%$search%");
                 });
             }
 
@@ -133,6 +137,8 @@ class UnitTransactionItemController extends Controller
                 'sparepart_id' => 'nullable|integer|exists:spareparts,id',
                 'qty_total' => 'required|integer|min:1',
                 'price' => 'required|decimal:0,2',
+                'price_per_unit_usd' => 'nullable|numeric|min:0',
+                'price_usd' => 'nullable|numeric|min:0',
                 'bbn_price' => 'nullable|decimal:0,2',
                 'hpp_per_unit_price' => 'nullable|numeric',
                 'dpp_per_unit_price' => 'nullable|numeric',
@@ -226,6 +232,9 @@ class UnitTransactionItemController extends Controller
                 $validated['dpp_total_price'] = $dpp * $request->qty_total;
                 $validated['ppn_total_price'] = $ppn * $request->qty_total;
 
+                $validated['price_per_unit_usd'] = $request->price_per_unit_usd ?? 0;
+                $validated['price_usd'] = $request->price_usd ?? ($validated['price_per_unit_usd'] * $request->qty_total);
+
                 return UnitTransactionItem::create($validated);
             });
 
@@ -248,6 +257,7 @@ class UnitTransactionItemController extends Controller
         $request->validate([
             'qty_total' => 'nullable|integer|min:1',
             'price' => 'nullable|numeric|min:0',
+            'price_per_unit_usd' => 'nullable|numeric|min:0',
             'bbn_price' => 'nullable|numeric|min:0',
             'expedition_fee' => 'nullable|numeric|min:0',
             'other_fee' => 'nullable|numeric|min:0',
@@ -255,6 +265,7 @@ class UnitTransactionItemController extends Controller
 
         $qty = $request->qty_total ?? 0;
         $price = $request->price ?? 0;
+        $pricePerUnitUsd = $request->price_per_unit_usd ?? 0;
 
         $bbn = $request->bbn_price ?? 0;
         $expedition = $request->expedition_fee ?? 0;
@@ -280,6 +291,9 @@ class UnitTransactionItemController extends Controller
             'hpp_total_price' => (int) $hpp * $qty,
             'dpp_total_price' => (int) $dpp * $qty,
             'ppn_total_price' => (int) $ppn * $qty,
+
+            'price_per_unit_usd' => (float) $pricePerUnitUsd,
+            'price_usd' => (float) ($pricePerUnitUsd * $qty),
         ];
 
         return $this->responseSuccess((object) $result, 'Transaction Item Formula', 200);
@@ -296,6 +310,8 @@ class UnitTransactionItemController extends Controller
                 'sparepart_id' => 'sometimes|nullable|integer|exists:spareparts,id',
                 'qty_total' => 'sometimes|integer|min:1',
                 'price' => 'sometimes|numeric',
+                'price_per_unit_usd' => 'nullable|numeric|min:0',
+                'price_usd' => 'nullable|numeric|min:0',
                 'bbn_price' => 'nullable|numeric',
                 'hpp_per_unit_price' => 'nullable|numeric',
                 'dpp_per_unit_price' => 'nullable|numeric',
@@ -397,6 +413,14 @@ class UnitTransactionItemController extends Controller
                     'Validation failed',
                     422
                 );
+            }
+
+            if (isset($validated['qty_total']) || isset($validated['price_per_unit_usd'])) {
+                $pricePerUnitUsd = array_key_exists('price_per_unit_usd', $validated) ? $validated['price_per_unit_usd'] : $item->price_per_unit_usd;
+                if ($pricePerUnitUsd !== null && !isset($validated['price_usd'])) {
+                    $qty = $validated['qty_total'] ?? $item->qty_total;
+                    $validated['price_usd'] = $pricePerUnitUsd * $qty;
+                }
             }
 
             DB::transaction(function () use ($item, $validated) {
