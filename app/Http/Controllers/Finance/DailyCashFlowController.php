@@ -89,7 +89,7 @@ class DailyCashFlowController extends Controller
 
             return $this->responseSuccess($data, 'Cash Flow list retrieved successfully', 200);
         } catch (Exception $err) {
-            Log::error('Error while retrieving Cash Flow data : '.$err->getMessage());
+            Log::error('Error while retrieving Cash Flow data : ' . $err->getMessage());
 
             return $this->responseError($err->getMessage(), 'Cash Flow list retrieved Failed', 500);
         }
@@ -110,7 +110,7 @@ class DailyCashFlowController extends Controller
 
             return $this->responseSuccess($cashFlow, 'Cash Flow retrieved successfully', 200);
         } catch (Exception $err) {
-            Log::error('Error while retrieving Cash Flow data : '.$err->getMessage());
+            Log::error('Error while retrieving Cash Flow data : ' . $err->getMessage());
 
             return $this->responseError($err->getMessage(), 'Cash Flow retrieved Failed', 500);
         }
@@ -147,7 +147,7 @@ class DailyCashFlowController extends Controller
         } catch (ValidationException $err) {
             return $this->responseError($err->errors(), 'Validation failed', 422);
         } catch (Exception $err) {
-            Log::error('Error while creating Cash Flow : '.$err->getMessage());
+            Log::error('Error while creating Cash Flow : ' . $err->getMessage());
 
             return $this->responseError($err->getMessage(), 'Error while creating Cash Flow', 500);
         }
@@ -169,7 +169,7 @@ class DailyCashFlowController extends Controller
                 'is_paid' => 'sometimes|in:true,false',
             ]);
 
-            $data = array_filter($request->only(['company_id', 'date', 'note', 'debet', 'credit', 'transaction_category', 'is_paid']), fn ($value) => ! is_null($value) && $value !== '');
+            $data = array_filter($request->only(['company_id', 'date', 'note', 'debet', 'credit', 'transaction_category', 'is_paid']), fn($value) => ! is_null($value) && $value !== '');
 
             if ($request->hasFile('payment_proof')) {
                 if ($cashFlow->payment_proof) {
@@ -182,7 +182,40 @@ class DailyCashFlowController extends Controller
                 );
             }
 
-            $cashFlow = DB::transaction(function () use ($cashFlow, $data) {
+            // credit amount protector
+            if ($cashFlow->unitTransactionBilling && $cashFlow->unitTransactionBilling->unitTransaction) {
+                if ($cashFlow->unitTransactionBilling->unitTransaction->type === 'sales') {
+                    if ($request->filled('debet')) {
+                        return $this->responseError(null, 'Debet is not allowed for sales transaction', 422);
+                    }
+                } else {
+                    if ($request->filled('credit')) {
+                        return $this->responseError(null, 'Credit is not allowed for operational transaction', 422);
+                    }
+                }
+            }
+
+            $cashFlow = DB::transaction(function () use ($cashFlow, $data, $request) {
+                if ($request->filled('is_paid') && $request->is_paid == "true" && !$cashFlow->is_paid) {
+                    $type = $cashFlow->debet > 0 ? 'sales' : 'purchase';
+
+                    $financeBilling = $cashFlow->financeBilling;
+                    if ($financeBilling) {
+                        $utBilling = $financeBilling->unitTransactionBilling;
+                        if ($utBilling && $utBilling->unitTransaction) {
+                            $companyId = $utBilling->unitTransaction->warehouse->company_id;
+                            foreach ($financeBilling->financeBillingItems as $item) {
+                                $cash = $item->cash;
+                                $amount = (float) $item->amount;
+
+                                if ($cash && $cash->company_id === $companyId && $amount > 0) {
+                                    $cash->adjustAmount($amount, $type);
+                                }
+                            }
+                        }
+                    }
+                }
+
                 $cashFlow->update($data);
                 return $cashFlow->fresh();
             });
@@ -195,7 +228,7 @@ class DailyCashFlowController extends Controller
             $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
             return $this->responseError(null, $friendlyModel . ' not found', 404);
         } catch (Exception $err) {
-            Log::error('Error while updating Cash Flow : '.$err->getMessage());
+            Log::error('Error while updating Cash Flow : ' . $err->getMessage());
 
             return $this->responseError($err->getMessage(), 'Error while updating Cash Flow', 500);
         }
@@ -211,7 +244,7 @@ class DailyCashFlowController extends Controller
                     'unit_transaction_billing_id' => ['Cash Flow is linked to a unit transaction billing, cannot be deleted'],
                 ]);
             }
-            
+
             if ($cashFlow->payment_proof) {
                 $this->destroyFile('cash_flow_proof/' . $cashFlow->payment_proof);
             }
@@ -226,7 +259,7 @@ class DailyCashFlowController extends Controller
             $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
             return $this->responseError(null, $friendlyModel . ' not found', 404);
         } catch (Exception $err) {
-            Log::error('Error while deleting Cash Flow : '.$err->getMessage());
+            Log::error('Error while deleting Cash Flow : ' . $err->getMessage());
 
             return $this->responseError($err->getMessage(), 'Cash Flow deleted Failed', 500);
         }

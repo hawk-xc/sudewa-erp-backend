@@ -245,11 +245,6 @@ class UnitTransactionBillingHistoryController extends Controller
                     $createdCashFlowIds = [];
                     $createdFinanceBillingIds = [];
 
-                    $totalPaymentAmount = $totalBca + $totalCash + $totalBcaUsdInIdr;
-                    if ($totalPaymentAmount <= 0) {
-                        $totalPaymentAmount = $billing->grand_total;
-                    }
-
                     $cf = CashFlow::updateOrCreate(
                         [
                             'unit_transaction_billing_id' => $billing->id,
@@ -259,10 +254,10 @@ class UnitTransactionBillingHistoryController extends Controller
                             'code' => $billing->unitTransaction->code . '-payment',
                             'date' => $validated['payment_at'] ?? now(),
                             'note' => "Pelunasan Total " . $billing->unitTransaction->code,
-                            'debet' => $billing->unitTransaction->type === 'sales' ? $totalPaymentAmount : 0,
-                            'debet_original' => $billing->unitTransaction->type === 'sales' ? $totalPaymentAmount : 0,
-                            'credit' => $billing->unitTransaction->type === 'purchase' ? $totalPaymentAmount : 0,
-                            'credit_original' => $billing->unitTransaction->type === 'purchase' ? $totalPaymentAmount : 0,
+                            'debet' => $billing->unitTransaction->type === 'sales' ? $billing->grand_total : 0,
+                            'debet_original' => $billing->unitTransaction->type === 'sales' ? $billing->grand_total : 0,
+                            'credit' => $billing->unitTransaction->type === 'purchase' ? $billing->grand_total : 0,
+                            'credit_original' => $billing->unitTransaction->type === 'purchase' ? $billing->grand_total : 0,
                         ]
                     );
                     $createdCashFlowIds[] = $cf->id;

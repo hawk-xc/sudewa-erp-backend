@@ -47,8 +47,6 @@ class CashFlow extends Model
         return $this->belongsTo(Company::class);
     }
 
-
-
     public function unitTransactionBilling()
     {
         return $this->belongsTo(UnitTransactionBilling::class, 'unit_transaction_billing_id', 'id');
@@ -70,9 +68,9 @@ class CashFlow extends Model
                 DB::transaction(function () use ($model) {
 
                     $today = Carbon::now()->format('Ymd');
-                    $prefix = 'TRX'.$today;
+                    $prefix = 'TRX' . $today;
 
-                    $last = self::where('code', 'like', $prefix.'%')
+                    $last = self::where('code', 'like', $prefix . '%')
                         ->lockForUpdate()
                         ->orderBy('code', 'desc')
                         ->first();
@@ -84,10 +82,9 @@ class CashFlow extends Model
                         $nextNumber = 1;
                     }
 
-                    $model->code = $prefix.str_pad($nextNumber, 5, '0', STR_PAD_LEFT);
+                    $model->code = $prefix . str_pad($nextNumber, 5, '0', STR_PAD_LEFT);
                 });
             }
         });
     }
 }
-
