@@ -117,8 +117,6 @@ class GoodsTransactionBillingController extends Controller
                 // CashFlow data trigger (autocreate)
                 $cashFlow = CashFlow::create([
                     'company_id' => $transaction->company_id,
-                    'cash_id' => null,
-                    'account_id' => null,
                     'unit_transaction_billing_id' => null,
                     'date' => now(),
                     'note' => "Billing untuk transaksi barang: {$transaction->code} ({$transaction->category})",

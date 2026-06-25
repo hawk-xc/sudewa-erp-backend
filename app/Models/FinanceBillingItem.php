@@ -13,25 +13,36 @@ class FinanceBillingItem extends Model
 
     protected $fillable = [
         'finance_billing_id',
-        'bca_payment_amount',
-        'bca_payment_usd_amount',
-        'bca_payment_usd_amount_original',
-        'cash_payment_amount',
+        'cash_id',
+        'account_id',
+        'amount',
+        'amount_original',
         'payment_proof',
         'payment_at',
         'note',
     ];
 
     protected $casts = [
-        'bca_payment_amount' => 'integer',
-        'bca_payment_usd_amount' => 'integer',
-        'bca_payment_usd_amount_original' => 'integer',
-        'cash_payment_amount' => 'integer',
+        'finance_billing_id' => 'integer',
+        'cash_id' => 'integer',
+        'account_id' => 'integer',
+        'amount' => 'float',
+        'amount_original' => 'float',
         'payment_at' => 'date',
     ];
 
     public function financeBilling()
     {
         return $this->belongsTo(FinanceBilling::class);
+    }
+
+    public function cash()
+    {
+        return $this->belongsTo(Cash::class);
+    }
+
+    public function account()
+    {
+        return $this->belongsTo(Account::class);
     }
 }
