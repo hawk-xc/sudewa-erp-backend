@@ -107,6 +107,7 @@ class UnitTransactionController extends Controller
                 $item->transaction_ppn_total = $item->getSumAmount('ppn_total_price');
                 $item->transaction_bbn_total = $item->getSumAmount('bbn_price');
                 $item->transaction_other_fee = $item->getSumAmount('other_fee');
+                $item->expedition_fee_total = $item->unitTransactionItems->sum('expedition_fee');
 
                 if ($item->unitTransactionBilling) {
                     $billing = $item->unitTransactionBilling;
