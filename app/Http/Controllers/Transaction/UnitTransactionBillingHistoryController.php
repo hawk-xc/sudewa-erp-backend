@@ -197,7 +197,6 @@ class UnitTransactionBillingHistoryController extends Controller
                                 $pivotData['exchange_amount'] = $exchangeRate;
                             }
                             $history->cashes()->attach($cash->id, $pivotData);
-                            $cash->increment('amount', $amountToAdd);
                         }
                     }
                 }
@@ -265,7 +264,7 @@ class UnitTransactionBillingHistoryController extends Controller
                     $fb = FinanceBilling::where('unit_transaction_billing_id', $billing->id)
                         ->where(function ($q) use ($cf) {
                             $q->where('cash_flow_id', $cf->id)
-                              ->orWhereNull('cash_flow_id');
+                                ->orWhereNull('cash_flow_id');
                         })
                         ->first();
 
@@ -418,10 +417,6 @@ class UnitTransactionBillingHistoryController extends Controller
 
                     $cash = Cash::where('company_id', $companyId)->where('code', $slug)->first();
                     if ($cash) {
-                        if ($diff != 0) {
-                            $cash->increment('amount', $diff);
-                        }
-
                         if ($newVal > 0) {
                             $existingPivot = $history->cashes->where('id', $cash->id)->first();
                             $pivotData = ['amount' => $newVal];

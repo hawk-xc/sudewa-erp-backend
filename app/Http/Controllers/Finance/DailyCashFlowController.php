@@ -101,7 +101,8 @@ class DailyCashFlowController extends Controller
             $cashFlow = CashFlow::with([
                 'company:id,uuid,name',
                 'financeBilling',
-                'financeBilling.financeBillingItems'
+                'financeBilling.financeBillingItems',
+                'financeBilling.financeBillingItems.cash:id,uuid,company_id,code,cash_name',
             ])->find($id);
 
             if (! $cashFlow) {
@@ -196,20 +197,45 @@ class DailyCashFlowController extends Controller
             }
 
             $cashFlow = DB::transaction(function () use ($cashFlow, $data, $request) {
-                if ($request->filled('is_paid') && $request->is_paid == "true" && !$cashFlow->is_paid) {
-                    $type = $cashFlow->debet > 0 ? 'sales' : 'purchase';
+                if ($request->filled('is_paid')) {
+                    $isPaidRequest = $request->is_paid == "true";
 
-                    $financeBilling = $cashFlow->financeBilling;
-                    if ($financeBilling) {
-                        $utBilling = $financeBilling->unitTransactionBilling;
-                        if ($utBilling && $utBilling->unitTransaction) {
-                            $companyId = $utBilling->unitTransaction->warehouse->company_id;
-                            foreach ($financeBilling->financeBillingItems as $item) {
-                                $cash = $item->cash;
-                                $amount = (float) $item->amount;
+                    if ($isPaidRequest && !$cashFlow->is_paid) {
+                        // Transition from unpaid to paid: adjust cash
+                        $type = $cashFlow->debet > 0 ? 'sales' : 'purchase';
 
-                                if ($cash && $cash->company_id === $companyId && $amount > 0) {
-                                    $cash->adjustAmount($amount, $type);
+                        $financeBilling = $cashFlow->financeBilling;
+                        if ($financeBilling) {
+                            $utBilling = $financeBilling->unitTransactionBilling;
+                            if ($utBilling && $utBilling->unitTransaction) {
+                                $companyId = $utBilling->unitTransaction->warehouse->company_id;
+                                foreach ($financeBilling->financeBillingItems as $item) {
+                                    $cash = $item->cash;
+                                    $amount = (float) $item->amount;
+
+                                    if ($cash && $cash->company_id === $companyId && $amount > 0) {
+                                        $cash->adjustAmount($amount, $type);
+                                    }
+                                }
+                            }
+                        }
+                    } elseif (!$isPaidRequest && $cashFlow->is_paid) {
+                        // Transition from paid to unpaid: reverse cash adjustment
+                        $type = $cashFlow->debet > 0 ? 'sales' : 'purchase';
+                        $reverseType = $type === 'sales' ? 'purchase' : 'sales';
+
+                        $financeBilling = $cashFlow->financeBilling;
+                        if ($financeBilling) {
+                            $utBilling = $financeBilling->unitTransactionBilling;
+                            if ($utBilling && $utBilling->unitTransaction) {
+                                $companyId = $utBilling->unitTransaction->warehouse->company_id;
+                                foreach ($financeBilling->financeBillingItems as $item) {
+                                    $cash = $item->cash;
+                                    $amount = (float) $item->amount;
+
+                                    if ($cash && $cash->company_id === $companyId && $amount > 0) {
+                                        $cash->adjustAmount($amount, $reverseType);
+                                    }
                                 }
                             }
                         }
@@ -250,6 +276,26 @@ class DailyCashFlowController extends Controller
             }
 
             DB::transaction(function () use ($cashFlow) {
+                if ($cashFlow->is_paid) {
+                    $type = $cashFlow->debet > 0 ? 'sales' : 'purchase';
+                    $reverseType = $type === 'sales' ? 'purchase' : 'sales';
+
+                    $financeBilling = $cashFlow->financeBilling;
+                    if ($financeBilling) {
+                        $utBilling = $financeBilling->unitTransactionBilling;
+                        if ($utBilling && $utBilling->unitTransaction) {
+                            $companyId = $utBilling->unitTransaction->warehouse->company_id;
+                            foreach ($financeBilling->financeBillingItems as $item) {
+                                $cash = $item->cash;
+                                $amount = (float) $item->amount;
+
+                                if ($cash && $cash->company_id === $companyId && $amount > 0) {
+                                    $cash->adjustAmount($amount, $reverseType);
+                                }
+                            }
+                        }
+                    }
+                }
                 $cashFlow->delete();
             });
 

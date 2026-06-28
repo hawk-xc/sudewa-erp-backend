@@ -5,10 +5,11 @@ namespace App\Http\Controllers\Finance;
 use App\Http\Controllers\Controller;
 use App\Models\FinanceBilling;
 use App\Models\FinanceBillingItem;
-use App\Models\UnitTransactionBilling;
 use App\Models\UnitTypeDetailPpn;
 use App\Models\Cash;
 use App\Repositories\AuthRepository;
+use App\Rules\RightCashRule;
+use App\Rules\RightAccountRule;
 use App\Traits\FileTrait;
 use App\Traits\ResponseTrait;
 use Exception;
@@ -210,10 +211,18 @@ class FinanceBillingController extends Controller
 
     public function addItem(Request $request, string $unit_transaction_billing_id)
     {
+        $financeBilling = FinanceBilling::with([
+            'financeBillingItems',
+            'unitTransactionBilling.unitTransaction.unitTransactionItems.unitTransactionItemDetails',
+            'unitTransactionBilling.unitTransaction.unitTransactionItems.unitTypeSoldDetails'
+        ])->findOrFail($unit_transaction_billing_id);
+
+        $companyId = $financeBilling->cashFlow->company->id;
+
         try {
             $validated = $request->validate([
-                'cash_id' => 'required|integer|exists:cashes,id',
-                'account_id' => 'nullable|integer|exists:accounts,id',
+                'cash_id' => ['required', 'integer', 'exists:cashes,id', new RightCashRule($companyId)],
+                'account_id' => ['nullable', 'integer', 'exists:accounts,id', new RightAccountRule($companyId)],
                 'amount' => 'required|numeric|min:0',
                 'payment_proof' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:2048',
                 'payment_at' => 'nullable|date',
@@ -226,12 +235,6 @@ class FinanceBillingController extends Controller
                     'finance_billing_proof'
                 );
             }
-
-            $financeBilling = FinanceBilling::with([
-                'financeBillingItems',
-                'unitTransactionBilling.unitTransaction.unitTransactionItems.unitTransactionItemDetails',
-                'unitTransactionBilling.unitTransaction.unitTransactionItems.unitTypeSoldDetails'
-            ])->findOrFail($unit_transaction_billing_id);
 
             $cash = Cash::findOrFail($validated['cash_id']);
             $amount = (float) $validated['amount'];
@@ -266,21 +269,6 @@ class FinanceBillingController extends Controller
                 $itemData = $validated;
                 $itemData['finance_billing_id'] = $financeBilling->id;
                 $item = FinanceBillingItem::create($itemData);
-
-                // Adjust Cash amount if CashFlow exists and is_paid is true
-                $cashFlow = $financeBilling->cashFlow;
-                if ($cashFlow && $cashFlow->is_paid) {
-                    $utBilling = $financeBilling->unitTransactionBilling;
-                    if ($utBilling && $utBilling->unitTransaction) {
-                        $unitTransaction = $utBilling->unitTransaction;
-                        $companyId = $unitTransaction->warehouse->company_id;
-                        $type = $unitTransaction->type; // 'purchase' or 'sales'
-
-                        if ($cash->company_id === $companyId && $amountOriginal > 0) {
-                            $cash->adjustAmount($amountOriginal, $type);
-                        }
-                    }
-                }
 
                 if (($alreadyAllocated + $newPayment) >= $financeBilling->grand_total) {
                     $financeBilling->update(['is_valid' => true]);
@@ -397,29 +385,9 @@ class FinanceBillingController extends Controller
                 $newAmountOriginal = $oldAmountOriginal;
             }
 
-            DB::transaction(function () use ($item, $validated, $oldCashId, $oldAmountOriginal, $newCashId, $newAmountOriginal, $cash) {
+            DB::transaction(function () use ($item, $validated) {
                 $financeBilling = $item->financeBilling;
                 $cashFlow = $financeBilling->cashFlow;
-
-                if ($cashFlow && $cashFlow->is_paid) {
-                    $utBilling = $financeBilling->unitTransactionBilling;
-                    if ($utBilling && $utBilling->unitTransaction) {
-                        $unitTransaction = $utBilling->unitTransaction;
-                        $companyId = $unitTransaction->warehouse->company_id;
-                        $type = $unitTransaction->type; // 'purchase' or 'sales'
-
-                        // 1. Reverse the old payment
-                        $oldCashObj = Cash::find($oldCashId);
-                        if ($oldCashObj && $oldCashObj->company_id === $companyId && $oldAmountOriginal > 0) {
-                            $oldCashObj->adjustAmount(-$oldAmountOriginal, $type);
-                        }
-
-                        // 2. Apply the new payment
-                        if ($cash->company_id === $companyId && $newAmountOriginal > 0) {
-                            $cash->adjustAmount($newAmountOriginal, $type);
-                        }
-                    }
-                }
 
                 $item->update($validated);
 
@@ -470,22 +438,10 @@ class FinanceBillingController extends Controller
                 $financeBilling = $item->financeBilling;
                 $cashFlow = $financeBilling->cashFlow;
 
-                if ($cashFlow && $cashFlow->is_paid) {
-                    $utBilling = $financeBilling->unitTransactionBilling;
-                    if ($utBilling && $utBilling->unitTransaction) {
-                        $unitTransaction = $utBilling->unitTransaction;
-                        $companyId = $unitTransaction->warehouse->company_id;
-                        $type = $unitTransaction->type; // 'purchase' or 'sales'
 
-                        $cash = $item->cash;
-                        if ($cash && $cash->company_id === $companyId && $item->amount_original > 0) {
-                            $cash->adjustAmount(-$item->amount_original, $type);
-                        }
-                    }
-                }
 
                 $item->delete();
-                $this->updateValidity($financeBilling);
+                $financeBilling->update(['is_valid' => false]);
             });
 
             return $this->responseSuccess([], 'Finance Billing Item successfully Deleted', 200);

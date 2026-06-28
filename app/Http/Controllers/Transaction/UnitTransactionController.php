@@ -237,6 +237,8 @@ class UnitTransactionController extends Controller
                 'price' => 'required_with:unit_type_id,sparepart_id|numeric',
                 'bbn_price' => 'nullable|numeric',
                 'other_fee' => 'nullable|numeric',
+                'price_usd' => 'nullable|numeric',
+                'price_per_unit_usd' => 'nullable|numeric',
             ]);
 
             if ($request->filled('unit_type_id') && $request->filled('sparepart_id')) {
@@ -325,6 +327,9 @@ class UnitTransactionController extends Controller
                         'hpp_total_price' => $hpp * $request->qty_total,
                         'dpp_total_price' => $dpp * $request->qty_total,
                         'ppn_total_price' => $ppn * $request->qty_total,
+
+                        'price_usd' => $request->price_usd,
+                        'price_per_unit_usd' => $request->price_per_unit_usd,
                     ]);
                 }
 
