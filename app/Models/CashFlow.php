@@ -19,8 +19,6 @@ class CashFlow extends Model
         'uuid',
         'code',
         'company_id',
-        'cash_id',
-        'account_id',
         'unit_transaction_billing_id',
         'transaction_category',
         'date',
@@ -29,34 +27,24 @@ class CashFlow extends Model
         'credit',
         'debet_original',
         'credit_original',
-        'payment_proof'
+        'payment_proof',
+        'is_paid',
     ];
 
     protected $casts = [
         'company_id' => 'integer',
-        'account_id' => 'integer',
-        'cash_id' => 'integer',
         'unit_transaction_billing_id' => 'integer',
         'date' => 'date',
         'debet' => 'integer',
         'credit' => 'integer',
         'debet_original' => 'integer',
         'credit_original' => 'integer',
+        'is_paid' => 'boolean',
     ];
 
     public function company()
     {
         return $this->belongsTo(Company::class);
-    }
-
-    public function account()
-    {
-        return $this->belongsTo(Account::class);
-    }
-
-    public function cash()
-    {
-        return $this->belongsTo(Cash::class);
     }
 
     public function unitTransactionBilling()
@@ -80,9 +68,9 @@ class CashFlow extends Model
                 DB::transaction(function () use ($model) {
 
                     $today = Carbon::now()->format('Ymd');
-                    $prefix = 'TRX'.$today;
+                    $prefix = 'TRX' . $today;
 
-                    $last = self::where('code', 'like', $prefix.'%')
+                    $last = self::where('code', 'like', $prefix . '%')
                         ->lockForUpdate()
                         ->orderBy('code', 'desc')
                         ->first();
@@ -94,10 +82,9 @@ class CashFlow extends Model
                         $nextNumber = 1;
                     }
 
-                    $model->code = $prefix.str_pad($nextNumber, 5, '0', STR_PAD_LEFT);
+                    $model->code = $prefix . str_pad($nextNumber, 5, '0', STR_PAD_LEFT);
                 });
             }
         });
     }
 }
-

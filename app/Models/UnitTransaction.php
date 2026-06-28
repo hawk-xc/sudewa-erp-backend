@@ -24,6 +24,8 @@ class UnitTransaction extends Model
     ];
 
     protected $casts = [
+        'warehouse_id' => 'integer',
+        'person_id' => 'integer',
         'stock_state' => 'string',
         'is_refunded' => 'boolean'
     ];

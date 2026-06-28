@@ -5,10 +5,11 @@ namespace App\Http\Controllers\Finance;
 use App\Http\Controllers\Controller;
 use App\Models\FinanceBilling;
 use App\Models\FinanceBillingItem;
-use App\Models\UnitTransactionBilling;
 use App\Models\UnitTypeDetailPpn;
 use App\Models\Cash;
 use App\Repositories\AuthRepository;
+use App\Rules\RightCashRule;
+use App\Rules\RightAccountRule;
 use App\Traits\FileTrait;
 use App\Traits\ResponseTrait;
 use Exception;
@@ -50,9 +51,10 @@ class FinanceBillingController extends Controller
         $this->financeBillingItemTable = [
             'id',
             'finance_billing_id',
-            'bca_payment_amount',
-            'bca_payment_usd_amount',
-            'cash_payment_amount',
+            'cash_id',
+            'account_id',
+            'amount',
+            'amount_original',
             'payment_proof',
             'payment_at',
             'note',
@@ -67,7 +69,7 @@ class FinanceBillingController extends Controller
                 ->with([
                     'unitTransactionBilling:id,uuid,unit_transaction_id,grand_total,is_paid',
                     'unitTransactionBilling.unitTransaction:id,code',
-                    'financeBillingItems'
+                    'financeBillingItems.cash'
                 ]);
 
             $query->select($this->financeBillingTable);
@@ -101,10 +103,7 @@ class FinanceBillingController extends Controller
 
             $data->getCollection()->transform(function ($item) use ($exchangeRate) {
                 $items = $item->financeBillingItems;
-                $totalCash = $items->sum('cash_payment_amount');
-                $totalBca = $items->sum('bca_payment_amount');
-                $totalBcaUsdOriginal = $items->sum('bca_payment_usd_amount_original');
-                $totalPaid = $totalCash + $totalBca + $totalBcaUsdOriginal;
+                $totalPaid = $items->sum('amount_original');
                 $remaining = ($item->unitTransactionBilling->grand_total ?? 0) - $totalPaid;
 
                 $item->remaining_payment = $remaining;
@@ -127,19 +126,19 @@ class FinanceBillingController extends Controller
                 'unitTransactionBilling',
                 'unitTransactionBilling.unitTransaction',
                 'unitTransactionBilling.unitTransactionBillingHistories',
-                'financeBillingItems'
+                'financeBillingItems.cash'
             ])
                 ->select($this->financeBillingTable)
                 ->findOrFail($id);
 
             $items = $data->financeBillingItems;
 
-            $totalCash = $items->sum('cash_payment_amount');
-            $totalBca = $items->sum('bca_payment_amount');
-            $totalUsd = $items->sum('bca_payment_usd_amount');
-            $totalUsdOriginal = $items->sum('bca_payment_usd_amount_original');
+            $totalCash = $items->filter(fn($i) => $i->cash && $i->cash->code === 'cash_idr')->sum('amount');
+            $totalBca = $items->filter(fn($i) => $i->cash && $i->cash->code === 'bca_idr')->sum('amount');
+            $totalUsd = $items->filter(fn($i) => $i->cash && $i->cash->code === 'bca_usd')->sum('amount_original');
+            $totalUsdOriginal = $items->filter(fn($i) => $i->cash && $i->cash->code === 'bca_usd')->sum('amount');
 
-            $totalPaid = $totalCash + $totalBca + $totalUsdOriginal;
+            $totalPaid = $items->sum('amount_original');
             $remaining = ($data->unitTransactionBilling->grand_total ?? 0) - $totalPaid;
 
             $currencyService = app(CurrencyService::class);
@@ -212,11 +211,19 @@ class FinanceBillingController extends Controller
 
     public function addItem(Request $request, string $unit_transaction_billing_id)
     {
+        $financeBilling = FinanceBilling::with([
+            'financeBillingItems',
+            'unitTransactionBilling.unitTransaction.unitTransactionItems.unitTransactionItemDetails',
+            'unitTransactionBilling.unitTransaction.unitTransactionItems.unitTypeSoldDetails'
+        ])->findOrFail($unit_transaction_billing_id);
+
+        $companyId = $financeBilling->cashFlow->company->id;
+
         try {
             $validated = $request->validate([
-                'bca_payment_amount' => 'nullable|integer|min:0|required_without_all:cash_payment_amount,bca_payment_usd_amount',
-                'bca_payment_usd_amount' => 'nullable|integer|min:0|required_without_all:bca_payment_amount,cash_payment_amount',
-                'cash_payment_amount' => 'nullable|integer|min:0|required_without_all:bca_payment_amount,bca_payment_usd_amount',
+                'cash_id' => ['required', 'integer', 'exists:cashes,id', new RightCashRule($companyId)],
+                'account_id' => ['nullable', 'integer', 'exists:accounts,id', new RightAccountRule($companyId)],
+                'amount' => 'required|numeric|min:0',
                 'payment_proof' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:2048',
                 'payment_at' => 'nullable|date',
                 'note' => 'nullable|string',
@@ -229,30 +236,24 @@ class FinanceBillingController extends Controller
                 );
             }
 
-            $financeBilling = FinanceBilling::with([
-                'financeBillingItems',
-                'unitTransactionBilling.unitTransaction.unitTransactionItems.unitTransactionItemDetails',
-                'unitTransactionBilling.unitTransaction.unitTransactionItems.unitTypeSoldDetails'
-            ])->findOrFail($unit_transaction_billing_id);
+            $cash = Cash::findOrFail($validated['cash_id']);
+            $amount = (float) $validated['amount'];
 
-            $bcaUsd = $validated['bca_payment_usd_amount'] ?? 0;
-            $usdInIdr = 0;
-            if ($bcaUsd > 0) {
+            if (str_contains(strtolower($cash->code), 'usd')) {
                 $currencyService = app(CurrencyService::class);
                 $exchangeRate = (int) $currencyService->convertUsdToIdr('1');
                 if (!$exchangeRate) {
                     return $this->responseError([], 'Failed to convert USD to IDR via Unirate API.', 500);
                 }
-                $usdInIdr = (int) ($bcaUsd * $exchangeRate);
+                $amountOriginal = (int) ($amount * $exchangeRate);
+            } else {
+                $amountOriginal = (int) $amount;
             }
-            $validated['bca_payment_usd_amount_original'] = $usdInIdr;
+            $validated['amount_original'] = $amountOriginal;
+            $validated['amount'] = $amount;
 
-            $newPayment = ($validated['cash_payment_amount'] ?? 0) + ($validated['bca_payment_amount'] ?? 0) + $usdInIdr;
-
-            $alreadyAllocated = $financeBilling->financeBillingItems->sum(function ($item) {
-                return ($item->cash_payment_amount ?? 0) + ($item->bca_payment_amount ?? 0) + ($item->bca_payment_usd_amount_original ?? 0);
-            });
-
+            $newPayment = $amountOriginal;
+            $alreadyAllocated = $financeBilling->financeBillingItems->sum('amount_original');
             $remainingAllowed = $financeBilling->grand_total - $alreadyAllocated;
 
             if ($newPayment > $remainingAllowed) {
@@ -263,46 +264,11 @@ class FinanceBillingController extends Controller
                 );
             }
 
-            $item = DB::transaction(function () use ($validated, $financeBilling, $newPayment, $alreadyAllocated) {
+            $item = DB::transaction(function () use ($validated, $financeBilling, $newPayment, $alreadyAllocated, $cash, $amountOriginal) {
                 // 1. Create the item
                 $itemData = $validated;
                 $itemData['finance_billing_id'] = $financeBilling->id;
                 $item = FinanceBillingItem::create($itemData);
-
-                // Adjust Cash amount based on payment type
-                $utBilling = $financeBilling->unitTransactionBilling;
-                if ($utBilling && $utBilling->unitTransaction) {
-                    $unitTransaction = $utBilling->unitTransaction;
-                    $companyId = $unitTransaction->warehouse->company_id;
-                    $type = $unitTransaction->type; // 'purchase' or 'sales'
-
-                    // Cash Payment
-                    $cashAmount = (float) ($validated['cash_payment_amount'] ?? 0);
-                    if ($cashAmount > 0) {
-                        $cashObj = Cash::where('company_id', $companyId)->where('code', 'cash_idr')->first();
-                        if ($cashObj) {
-                            $cashObj->adjustAmount($cashAmount, $type);
-                        }
-                    }
-
-                    // BCA Payment
-                    $bcaAmount = (float) ($validated['bca_payment_amount'] ?? 0);
-                    if ($bcaAmount > 0) {
-                        $cashBca = Cash::where('company_id', $companyId)->where('code', 'bca_idr')->first();
-                        if ($cashBca) {
-                            $cashBca->adjustAmount($bcaAmount, $type);
-                        }
-                    }
-
-                    // BCA USD Payment
-                    $bcaUsdAmount = (float) ($validated['bca_payment_usd_amount'] ?? 0);
-                    if ($bcaUsdAmount > 0) {
-                        $cashBcaUsd = Cash::where('company_id', $companyId)->where('code', 'bca_usd')->first();
-                        if ($cashBcaUsd) {
-                            $cashBcaUsd->adjustAmount($bcaUsdAmount, $type);
-                        }
-                    }
-                }
 
                 if (($alreadyAllocated + $newPayment) >= $financeBilling->grand_total) {
                     $financeBilling->update(['is_valid' => true]);
@@ -344,9 +310,7 @@ class FinanceBillingController extends Controller
             });
 
             $financeBillingFresh = $financeBilling->fresh('financeBillingItems');
-            $totalAllocatedNow = $financeBillingFresh->financeBillingItems->sum(function ($item) {
-                return ($item->cash_payment_amount ?? 0) + ($item->bca_payment_amount ?? 0) + ($item->bca_payment_usd_amount_original ?? 0);
-            });
+            $totalAllocatedNow = $financeBillingFresh->financeBillingItems->sum('amount_original');
             $remainingAmount = $financeBillingFresh->grand_total - $totalAllocatedNow;
 
             $currencyService = app(CurrencyService::class);
@@ -376,9 +340,9 @@ class FinanceBillingController extends Controller
             $item = FinanceBillingItem::findOrFail($id);
 
             $validated = $request->validate([
-                'bca_payment_amount' => 'sometimes|nullable|integer|min:0',
-                'bca_payment_usd_amount' => 'sometimes|nullable|integer|min:0',
-                'cash_payment_amount' => 'sometimes|nullable|integer|min:0',
+                'cash_id' => 'sometimes|integer|exists:cashes,id',
+                'account_id' => 'sometimes|nullable|integer|exists:accounts,id',
+                'amount' => 'sometimes|numeric|min:0',
                 'payment_proof' => 'sometimes|nullable|file|mimes:jpg,jpeg,png,pdf|max:2048',
                 'payment_at' => 'sometimes|nullable|date',
                 'note' => 'sometimes|nullable|string',
@@ -395,79 +359,52 @@ class FinanceBillingController extends Controller
                 );
             }
 
-            $usdInIdr = $item->bca_payment_usd_amount_original;
-            if (array_key_exists('bca_payment_usd_amount', $validated) && $validated['bca_payment_usd_amount'] != $item->bca_payment_usd_amount) {
-                $newUsdVal = $validated['bca_payment_usd_amount'];
-                if ($newUsdVal > 0) {
+            $oldCashId = $item->cash_id;
+            $oldAmountOriginal = (float) $item->amount_original;
+            $oldAmount = (float) $item->amount;
+
+            $newCashId = array_key_exists('cash_id', $validated) ? $validated['cash_id'] : $oldCashId;
+            $newAmount = array_key_exists('amount', $validated) ? (float) $validated['amount'] : $oldAmount;
+
+            $cash = Cash::findOrFail($newCashId);
+
+            if (array_key_exists('cash_id', $validated) || array_key_exists('amount', $validated)) {
+                if (str_contains(strtolower($cash->code), 'usd')) {
                     $currencyService = app(CurrencyService::class);
                     $exchangeRate = (int) $currencyService->convertUsdToIdr('1');
                     if (!$exchangeRate) {
                         return $this->responseError([], 'Failed to convert USD to IDR via Unirate API.', 500);
                     }
-                    $usdInIdr = (int) ($newUsdVal * $exchangeRate);
+                    $newAmountOriginal = (int) ($newAmount * $exchangeRate);
                 } else {
-                    $usdInIdr = 0;
+                    $newAmountOriginal = (int) $newAmount;
                 }
-                $validated['bca_payment_usd_amount_original'] = $usdInIdr;
+                $validated['amount_original'] = $newAmountOriginal;
+                $validated['amount'] = $newAmount;
+            } else {
+                $newAmountOriginal = $oldAmountOriginal;
             }
 
             DB::transaction(function () use ($item, $validated) {
-                $oldBca = (float) ($item->bca_payment_amount ?? 0);
-                $oldBcaUsd = (float) ($item->bca_payment_usd_amount ?? 0);
-                $oldCash = (float) ($item->cash_payment_amount ?? 0);
+                $financeBilling = $item->financeBilling;
+                $cashFlow = $financeBilling->cashFlow;
 
                 $item->update($validated);
 
-                $newBca = (float) ($item->bca_payment_amount ?? 0);
-                $newBcaUsd = (float) ($item->bca_payment_usd_amount ?? 0);
-                $newCash = (float) ($item->cash_payment_amount ?? 0);
-
-                $diffBca = $newBca - $oldBca;
-                $diffBcaUsd = $newBcaUsd - $oldBcaUsd;
-                $diffCash = $newCash - $oldCash;
-
                 $financeBilling = $item->financeBilling;
-                $utBilling = $financeBilling->unitTransactionBilling;
-                if ($utBilling && $utBilling->unitTransaction) {
-                    $unitTransaction = $utBilling->unitTransaction;
-                    $companyId = $unitTransaction->warehouse->company_id;
-                    $type = $unitTransaction->type; // 'purchase' or 'sales'
-
-                    if ($diffBca != 0) {
-                        $cashBca = Cash::where('company_id', $companyId)->where('code', 'bca_idr')->first();
-                        if ($cashBca) {
-                            $cashBca->adjustAmount($diffBca, $type);
-                        }
-                    }
-
-                    if ($diffBcaUsd != 0) {
-                        $cashBcaUsd = Cash::where('company_id', $companyId)->where('code', 'bca_usd')->first();
-                        if ($cashBcaUsd) {
-                            $cashBcaUsd->adjustAmount($diffBcaUsd, $type);
-                        }
-                    }
-
-                    if ($diffCash != 0) {
-                        $cashObj = Cash::where('company_id', $companyId)->where('code', 'cash_idr')->first();
-                        if ($cashObj) {
-                            $cashObj->adjustAmount($diffCash, $type);
-                        }
-                    }
-                }
-
                 $cashFlow = $financeBilling->cashFlow;
 
                 if ($cashFlow) {
-                    $newAmount = ($item->cash_payment_amount ?? 0) + ($item->bca_payment_amount ?? 0) + ($item->bca_payment_usd_amount_original ?? 0);
+                    $newAmountVal = $item->amount_original;
                     $cashFlow->update([
-                        'debet' => $cashFlow->debet > 0 ? $newAmount : 0,
-                        'credit' => $cashFlow->credit > 0 ? $newAmount : 0,
+                        'debet' => $cashFlow->debet > 0 ? $newAmountVal : 0,
+                        'credit' => $cashFlow->credit > 0 ? $newAmountVal : 0,
                         'note' => $item->note ?? $cashFlow->note,
                         'date' => $item->payment_at ?? $cashFlow->date,
                     ]);
 
                     $financeBilling->update([
-                        'grand_total' => $newAmount,
+                        'grand_total' => $newAmountVal,
                         'last_payment_at' => $item->payment_at
                     ]);
                 }
@@ -499,39 +436,12 @@ class FinanceBillingController extends Controller
                 }
 
                 $financeBilling = $item->financeBilling;
-                $utBilling = $financeBilling->unitTransactionBilling;
-                if ($utBilling && $utBilling->unitTransaction) {
-                    $unitTransaction = $utBilling->unitTransaction;
-                    $companyId = $unitTransaction->warehouse->company_id;
-                    $type = $unitTransaction->type; // 'purchase' or 'sales'
+                $cashFlow = $financeBilling->cashFlow;
 
-                    $bcaAmount = (float) ($item->bca_payment_amount ?? 0);
-                    if ($bcaAmount > 0) {
-                        $cashBca = Cash::where('company_id', $companyId)->where('code', 'bca_idr')->first();
-                        if ($cashBca) {
-                            $cashBca->adjustAmount(-$bcaAmount, $type);
-                        }
-                    }
 
-                    $bcaUsdAmount = (float) ($item->bca_payment_usd_amount ?? 0);
-                    if ($bcaUsdAmount > 0) {
-                        $cashBcaUsd = Cash::where('company_id', $companyId)->where('code', 'bca_usd')->first();
-                        if ($cashBcaUsd) {
-                            $cashBcaUsd->adjustAmount(-$bcaUsdAmount, $type);
-                        }
-                    }
-
-                    $cashAmount = (float) ($item->cash_payment_amount ?? 0);
-                    if ($cashAmount > 0) {
-                        $cashObj = Cash::where('company_id', $companyId)->where('code', 'cash_idr')->first();
-                        if ($cashObj) {
-                            $cashObj->adjustAmount(-$cashAmount, $type);
-                        }
-                    }
-                }
 
                 $item->delete();
-                $this->updateValidity($financeBilling);
+                $financeBilling->update(['is_valid' => false]);
             });
 
             return $this->responseSuccess([], 'Finance Billing Item successfully Deleted', 200);
@@ -548,10 +458,7 @@ class FinanceBillingController extends Controller
     {
         $financeBilling->load(['unitTransactionBilling', 'financeBillingItems']);
 
-        $totalPaid = $financeBilling->financeBillingItems->sum(function ($item) {
-            return $item->bca_payment_amount + $item->cash_payment_amount + ($item->bca_payment_usd_amount_original ?? 0);
-        });
-
+        $totalPaid = $financeBilling->financeBillingItems->sum('amount_original');
         $grandTotal = $financeBilling->unitTransactionBilling->grand_total;
 
         $financeBilling->update([

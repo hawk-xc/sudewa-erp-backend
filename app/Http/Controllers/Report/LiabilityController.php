@@ -25,7 +25,7 @@ class LiabilityController extends Controller
 
             $query->with([
                 'financeBilling:id,uuid,unit_transaction_billing_id,goods_transaction_billing_id,cash_flow_id,last_payment_at,grand_total,is_valid',
-                'financeBilling.financeBillingItems:id,finance_billing_id,bca_payment_amount,bca_payment_usd_amount,bca_payment_usd_amount_original,cash_payment_amount,payment_at,note',
+                'financeBilling.financeBillingItems:id,finance_billing_id,cash_id,account_id,amount,amount_original,payment_proof,payment_at,note',
                 'unitTransactionBilling:id,uuid,unit_transaction_id,last_payment_at,is_paid',
                 'unitTransactionBilling.unitTransaction:id,uuid,code,warehouse_id,person_id,type,stock_state',
                 'unitTransactionBilling.unitTransaction.person:id,uuid,code,company_id,type,name,address,phone'
@@ -85,11 +85,8 @@ class LiabilityController extends Controller
                     $financeBilling = $item->financeBilling;
                     $items = $financeBilling->financeBillingItems;
 
-                    $totalCash = $items->sum('cash_payment_amount');
-                    $totalBca = $items->sum('bca_payment_amount');
-
                     $buyTotal = (int) $financeBilling->grand_total;
-                    $paidTotal = $totalCash + $totalBca;
+                    $paidTotal = (float) $items->sum('amount');
                     $liabilityTotal = $buyTotal - $paidTotal;
                     $isPaid = $financeBilling->is_valid;
                 }
@@ -128,11 +125,8 @@ class LiabilityController extends Controller
                 $financeBilling = $data->financeBilling;
                 $items = $financeBilling->financeBillingItems;
 
-                $totalCash = $items->sum('cash_payment_amount');
-                $totalBca = $items->sum('bca_payment_amount');
-
                 $buyTotal = (int) $financeBilling->grand_total;
-                $paidTotal = $totalCash + $totalBca;
+                $paidTotal = (float) $items->sum('amount');
                 $liabilityTotal = $buyTotal - $paidTotal;
                 $isPaid = $financeBilling->is_valid;
             }

@@ -9,6 +9,7 @@ use App\Models\UnitTransactionBilling;
 use App\Models\UnitTransactionItem;
 use App\Models\UnitTransactionItemSales;
 use App\Models\UnitType;
+use App\Models\VehicleRegistration;
 use App\Traits\ResponseTrait;
 use Exception;
 use Illuminate\Http\Request;
@@ -427,5 +428,109 @@ class BillingStatController extends Controller
         }
     }
 
-    public function revenueOverview(Request $request) {}
+    public function revenueOverview(Request $request) 
+    {
+        
+    }
+
+    public function vehicleDocumentStats(Request $request)
+    {
+        try {
+            $companyId = $request->query('company_id');
+
+            $query = VehicleRegistration::query();
+
+            if ($companyId) {
+                $query->whereHas('vehicleData.dealer', function ($q) use ($companyId) {
+                    $q->where('company_id', $companyId);
+                });
+            }
+
+            if ($request->filled('start_date')) {
+                $query->where('created_at', '>=', date('Y-m-d 00:00:00', strtotime($request->start_date)));
+            }
+            if ($request->filled('end_date')) {
+                $query->where('created_at', '<=', date('Y-m-d 23:59:59', strtotime($request->end_date)));
+            }
+
+            $totalPengajuan = (clone $query)->count();
+            $selesai = (clone $query)->where('is_already_processed', true)->count();
+            $proses = (clone $query)
+                ->where('is_already_processed', false)
+                ->whereNotNull('ditlantas_process_id')
+                ->count();
+            $tertunda = (clone $query)
+                ->where('is_already_processed', false)
+                ->whereNull('ditlantas_process_id')
+                ->count();
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Vehicle document statistics retrieved successfully',
+                'data' => [
+                    'total_pengajuan' => $totalPengajuan,
+                    'selesai' => $selesai,
+                    'proses' => $proses,
+                    'tertunda' => $tertunda,
+                ],
+            ]);
+        } catch (Exception $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Failed to retrieve vehicle document statistics',
+                'errors' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    public function vehicleRegistrationStats(Request $request)
+    {
+        try {
+            $companyId = $request->query('company_id');
+
+            $query = VehicleRegistration::query();
+
+            if ($companyId) {
+                $query->whereHas('vehicleData.dealer', function ($q) use ($companyId) {
+                    $q->where('company_id', $companyId);
+                });
+            }
+
+            if ($request->filled('start_date')) {
+                $query->where('created_at', '>=', date('Y-m-d 00:00:00', strtotime($request->start_date)));
+            }
+            if ($request->filled('end_date')) {
+                $query->where('created_at', '<=', date('Y-m-d 23:59:59', strtotime($request->end_date)));
+            }
+
+            $invoiceStats = (clone $query)->count();
+            $bpkbRegisterStats = (clone $query)->whereNotNull('bpkb_number')->count();
+            $stnkRegisterStats = (clone $query)->whereNotNull('stnk_registration_date')->count();
+            $skpdRegisterStats = (clone $query)->whereNotNull('skpd_payment_date')->count();
+
+            $bpkbOutstandingStats = (clone $query)->whereNull('bpkb_number')->count();
+            $stnkOutstandingStats = (clone $query)->whereNull('stnk_registration_date')->count();
+            $skpdOutstandingStats = (clone $query)->whereNull('skpd_payment_date')->count();
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Vehicle registration statistics retrieved successfully',
+                'data' => [
+                    'invoice_stats' => $invoiceStats,
+                    'bpkb_register_stats' => $bpkbRegisterStats,
+                    'stnk_register_stats' => $stnkRegisterStats,
+                    'skpd_register_stats' => $skpdRegisterStats,
+                    'bpkb_outstanding_stats' => $bpkbOutstandingStats,
+                    'stnk_outstanding_stats' => $stnkOutstandingStats,
+                    'skpd_outstanding_stats' => $skpdOutstandingStats,
+                ],
+            ]);
+        } catch (Exception $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Failed to retrieve vehicle registration statistics',
+                'errors' => $e->getMessage(),
+            ], 500);
+        }
+    }
 }

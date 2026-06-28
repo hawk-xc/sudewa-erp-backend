@@ -20,7 +20,7 @@ return new class extends Migration
             
             $table->foreignId('unit_transaction_billing_id')
                 ->nullable()
-                ->after('account_id')
+                ->after('company_id')
                 ->constrained('unit_transaction_billings')
                 ->cascadeOnDelete();
         });

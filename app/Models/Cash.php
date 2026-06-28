@@ -39,10 +39,7 @@ class Cash extends Model
         return $this->belongsTo(Account::class);
     }
 
-    public function cashFlows()
-    {
-        return $this->hasMany(CashFlow::class);
-    }
+
 
     public function unitTransactionAdjustments()
     {
