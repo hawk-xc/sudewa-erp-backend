@@ -242,6 +242,7 @@ class DailyCashFlowController extends Controller
                     }
                 }
 
+                $data['is_paid'] = (bool) $request->is_paid;
                 $cashFlow->update($data);
                 return $cashFlow->fresh();
             });
