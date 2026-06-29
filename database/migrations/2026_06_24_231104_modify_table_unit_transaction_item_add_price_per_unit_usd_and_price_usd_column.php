@@ -14,8 +14,8 @@ return new class extends Migration
         if (!Schema::hasColumn('unit_transaction_items', 'price_per_unit_usd')) {
             if (!Schema::hasColumn('unit_transaction_items', 'price_usd')) {
                 Schema::table('unit_transaction_items', function (Blueprint $table) {
-                    $table->decimal('price_per_unit_usd', 8, 2)->default(0)->nullable(false)->after('price');
-                    $table->decimal('price_usd', 8, 2)->default(0)->nullable(false)->after('price_per_unit_usd');
+                    $table->decimal('price_per_unit_usd', 8, 2)->default(0)->nullable(true)->after('price');
+                    $table->decimal('price_usd', 8, 2)->default(0)->nullable(true)->after('price_per_unit_usd');
                 });
             }
         }
