@@ -26,7 +26,12 @@ class RoleController extends Controller
         $this->middleware(['permission:role:create'])->only(['store']);
         $this->middleware(['permission:role:update'])->only(['update']);
         $this->middleware(['permission:role:delete'])->only(['destroy']);
-        $this->middleware(['permission:role:assign-permission'])->only(['assignPermission']);
+        $this->middleware(['permission:role:assign-permission'])->only([
+            'assignPermission',
+            'assignPermissions',
+            'revokePermission',
+            'revokePermissions'
+        ]);
 
         $this->authRepository = $ar;
     }
@@ -73,28 +78,14 @@ class RoleController extends Controller
             'name' => 'required|string|max:255|unique:roles,name'
         ]);
 
-        $permissionNames = null;
-
-        if (!is_array($request->permissions)) {
-            $request->validate([
-                'permissions' => ['sometimes', 'string', function ($attribute, $value, $fail) {
-                    $permissionNames = array_map('trim', explode(',', $value));
-                    $dbPermissions = \Spatie\Permission\Models\Permission::whereIn('name', $permissionNames)->get();
-
-                    if (count($permissionNames) !== $dbPermissions->count()) {
-                        $missingPermissions = array_diff($permissionNames, $dbPermissions->pluck('name')->all());
-                        $fail('The following permissions do not exist: ' . implode(', ', $missingPermissions));
-                    }
-                }],
-            ]);
-
-            $permissionNames = array_map('trim', explode(',', $request->permissions));
-        } else {
-            $permissionNames = $request->permissions;
-        }
+        $permissionNames = $this->parseAndValidatePermissions($request, 'permissions', false);
 
         $role = Role::create(['name' => $request->name]);
-        $role->givePermissionTo($permissionNames);
+
+        if (!is_null($permissionNames)) {
+            $role->syncPermissions($permissionNames);
+        }
+
         $role->load('permissions');
 
         return $this->responseSuccess($role, 'Role created successfully');
@@ -108,25 +99,44 @@ class RoleController extends Controller
             return $this->responseError(null, 'Role not found', 404);
         }
 
-        $request->validate([
-            'permissions' => ['required', 'string', function ($attribute, $value, $fail) {
-                $permissionNames = array_map('trim', explode(',', $value));
-                $dbPermissions = \Spatie\Permission\Models\Permission::whereIn('name', $permissionNames)->get();
+        $permissionNames = $this->parseAndValidatePermissions($request, 'permissions', true);
 
-                if (count($permissionNames) !== $dbPermissions->count()) {
-                    $missingPermissions = array_diff($permissionNames, $dbPermissions->pluck('name')->all());
-                    $fail('The following permissions do not exist: ' . implode(', ', $missingPermissions));
-                }
-            }],
-        ]);
-
-        $permissionNames = array_map('trim', explode(',', $request->permissions));
-
-        $role->givePermissionTo($permissionNames);
+        if (!empty($permissionNames)) {
+            $role->givePermissionTo($permissionNames);
+        }
 
         $role->load('permissions');
 
         return $this->responseSuccess($role, 'Permissions assigned successfully');
+    }
+
+    public function assignPermission(Request $request, string $id)
+    {
+        return $this->assignPermissions($request, $id);
+    }
+
+    public function revokePermissions(Request $request, string $id)
+    {
+        $role = Role::find($id);
+
+        if (!$role) {
+            return $this->responseError(null, 'Role not found', 404);
+        }
+
+        $permissionNames = $this->parseAndValidatePermissions($request, 'permissions', true);
+
+        if (!empty($permissionNames)) {
+            $role->revokePermissionTo($permissionNames);
+        }
+
+        $role->load('permissions');
+
+        return $this->responseSuccess($role, 'Permissions revoked successfully');
+    }
+
+    public function revokePermission(Request $request, string $id)
+    {
+        return $this->revokePermissions($request, $id);
     }
 
     public function update(Request $request, string $id)
@@ -141,7 +151,15 @@ class RoleController extends Controller
             'name' => 'required|string|max:255|unique:roles,name,' . $id
         ]);
 
+        $permissionNames = $this->parseAndValidatePermissions($request, 'permissions', false);
+
         $role->update(['name' => $request->name]);
+
+        if (!is_null($permissionNames)) {
+            $role->syncPermissions($permissionNames);
+        }
+
+        $role->load('permissions');
 
         return $this->responseSuccess($role, 'Role updated successfully');
     }
@@ -157,5 +175,53 @@ class RoleController extends Controller
         $role->delete();
 
         return $this->responseSuccess(null, 'Role deleted successfully');
+    }
+
+    /**
+     * Parse and validate permissions from request.
+     *
+     * @param Request $request
+     * @param string $fieldName
+     * @param bool $isRequired
+     * @return array|null Null if not present, array of names (could be empty) if present.
+     */
+    private function parseAndValidatePermissions(Request $request, string $fieldName = 'permissions', bool $isRequired = false): ?array
+    {
+        if (!$request->has($fieldName)) {
+            if ($isRequired) {
+                $request->validate([$fieldName => 'required']);
+            }
+            return null;
+        }
+
+        $value = $request->input($fieldName);
+
+        if (is_null($value) || $value === '' || (is_array($value) && empty($value))) {
+            return [];
+        }
+
+        if (is_array($value)) {
+            $permissionNames = $value;
+        } else {
+            $permissionNames = array_map('trim', explode(',', $value));
+            $permissionNames = array_filter($permissionNames, function($val) {
+                return $val !== '';
+            });
+        }
+
+        if (!empty($permissionNames)) {
+            $dbPermissionsCount = \Spatie\Permission\Models\Permission::whereIn('name', $permissionNames)->count();
+
+            if (count($permissionNames) !== $dbPermissionsCount) {
+                $dbPermissions = \Spatie\Permission\Models\Permission::whereIn('name', $permissionNames)->pluck('name')->all();
+                $missingPermissions = array_diff($permissionNames, $dbPermissions);
+
+                $validator = \Illuminate\Support\Facades\Validator::make([], []);
+                $validator->errors()->add($fieldName, 'The following permissions do not exist: ' . implode(', ', $missingPermissions));
+                throw new \Illuminate\Validation\ValidationException($validator);
+            }
+        }
+
+        return $permissionNames;
     }
 }

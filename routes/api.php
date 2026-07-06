@@ -117,6 +117,7 @@ Route::group(
             Route::apiResource('', RoleController::class)->parameters(['' => 'roles']);
             Route::get('{id}/without-permissions', [RoleController::class, 'showWithoutPermissions'])->name('without-permissions');
             Route::post('{id}/assign-permissions', [RoleController::class, 'assignPermissions'])->name('assign-permissions');
+            Route::post('{id}/revoke-permissions', [RoleController::class, 'revokePermissions'])->name('revoke-permissions');
         });
 
         // Permission API

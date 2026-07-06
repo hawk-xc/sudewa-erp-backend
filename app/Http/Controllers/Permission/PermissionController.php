@@ -34,6 +34,8 @@ class PermissionController extends Controller
         try {
             $permissions = Permission::query();
 
+            $permissions->with('roles:id,name');
+
             if ($request->has('name')) {
                 $permissions->where('name', 'like', '%' . $request->name . '%');
             }
@@ -43,7 +45,7 @@ class PermissionController extends Controller
             return $this->responseSuccess($permissions, 'Permissions retrieved successfully');
         } catch (Exception $err) {
             Log::error('List All Permission Error : ' . $err->getMessage());
-            return $this->responseError([], 'Permissions retrieved failed!');
+            return $this->responseError($err->getMessage(), 'Permissions retrieved failed!');
         }
     }
 
