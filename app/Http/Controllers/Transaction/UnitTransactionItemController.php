@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\UnitTransaction;
 use App\Models\UnitTransactionItem;
 use App\Models\UnitType;
+use App\Traits\CalculateDecimalAmount;
 use App\Traits\GlobalCodeNumberTrait;
 use App\Traits\ResponseTrait;
 use Exception;
@@ -17,7 +18,7 @@ use Illuminate\Validation\ValidationException;
 
 class UnitTransactionItemController extends Controller
 {
-    use ResponseTrait, GlobalCodeNumberTrait;
+    use CalculateDecimalAmount, GlobalCodeNumberTrait, ResponseTrait;
 
     protected $unitTransactionItemTable;
 
@@ -101,7 +102,8 @@ class UnitTransactionItemController extends Controller
         } catch (ModelNotFoundException $err) {
             $model = class_basename($err->getModel() ?: 'Data');
             $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
-            return $this->responseError(null, $friendlyModel . ' not found', 404);
+
+            return $this->responseError(null, $friendlyModel.' not found', 404);
         } catch (Exception $err) {
             Log::error('Error While retrieved Unit Transaction Item data : '.$err->getMessage());
 
@@ -122,7 +124,8 @@ class UnitTransactionItemController extends Controller
         } catch (ModelNotFoundException $err) {
             $model = class_basename($err->getModel() ?: 'Data');
             $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
-            return $this->responseError(null, $friendlyModel . ' not found', 404);
+
+            return $this->responseError(null, $friendlyModel.' not found', 404);
         } catch (Exception $err) {
             return $this->responseError($err->getMessage(), 'Unit Transaction Item not found', 404);
         }
@@ -220,9 +223,9 @@ class UnitTransactionItemController extends Controller
 
                 $hpp = $request->price - $additional_fee;
 
-                $dpp = ceil($hpp / 1.11);
-
-                $ppn = floor($dpp * 0.11);
+                $hpp = $this->calculateDecimalAmount($hpp);
+                $dpp = $this->calculateDecimalAmount($hpp / 1.11);
+                $ppn = $this->calculateDecimalAmount($dpp * 0.11);
 
                 $validated['hpp_per_unit_price'] = $hpp;
                 $validated['dpp_per_unit_price'] = $dpp;
@@ -244,7 +247,8 @@ class UnitTransactionItemController extends Controller
         } catch (ModelNotFoundException $err) {
             $model = class_basename($err->getModel() ?: 'Data');
             $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
-            return $this->responseError(null, $friendlyModel . ' not found', 404);
+
+            return $this->responseError(null, $friendlyModel.' not found', 404);
         } catch (Exception $err) {
             Log::error('Error While storing Unit Transaction Item data : '.$err->getMessage());
 
@@ -275,22 +279,22 @@ class UnitTransactionItemController extends Controller
 
         $hpp = $price - $additional_fee;
 
-        $dpp = ceil($hpp / 1.11);
-
-        $ppn = floor($dpp * 0.11);
+        $hpp = $this->calculateDecimalAmount($hpp);
+        $dpp = $this->calculateDecimalAmount($hpp / 1.11);
+        $ppn = $this->calculateDecimalAmount($dpp * 0.11);
 
         $result = [
-            'bbn_price' => (int) $bbn,
-            'expedition_fee' => (int) $expedition,
-            'other_fee' => (int) $other,
+            'bbn_price' => $this->calculateDecimalAmount($bbn),
+            'expedition_fee' => $this->calculateDecimalAmount($expedition),
+            'other_fee' => $this->calculateDecimalAmount($other),
 
-            'hpp_per_unit_price' => (int) $hpp,
-            'dpp_per_unit_price' => (int) $dpp,
-            'ppn_per_unit_price' => (int) $ppn,
+            'hpp_per_unit_price' => $hpp,
+            'dpp_per_unit_price' => $dpp,
+            'ppn_per_unit_price' => $ppn,
 
-            'hpp_total_price' => (int) $hpp * $qty,
-            'dpp_total_price' => (int) $dpp * $qty,
-            'ppn_total_price' => (int) $ppn * $qty,
+            'hpp_total_price' => $hpp * $qty,
+            'dpp_total_price' => $dpp * $qty,
+            'ppn_total_price' => $ppn * $qty,
 
             'price_per_unit_usd' => (float) $pricePerUnitUsd,
             'price_usd' => (float) ($pricePerUnitUsd * $qty),
@@ -417,7 +421,7 @@ class UnitTransactionItemController extends Controller
 
             if (isset($validated['qty_total']) || isset($validated['price_per_unit_usd'])) {
                 $pricePerUnitUsd = array_key_exists('price_per_unit_usd', $validated) ? $validated['price_per_unit_usd'] : $item->price_per_unit_usd;
-                if ($pricePerUnitUsd !== null && !isset($validated['price_usd'])) {
+                if ($pricePerUnitUsd !== null && ! isset($validated['price_usd'])) {
                     $qty = $validated['qty_total'] ?? $item->qty_total;
                     $validated['price_usd'] = $pricePerUnitUsd * $qty;
                 }
@@ -433,7 +437,8 @@ class UnitTransactionItemController extends Controller
         } catch (ModelNotFoundException $err) {
             $model = class_basename($err->getModel() ?: 'Data');
             $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
-            return $this->responseError(null, $friendlyModel . ' not found', 404);
+
+            return $this->responseError(null, $friendlyModel.' not found', 404);
         } catch (Exception $err) {
             Log::error('Error While updating Unit Transaction Item data : '.$err->getMessage());
 
@@ -454,7 +459,8 @@ class UnitTransactionItemController extends Controller
         } catch (ModelNotFoundException $err) {
             $model = class_basename($err->getModel() ?: 'Data');
             $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
-            return $this->responseError(null, $friendlyModel . ' not found', 404);
+
+            return $this->responseError(null, $friendlyModel.' not found', 404);
         } catch (Exception $err) {
             return $this->responseError([], 'Unit Transaction Item Not Found or Failed Deleted', 500);
         }
@@ -475,7 +481,8 @@ class UnitTransactionItemController extends Controller
         } catch (ModelNotFoundException $err) {
             $model = class_basename($err->getModel() ?: 'Data');
             $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
-            return $this->responseError(null, $friendlyModel . ' not found', 404);
+
+            return $this->responseError(null, $friendlyModel.' not found', 404);
         } catch (Exception $err) {
             return $this->responseError(null, 'Unit Transaction Item Detail Not Found or Failed Deleted', 500);
         }

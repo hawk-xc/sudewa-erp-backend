@@ -3,31 +3,32 @@
 namespace App\Http\Controllers\Finance;
 
 use App\Http\Controllers\Controller;
+use App\Models\Cash;
 use App\Models\FinanceBilling;
 use App\Models\FinanceBillingItem;
 use App\Models\UnitTypeDetailPpn;
-use App\Models\Cash;
 use App\Repositories\AuthRepository;
-use App\Rules\RightCashRule;
 use App\Rules\RightAccountRule;
+use App\Rules\RightCashRule;
+use App\Services\CurrencyService;
+use App\Traits\CalculateDecimalAmount;
 use App\Traits\FileTrait;
 use App\Traits\ResponseTrait;
 use Exception;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
-use Illuminate\Database\Eloquent\ModelNotFoundException;
-use App\Services\CurrencyService;
 
 class FinanceBillingController extends Controller
 {
-    use FileTrait, ResponseTrait;
+    use CalculateDecimalAmount, FileTrait, ResponseTrait;
 
     protected AuthRepository $authRepository;
 
     protected array $financeBillingTable;
+
     protected array $financeBillingItemTable;
 
     public function __construct(AuthRepository $ar)
@@ -45,7 +46,7 @@ class FinanceBillingController extends Controller
             'unit_transaction_billing_id',
             'last_payment_at',
             'is_valid',
-            'created_at'
+            'created_at',
         ];
 
         $this->financeBillingItemTable = [
@@ -58,7 +59,7 @@ class FinanceBillingController extends Controller
             'payment_proof',
             'payment_at',
             'note',
-            'created_at'
+            'created_at',
         ];
     }
 
@@ -69,7 +70,7 @@ class FinanceBillingController extends Controller
                 ->with([
                     'unitTransactionBilling:id,uuid,unit_transaction_id,grand_total,is_paid',
                     'unitTransactionBilling.unitTransaction:id,code',
-                    'financeBillingItems.cash'
+                    'financeBillingItems.cash',
                 ]);
 
             $query->select($this->financeBillingTable);
@@ -114,7 +115,8 @@ class FinanceBillingController extends Controller
 
             return $this->responseSuccess($data, 'Finance Billing list retrieved successfully', 200);
         } catch (Exception $err) {
-            Log::error('Error Work While retrieved Finance Billing data : ' . $err->getMessage());
+            Log::error('Error Work While retrieved Finance Billing data : '.$err->getMessage());
+
             return $this->responseError($err->getMessage(), 'Finance Billing list retrieved Failed', 500);
         }
     }
@@ -126,17 +128,17 @@ class FinanceBillingController extends Controller
                 'unitTransactionBilling',
                 'unitTransactionBilling.unitTransaction',
                 'unitTransactionBilling.unitTransactionBillingHistories',
-                'financeBillingItems.cash'
+                'financeBillingItems.cash',
             ])
                 ->select($this->financeBillingTable)
                 ->findOrFail($id);
 
             $items = $data->financeBillingItems;
 
-            $totalCash = $items->filter(fn($i) => $i->cash && $i->cash->code === 'cash_idr')->sum('amount');
-            $totalBca = $items->filter(fn($i) => $i->cash && $i->cash->code === 'bca_idr')->sum('amount');
-            $totalUsd = $items->filter(fn($i) => $i->cash && $i->cash->code === 'bca_usd')->sum('amount_original');
-            $totalUsdOriginal = $items->filter(fn($i) => $i->cash && $i->cash->code === 'bca_usd')->sum('amount');
+            $totalCash = $items->filter(fn ($i) => $i->cash && $i->cash->code === 'cash_idr')->sum('amount');
+            $totalBca = $items->filter(fn ($i) => $i->cash && $i->cash->code === 'bca_idr')->sum('amount');
+            $totalUsd = $items->filter(fn ($i) => $i->cash && $i->cash->code === 'bca_usd')->sum('amount_original');
+            $totalUsdOriginal = $items->filter(fn ($i) => $i->cash && $i->cash->code === 'bca_usd')->sum('amount');
 
             $totalPaid = $items->sum('amount_original');
             $remaining = ($data->unitTransactionBilling->grand_total ?? 0) - $totalPaid;
@@ -158,7 +160,8 @@ class FinanceBillingController extends Controller
         } catch (ModelNotFoundException $err) {
             $model = class_basename($err->getModel() ?: 'Data');
             $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
-            return $this->responseError(null, $friendlyModel . ' not found', 404);
+
+            return $this->responseError(null, $friendlyModel.' not found', 404);
         } catch (Exception $err) {
             return $this->responseError($err->getMessage(), 'Finance Billing not found', 404);
         }
@@ -183,9 +186,11 @@ class FinanceBillingController extends Controller
         } catch (ModelNotFoundException $err) {
             $model = class_basename($err->getModel() ?: 'Data');
             $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
-            return $this->responseError(null, $friendlyModel . ' not found', 404);
+
+            return $this->responseError(null, $friendlyModel.' not found', 404);
         } catch (Exception $err) {
-            Log::error('Error While updating Finance Billing data : ' . $err->getMessage());
+            Log::error('Error While updating Finance Billing data : '.$err->getMessage());
+
             return $this->responseError($err->getMessage(), 'Finance Billing update failed', 500);
         }
     }
@@ -203,7 +208,8 @@ class FinanceBillingController extends Controller
         } catch (ModelNotFoundException $err) {
             $model = class_basename($err->getModel() ?: 'Data');
             $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
-            return $this->responseError(null, $friendlyModel . ' not found', 404);
+
+            return $this->responseError(null, $friendlyModel.' not found', 404);
         } catch (Exception $err) {
             return $this->responseError($err->getMessage(), 'Finance Billing Not Found or Failed Deleted', 500);
         }
@@ -214,7 +220,7 @@ class FinanceBillingController extends Controller
         $financeBilling = FinanceBilling::with([
             'financeBillingItems',
             'unitTransactionBilling.unitTransaction.unitTransactionItems.unitTransactionItemDetails',
-            'unitTransactionBilling.unitTransaction.unitTransactionItems.unitTypeSoldDetails'
+            'unitTransactionBilling.unitTransaction.unitTransactionItems.unitTypeSoldDetails',
         ])->findOrFail($unit_transaction_billing_id);
 
         $companyId = $financeBilling->cashFlow->company->id;
@@ -242,12 +248,12 @@ class FinanceBillingController extends Controller
             if (str_contains(strtolower($cash->code), 'usd')) {
                 $currencyService = app(CurrencyService::class);
                 $exchangeRate = (int) $currencyService->convertUsdToIdr('1');
-                if (!$exchangeRate) {
+                if (! $exchangeRate) {
                     return $this->responseError([], 'Failed to convert USD to IDR via Unirate API.', 500);
                 }
-                $amountOriginal = (int) ($amount * $exchangeRate);
+                $amountOriginal = $this->calculateDecimalAmount($amount * $exchangeRate);
             } else {
-                $amountOriginal = (int) $amount;
+                $amountOriginal = $this->calculateDecimalAmount($amount);
             }
             $validated['amount_original'] = $amountOriginal;
             $validated['amount'] = $amount;
@@ -258,13 +264,13 @@ class FinanceBillingController extends Controller
 
             if ($newPayment > $remainingAllowed) {
                 return $this->responseError(
-                    "Payment amount exceeds remaining billing balance (" . number_format($remainingAllowed) . ").",
+                    'Payment amount exceeds remaining billing balance ('.number_format($remainingAllowed).').',
                     'Validation failed',
                     422
                 );
             }
 
-            $item = DB::transaction(function () use ($validated, $financeBilling, $newPayment, $alreadyAllocated, $cash, $amountOriginal) {
+            $item = DB::transaction(function () use ($validated, $financeBilling, $newPayment, $alreadyAllocated) {
                 // 1. Create the item
                 $itemData = $validated;
                 $itemData['finance_billing_id'] = $financeBilling->id;
@@ -288,13 +294,13 @@ class FinanceBillingController extends Controller
 
                             foreach ($details as $detail) {
                                 $unitTransactionType = $unitTransaction->type;
-                                $type = 'ppn_' . $unitTransactionType;
+                                $type = 'ppn_'.$unitTransactionType;
 
                                 $exists = UnitTypeDetailPpn::where('unit_transaction_item_detail_id', $detail->id)
                                     ->where('type', $type)
                                     ->exists();
 
-                                if (!$exists) {
+                                if (! $exists) {
                                     UnitTypeDetailPpn::create([
                                         'unit_transaction_item_detail_id' => $detail->id,
                                         'unit_transaction_id' => $unitTransaction->id,
@@ -327,9 +333,11 @@ class FinanceBillingController extends Controller
         } catch (ModelNotFoundException $err) {
             $model = class_basename($err->getModel() ?: 'Data');
             $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
-            return $this->responseError(null, $friendlyModel . ' not found', 404);
+
+            return $this->responseError(null, $friendlyModel.' not found', 404);
         } catch (Exception $err) {
-            Log::error('Error While storing Finance Billing Item data : ' . $err->getMessage());
+            Log::error('Error While storing Finance Billing Item data : '.$err->getMessage());
+
             return $this->responseError($err->getMessage(), 'Finance Billing Item creation failed', 500);
         }
     }
@@ -350,7 +358,7 @@ class FinanceBillingController extends Controller
 
             if ($request->hasFile('payment_proof')) {
                 if ($item->payment_proof) {
-                    $this->destroyFile('finance_billing_proof/' . $item->payment_proof);
+                    $this->destroyFile('finance_billing_proof/'.$item->payment_proof);
                 }
 
                 $validated['payment_proof'] = $this->storeFile(
@@ -372,12 +380,12 @@ class FinanceBillingController extends Controller
                 if (str_contains(strtolower($cash->code), 'usd')) {
                     $currencyService = app(CurrencyService::class);
                     $exchangeRate = (int) $currencyService->convertUsdToIdr('1');
-                    if (!$exchangeRate) {
+                    if (! $exchangeRate) {
                         return $this->responseError([], 'Failed to convert USD to IDR via Unirate API.', 500);
                     }
-                    $newAmountOriginal = (int) ($newAmount * $exchangeRate);
+                    $newAmountOriginal = $this->calculateDecimalAmount($newAmount * $exchangeRate);
                 } else {
-                    $newAmountOriginal = (int) $newAmount;
+                    $newAmountOriginal = $this->calculateDecimalAmount($newAmount);
                 }
                 $validated['amount_original'] = $newAmountOriginal;
                 $validated['amount'] = $newAmount;
@@ -405,7 +413,7 @@ class FinanceBillingController extends Controller
 
                     $financeBilling->update([
                         'grand_total' => $newAmountVal,
-                        'last_payment_at' => $item->payment_at
+                        'last_payment_at' => $item->payment_at,
                     ]);
                 }
 
@@ -418,9 +426,11 @@ class FinanceBillingController extends Controller
         } catch (ModelNotFoundException $err) {
             $model = class_basename($err->getModel() ?: 'Data');
             $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
-            return $this->responseError(null, $friendlyModel . ' not found', 404);
+
+            return $this->responseError(null, $friendlyModel.' not found', 404);
         } catch (Exception $err) {
-            Log::error('Error While updating Finance Billing Item data : ' . $err->getMessage());
+            Log::error('Error While updating Finance Billing Item data : '.$err->getMessage());
+
             return $this->responseError($err->getMessage(), 'Finance Billing Item update failed', 500);
         }
     }
@@ -432,13 +442,11 @@ class FinanceBillingController extends Controller
 
             DB::transaction(function () use ($item) {
                 if ($item->payment_proof) {
-                    $this->destroyFile('finance_billing_proof/' . $item->payment_proof);
+                    $this->destroyFile('finance_billing_proof/'.$item->payment_proof);
                 }
 
                 $financeBilling = $item->financeBilling;
                 $cashFlow = $financeBilling->cashFlow;
-
-
 
                 $item->delete();
                 $financeBilling->update(['is_valid' => false]);
@@ -448,7 +456,8 @@ class FinanceBillingController extends Controller
         } catch (ModelNotFoundException $err) {
             $model = class_basename($err->getModel() ?: 'Data');
             $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
-            return $this->responseError(null, $friendlyModel . ' not found', 404);
+
+            return $this->responseError(null, $friendlyModel.' not found', 404);
         } catch (Exception $err) {
             return $this->responseError($err->getMessage(), 'Finance Billing Item Not Found or Failed Deleted', 500);
         }
@@ -462,7 +471,7 @@ class FinanceBillingController extends Controller
         $grandTotal = $financeBilling->unitTransactionBilling->grand_total;
 
         $financeBilling->update([
-            'is_valid' => $totalPaid >= $grandTotal
+            'is_valid' => $totalPaid >= $grandTotal,
         ]);
     }
 }

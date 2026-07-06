@@ -7,15 +7,15 @@ use App\Http\Controllers\Controller;
 use App\Models\Company;
 use App\Models\Person;
 use App\Models\UnitTransaction;
-use App\Models\UnitTransactionAdjustment;
 use App\Models\UnitTransactionItem;
 use App\Models\UnitTransactionItemDetail;
 use App\Models\UnitType;
-use App\Traits\FileTrait;
-use App\Traits\ResponseTrait;
-use App\Traits\GlobalCodeNumberTrait;
-use App\Rules\RightPersonRule;
 use App\Rules\RightCashRule;
+use App\Rules\RightPersonRule;
+use App\Traits\CalculateDecimalAmount;
+use App\Traits\FileTrait;
+use App\Traits\GlobalCodeNumberTrait;
+use App\Traits\ResponseTrait;
 use Exception;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\Request;
@@ -26,7 +26,7 @@ use Maatwebsite\Excel\Facades\Excel;
 
 class UnitTransactionController extends Controller
 {
-    use FileTrait, ResponseTrait, GlobalCodeNumberTrait;
+    use CalculateDecimalAmount, FileTrait, GlobalCodeNumberTrait, ResponseTrait;
 
     protected array $unitTransactionTable;
 
@@ -68,13 +68,13 @@ class UnitTransactionController extends Controller
 
             $query->select($this->unitTransactionTable)
                 ->withCount([
-                    'unitTransactionItems as unit_transaction_item_counts'
+                    'unitTransactionItems as unit_transaction_item_counts',
                 ])
                 ->with([
                     'warehouse:id,uuid,name,capacity',
                     'person:id,uuid,code,name,type',
                     'transactionFlow:id,uuid,transaction_date,description',
-                    'unitTransactionBilling:id,uuid,unit_transaction_id,grand_total,last_payment_at,is_paid'
+                    'unitTransactionBilling:id,uuid,unit_transaction_id,grand_total,last_payment_at,is_paid',
                 ]);
 
             if ($request->filled('is_paid')) {
@@ -137,9 +137,10 @@ class UnitTransactionController extends Controller
         } catch (ModelNotFoundException $err) {
             $model = class_basename($err->getModel() ?: 'Data');
             $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
-            return $this->responseError(null, $friendlyModel . ' not found', 404);
+
+            return $this->responseError(null, $friendlyModel.' not found', 404);
         } catch (Exception $err) {
-            Log::error('Error While retrieved Unit Transaction data : ' . $err->getMessage());
+            Log::error('Error While retrieved Unit Transaction data : '.$err->getMessage());
 
             return $this->responseError($err->getMessage(), 'Unit Transaction list retrieved Failed', 500);
         }
@@ -210,7 +211,8 @@ class UnitTransactionController extends Controller
         } catch (ModelNotFoundException $err) {
             $model = class_basename($err->getModel() ?: 'Data');
             $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
-            return $this->responseError(null, $friendlyModel . ' not found', 404);
+
+            return $this->responseError(null, $friendlyModel.' not found', 404);
         } catch (Exception $err) {
             return $this->responseError($err->getMessage(), 'Unit Transaction not found', 404);
         }
@@ -224,7 +226,7 @@ class UnitTransactionController extends Controller
                 'person_id' => [
                     'required',
                     'integer',
-                    new RightPersonRule($request->type === 'purchase' ? 'supplier' : 'customer')
+                    new RightPersonRule($request->type === 'purchase' ? 'supplier' : 'customer'),
                 ],
                 'code' => 'sometimes|string|max:255|unique:unit_transactions,code',
                 'type' => 'required|string|in:purchase,sales',
@@ -307,8 +309,8 @@ class UnitTransactionController extends Controller
                         ($request->other_fee ?? 0);
 
                     $hpp = $request->price - $additional_fee;
-                    $dpp = ceil($hpp / 1.11);
-                    $ppn = floor($dpp * 0.11);
+                    $dpp = $this->calculateDecimalAmount($hpp / 1.11);
+                    $ppn = $this->calculateDecimalAmount($dpp * 0.11);
 
                     UnitTransactionItem::create([
                         'unit_transaction_id' => $unitTransaction->id,
@@ -346,9 +348,10 @@ class UnitTransactionController extends Controller
         } catch (ModelNotFoundException $err) {
             $model = class_basename($err->getModel() ?: 'Data');
             $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
-            return $this->responseError(null, $friendlyModel . ' not found', 404);
+
+            return $this->responseError(null, $friendlyModel.' not found', 404);
         } catch (Exception $err) {
-            Log::error('Error While storing Unit Transaction: ' . $err->getMessage());
+            Log::error('Error While storing Unit Transaction: '.$err->getMessage());
 
             return $this->responseError($err->getMessage(), 'Failed', 500);
         }
@@ -365,9 +368,9 @@ class UnitTransactionController extends Controller
                     'required',
                     'integer',
                     'exists:persons,id',
-                    new RightPersonRule(($request->type ?? $unitTransaction->type) === 'purchase' ? 'supplier' : 'customer')
+                    new RightPersonRule(($request->type ?? $unitTransaction->type) === 'purchase' ? 'supplier' : 'customer'),
                 ],
-                'code' => 'sometimes|required|string|max:255|unique:unit_transactions,code,' . $id,
+                'code' => 'sometimes|required|string|max:255|unique:unit_transactions,code,'.$id,
                 'type' => 'sometimes|required|string|in:purchase,sales',
                 'stock_state' => 'sometimes|required|string',
             ]);
@@ -386,9 +389,10 @@ class UnitTransactionController extends Controller
         } catch (ModelNotFoundException $err) {
             $model = class_basename($err->getModel() ?: 'Data');
             $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
-            return $this->responseError(null, $friendlyModel . ' not found', 404);
+
+            return $this->responseError(null, $friendlyModel.' not found', 404);
         } catch (Exception $err) {
-            Log::error('Error While updating Unit Transaction: ' . $err->getMessage());
+            Log::error('Error While updating Unit Transaction: '.$err->getMessage());
 
             return $this->responseError($err->getMessage(), 'Failed to update Unit Transaction', 500);
         }
@@ -409,13 +413,14 @@ class UnitTransactionController extends Controller
                 }
             }
 
-            DB::transaction(fn() => $data->delete());
+            DB::transaction(fn () => $data->delete());
 
             return $this->responseSuccess($data, 'Unit Transaction successfully Deleted', 200);
         } catch (ModelNotFoundException $err) {
             $model = class_basename($err->getModel() ?: 'Data');
             $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
-            return $this->responseError(null, $friendlyModel . ' not found', 404);
+
+            return $this->responseError(null, $friendlyModel.' not found', 404);
         } catch (Exception $err) {
             Log::error($err->getMessage());
 
@@ -527,9 +532,10 @@ class UnitTransactionController extends Controller
         } catch (ModelNotFoundException $err) {
             $model = class_basename($err->getModel() ?: 'Data');
             $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
-            return $this->responseError(null, $friendlyModel . ' not found', 404);
+
+            return $this->responseError(null, $friendlyModel.' not found', 404);
         } catch (Exception $err) {
-            Log::error('Error updating Unit Transaction state: ' . $err->getMessage());
+            Log::error('Error updating Unit Transaction state: '.$err->getMessage());
 
             return $this->responseError($err->getMessage(), 'Unit Transaction state update failed', 500);
         }
@@ -615,7 +621,8 @@ class UnitTransactionController extends Controller
         } catch (ModelNotFoundException $err) {
             $model = class_basename($err->getModel() ?: 'Data');
             $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
-            return $this->responseError(null, $friendlyModel . ' not found', 404);
+
+            return $this->responseError(null, $friendlyModel.' not found', 404);
         } catch (Exception $err) {
             Log::error($err->getMessage());
 
@@ -633,9 +640,10 @@ class UnitTransactionController extends Controller
         } catch (ModelNotFoundException $err) {
             $model = class_basename($err->getModel() ?: 'Data');
             $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
-            return $this->responseError(null, $friendlyModel . ' not found', 404);
+
+            return $this->responseError(null, $friendlyModel.' not found', 404);
         } catch (Exception $err) {
-            Log::error('Error export stock : ' . $err->getMessage());
+            Log::error('Error export stock : '.$err->getMessage());
 
             return $this->responseError(
                 $err->getMessage(),
@@ -652,7 +660,7 @@ class UnitTransactionController extends Controller
                 'required',
                 'integer',
                 'exists:cashes,id',
-                new RightCashRule(fn() => \App\Models\UnitTransaction::find($id)?->warehouse?->company_id),
+                new RightCashRule(fn () => \App\Models\UnitTransaction::find($id)?->warehouse?->company_id),
             ],
             'amount' => 'nullable|numeric|min:0',
             'description' => 'required|string',
@@ -667,11 +675,11 @@ class UnitTransactionController extends Controller
                 return $this->responseError(null, 'Refund is only allowed for sales transactions.', 422);
             }
 
-            if (!$unitTransaction->unitTransactionBilling || !$unitTransaction->unitTransactionBilling->is_paid) {
+            if (! $unitTransaction->unitTransactionBilling || ! $unitTransaction->unitTransactionBilling->is_paid) {
                 return $this->responseError(null, 'Transaction has not been paid.', 422);
             }
 
-            $amount = (int) ($validated['amount'] ?? $unitTransaction->getBrutoAmount());
+            $amount = $this->calculateDecimalAmount($validated['amount'] ?? $unitTransaction->getBrutoAmount());
 
             $data = DB::transaction(function () use ($unitTransaction, $validated, $amount) {
                 $unitTransaction->update(['is_refunded' => true]);
@@ -695,9 +703,11 @@ class UnitTransactionController extends Controller
         } catch (ModelNotFoundException $err) {
             $model = class_basename($err->getModel() ?: 'Data');
             $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
-            return $this->responseError(null, $friendlyModel . ' not found', 404);
+
+            return $this->responseError(null, $friendlyModel.' not found', 404);
         } catch (Exception $e) {
-            Log::error('Refund error: ' . $e->getMessage());
+            Log::error('Refund error: '.$e->getMessage());
+
             return $this->responseError($e->getMessage(), 'Refund failed', 500);
         }
     }
@@ -709,7 +719,7 @@ class UnitTransactionController extends Controller
                 'required',
                 'integer',
                 'exists:cashes,id',
-                new RightCashRule(fn() => \App\Models\UnitTransaction::find($id)?->warehouse?->company_id),
+                new RightCashRule(fn () => \App\Models\UnitTransaction::find($id)?->warehouse?->company_id),
             ],
             'amount' => 'nullable|numeric|min:0',
             'description' => 'required|string',
@@ -724,11 +734,11 @@ class UnitTransactionController extends Controller
                 return $this->responseError(null, 'Return is only allowed for purchase transactions.', 422);
             }
 
-            if (!$unitTransaction->unitTransactionBilling || !$unitTransaction->unitTransactionBilling->is_paid) {
+            if (! $unitTransaction->unitTransactionBilling || ! $unitTransaction->unitTransactionBilling->is_paid) {
                 return $this->responseError(null, 'Transaction has not been paid.', 422);
             }
 
-            $amount = (int) ($validated['amount'] ?? $unitTransaction->getBrutoAmount());
+            $amount = $this->calculateDecimalAmount($validated['amount'] ?? $unitTransaction->getBrutoAmount());
 
             $data = DB::transaction(function () use ($unitTransaction, $validated, $amount) {
                 $unitTransaction->update(['is_refunded' => true]);
@@ -752,9 +762,11 @@ class UnitTransactionController extends Controller
         } catch (ModelNotFoundException $err) {
             $model = class_basename($err->getModel() ?: 'Data');
             $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
-            return $this->responseError(null, $friendlyModel . ' not found', 404);
+
+            return $this->responseError(null, $friendlyModel.' not found', 404);
         } catch (Exception $e) {
-            Log::error('Return error: ' . $e->getMessage());
+            Log::error('Return error: '.$e->getMessage());
+
             return $this->responseError($e->getMessage(), 'Return failed', 500);
         }
     }
@@ -773,7 +785,7 @@ class UnitTransactionController extends Controller
                     'required',
                     'integer',
                     'exists:cashes,id',
-                    new RightCashRule(fn() => \App\Models\UnitTransaction::find($id)?->warehouse?->company_id),
+                    new RightCashRule(fn () => \App\Models\UnitTransaction::find($id)?->warehouse?->company_id),
                 ],
                 'amount' => 'required|numeric|min:0',
                 'description' => 'nullable|string',
@@ -783,21 +795,21 @@ class UnitTransactionController extends Controller
 
             $unitTransaction = UnitTransaction::findOrFail($id);
 
-            if (!$unitTransaction->unitTransactionBilling || !$unitTransaction->unitTransactionBilling->is_paid) {
+            if (! $unitTransaction->unitTransactionBilling || ! $unitTransaction->unitTransactionBilling->is_paid) {
                 return $this->responseError(null, 'Transaction has not been paid or has no billing data.', 422);
             }
 
             $adjustmentType = match ($unitTransaction->type) {
                 'purchase' => 'return',
                 'sales' => 'refund',
-                default => throw new Exception("Invalid transaction type for adjustment")
+                default => throw new Exception('Invalid transaction type for adjustment')
             };
 
             $adjustment = DB::transaction(function () use ($validated, $unitTransaction, $adjustmentType) {
                 // Prepare primary adjustment data
                 $adjustmentData = [
                     'cash_id' => $validated['cash_id'],
-                    'amount' => $validated['amount'],
+                    'amount' => $this->calculateDecimalAmount($validated['amount']),
                     'description' => $validated['description'] ?? null,
                     'type' => $adjustmentType,
                 ];
@@ -805,7 +817,7 @@ class UnitTransactionController extends Controller
                 $adjustment = $unitTransaction->unitTransactionAdjustments()->create($adjustmentData);
 
                 // Create adjustment items if detail IDs are provided
-                if (!empty($validated['unit_transaction_item_details_ids'])) {
+                if (! empty($validated['unit_transaction_item_details_ids'])) {
                     $details = UnitTransactionItemDetail::whereIn('id', $validated['unit_transaction_item_details_ids'])->get();
                     foreach ($details as $detail) {
                         $adjustment->unitTransactionAdjustmentItems()->create([
@@ -832,9 +844,10 @@ class UnitTransactionController extends Controller
         } catch (ModelNotFoundException $err) {
             $model = class_basename($err->getModel() ?: 'Data');
             $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
-            return $this->responseError(null, $friendlyModel . ' not found', 404);
+
+            return $this->responseError(null, $friendlyModel.' not found', 404);
         } catch (Exception $err) {
-            Log::error('Error while creating Unit Transaction Adjustment: ' . $err->getMessage());
+            Log::error('Error while creating Unit Transaction Adjustment: '.$err->getMessage());
 
             return $this->responseError($err->getMessage(), 'Unit Transaction Adjustment creation failed', 500);
         }
