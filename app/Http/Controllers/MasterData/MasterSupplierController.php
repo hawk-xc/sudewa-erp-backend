@@ -107,7 +107,6 @@ class MasterSupplierController extends Controller
                             ->orWhere('identity_number', 'like', "%$search%")
                             ->orWhere('drive_license_identity_number', 'like', "%$search%");
                     }
-
                 });
             }
 
@@ -158,7 +157,7 @@ class MasterSupplierController extends Controller
             $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
             return $this->responseError(null, $friendlyModel . ' not found', 404);
         } catch (Exception $err) {
-            Log::error('Error While retrieved Supplier data : '.$err->getMessage());
+            Log::error('Error While retrieved Supplier data : ' . $err->getMessage());
 
             return $this->responseError($err->getMessage(), 'Supplier list retrieved Failed', 500);
         }
@@ -186,7 +185,7 @@ class MasterSupplierController extends Controller
             $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
             return $this->responseError(null, $friendlyModel . ' not found', 404);
         } catch (Exception $err) {
-            Log::error('Error While retrieved Supplier data : '.$err->getMessage());
+            Log::error('Error While retrieved Supplier data : ' . $err->getMessage());
 
             return $this->responseError('The requested resource could not be found.', 'Resource Not Found', 404);
         }
@@ -202,7 +201,7 @@ class MasterSupplierController extends Controller
             'name' => 'required|string|max:249',
             'address' => 'sometimes|string|max:249',
             'phone' => 'sometimes|string|max:249',
-            'npwp' => 'sometimes|string',
+            'npwp' => 'sometimes|string|min:15|max:16',
             'pic_name' => 'nullable|string',
             'identity_number' => 'nullable|string|max:255|unique:persons,identity_number',
             'drive_license_identity_number' => 'nullable|string|max:255|unique:persons,drive_license_identity_number',
@@ -241,7 +240,7 @@ class MasterSupplierController extends Controller
             $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
             return $this->responseError(null, $friendlyModel . ' not found', 404);
         } catch (Exception $err) {
-            Log::error('Error while trying create Supplier Data : '.$err->getMessage());
+            Log::error('Error while trying create Supplier Data : ' . $err->getMessage());
 
             return $this->responseError($err->getMessage(), 'Error while trying create Supplier Data', 500);
         }
@@ -257,10 +256,10 @@ class MasterSupplierController extends Controller
             'name' => 'sometimes|string|max:249',
             'address' => 'sometimes|string|max:249',
             'phone' => 'sometimes|string|max:249',
-            'npwp' => 'sometimes|string',
+            'npwp' => 'sometimes|string|min:15|max:16',
             'pic_name' => 'nullable|string',
-            'identity_number' => 'nullable|string|max:255|unique:persons,identity_number,'.$id,
-            'drive_license_identity_number' => 'nullable|string|max:255|unique:persons,drive_license_identity_number,'.$id,
+            'identity_number' => 'nullable|string|max:255|unique:persons,identity_number,' . $id,
+            'drive_license_identity_number' => 'nullable|string|max:255|unique:persons,drive_license_identity_number,' . $id,
             'image' => 'nullable|file|mimes:jpg,jpeg,png,webp|max:2048',
             'map_link' => 'nullable|string',
             'social_media_1_link' => 'nullable|string',
@@ -290,7 +289,7 @@ class MasterSupplierController extends Controller
                 'social_media_4_link',
                 'website_link',
                 'join_date',
-            ]), fn ($value) => ! is_null($value) && $value !== '');
+            ]), fn($value) => ! is_null($value) && $value !== '');
 
             if ($request->hasFile('image')) {
                 if ($person->image) {
@@ -319,7 +318,7 @@ class MasterSupplierController extends Controller
             $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
             return $this->responseError(null, $friendlyModel . ' not found', 404);
         } catch (Exception $err) {
-            Log::error('Error while trying update Supplier data : '.$err->getMessage());
+            Log::error('Error while trying update Supplier data : ' . $err->getMessage());
 
             return $this->responseError($err->getMessage(), 'Error while trying update Supplier data', 500);
         }
@@ -345,7 +344,7 @@ class MasterSupplierController extends Controller
             $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
             return $this->responseError(null, $friendlyModel . ' not found', 404);
         } catch (Exception $err) {
-            Log::error('Error while trying delete Supplier data : '.$err->getMessage());
+            Log::error('Error while trying delete Supplier data : ' . $err->getMessage());
 
             return $this->responseError($err->getMessage(), 'Supplier Deleted Failed');
         }
@@ -359,7 +358,7 @@ class MasterSupplierController extends Controller
         if ($id == null || !is_numeric($id)) {
             return $this->responseError(null, 'Company id cannot null', 404);
         }
-        
+
         $request->validate([
             'file' => 'required|file|mimes:xlsx,xls',
         ]);
@@ -390,14 +389,14 @@ class MasterSupplierController extends Controller
             return Excel::download(
                 new PersonExport($request, $this->personTable, 'supplier'),
                 'wajira_supplier_data.xlsx'
-            );  
+            );
         } catch (ModelNotFoundException $err) {
             $model = class_basename($err->getModel() ?: 'Data');
             $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
             return $this->responseError(null, $friendlyModel . ' not found', 404);
         } catch (Exception $err) {
-            Log::error('Error export supplier : '.$err->getMessage());
-    
+            Log::error('Error export supplier : ' . $err->getMessage());
+
             return $this->responseError(
                 $err->getMessage(),
                 'Supplier export failed',
