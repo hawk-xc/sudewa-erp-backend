@@ -9,7 +9,6 @@ class DummyDataSeeder extends Seeder
     public function run(): void
     {
         $this->call([
-            BrandSeeder::class,
             SparepartCategorySeeder::class,
             SparepartSeeder::class,
             UnitTypeSeeder::class,
