@@ -1,9 +1,9 @@
 <?php
- 
+
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
- 
+
 return new class extends Migration
 {
     /**
@@ -15,7 +15,6 @@ return new class extends Migration
             $table->id();
             $table->uuid();
             $table->foreignId('unit_transaction_billing_id')->nullable()->constrained('unit_transaction_billings')->cascadeOnDelete();
-            $table->foreignId('goods_transaction_billing_id')->nullable()->constrained('goods_transaction_billings')->cascadeOnDelete();
             $table->foreignId('cash_flow_id')->nullable()->constrained('cash_flows')->cascadeOnDelete();
             $table->foreignId('cash_id')->nullable()->constrained('cashes')->nullOnDelete();
             $table->foreignId('account_id')->nullable()->constrained('accounts')->nullOnDelete();
@@ -27,7 +26,7 @@ return new class extends Migration
             $table->timestamps();
         });
     }
- 
+
     /**
      * Reverse the migrations.
      */
