@@ -20,6 +20,7 @@ class CashFlow extends Model
         'code',
         'company_id',
         'unit_transaction_billing_id',
+        'goods_transaction_billing_id',
         'transaction_category',
         'date',
         'note',
@@ -35,6 +36,7 @@ class CashFlow extends Model
     protected $casts = [
         'company_id' => 'integer',
         'unit_transaction_billing_id' => 'integer',
+        'goods_transaction_billing_id' => 'integer',
         'date' => 'date',
         'debet' => 'integer',
         'credit' => 'integer',
@@ -52,6 +54,11 @@ class CashFlow extends Model
     public function unitTransactionBilling()
     {
         return $this->belongsTo(UnitTransactionBilling::class, 'unit_transaction_billing_id', 'id');
+    }
+
+    public function goodsTransactionBilling()
+    {
+        return $this->belongsTo(GoodsTransactionBilling::class, 'goods_transaction_billing_id', 'id');
     }
  
     public function financeBillings()

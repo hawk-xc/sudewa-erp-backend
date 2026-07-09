@@ -248,10 +248,6 @@ class UnitTransactionBillingHistoryController extends Controller
                     );
                     $createdCashFlowIds[] = $cf->id;
 
-                    FinanceBilling::where('unit_transaction_billing_id', $billing->id)
-                        ->whereNull('cash_flow_id')
-                        ->update(['cash_flow_id' => $cf->id]);
-
                     $cf->updateValidity();
 
                     CashFlow::where('unit_transaction_billing_id', $billing->id)

@@ -14,8 +14,6 @@ class FinanceBilling extends Model
  
     protected $fillable = [
         'uuid',
-        'unit_transaction_billing_id',
-        'goods_transaction_billing_id',
         'cash_flow_id',
         'cash_id',
         'account_id',
@@ -27,24 +25,41 @@ class FinanceBilling extends Model
     ];
  
     protected $casts = [
-        'unit_transaction_billing_id' => 'integer',
-        'goods_transaction_billing_id' => 'integer',
         'cash_flow_id' => 'integer',
         'cash_id' => 'integer',
         'account_id' => 'integer',
-        'amount' => 'decimal:2',
-        'amount_original' => 'decimal:2',
+        'amount' => 'integer',
+        'amount_original' => 'integer',
         'payment_at' => 'date',
     ];
+
+    protected $appends = [
+        'unit_transaction_billing_id',
+        'goods_transaction_billing_id',
+    ];
+
+    protected $hidden = [
+        'cashFlow',
+    ];
  
-    public function unitTransactionBilling()
+    public function getUnitTransactionBillingAttribute()
     {
-        return $this->belongsTo(UnitTransactionBilling::class, 'unit_transaction_billing_id', 'id');
+        return $this->cashFlow?->unitTransactionBilling;
     }
- 
-    public function goodsTransactionBilling()
+
+    public function getGoodsTransactionBillingAttribute()
     {
-        return $this->belongsTo(GoodsTransactionBilling::class, 'goods_transaction_billing_id', 'id');
+        return $this->cashFlow?->goodsTransactionBilling;
+    }
+
+    public function getUnitTransactionBillingIdAttribute()
+    {
+        return $this->cashFlow?->unit_transaction_billing_id;
+    }
+
+    public function getGoodsTransactionBillingIdAttribute()
+    {
+        return $this->cashFlow?->goods_transaction_billing_id;
     }
  
     public function cashFlow()

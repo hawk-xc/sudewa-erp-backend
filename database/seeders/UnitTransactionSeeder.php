@@ -159,11 +159,7 @@ class UnitTransactionSeeder extends Seeder
 
                     // Create finance billing record
                     FinanceBilling::create([
-                        'unit_transaction_billing_id' => $billing->id,
                         'cash_flow_id' => $cashFlow->id,
-                        'grand_total' => $grandTotal,
-                        'last_payment_at' => now(),
-                        'is_valid' => false,
                     ]);
                 }
 
@@ -406,11 +402,7 @@ class UnitTransactionSeeder extends Seeder
 
                     // Create finance billing record
                     FinanceBilling::create([
-                        'unit_transaction_billing_id' => $billing->id,
                         'cash_flow_id' => $cashFlow->id,
-                        'grand_total' => $grandTotal,
-                        'last_payment_at' => now(),
-                        'is_valid' => false,
                     ]);
                 }
 

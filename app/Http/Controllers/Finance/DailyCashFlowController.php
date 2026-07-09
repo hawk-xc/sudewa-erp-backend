@@ -25,10 +25,10 @@ class DailyCashFlowController extends Controller
  
     public function __construct(AuthRepository $ar)
     {
-        $this->middleware(['permission:cashflow:list'])->only(['index', 'show']);
-        $this->middleware(['permission:cashflow:create'])->only(['store']);
-        $this->middleware(['permission:cashflow:edit'])->only(['update']);
-        $this->middleware(['permission:cashflow:delete'])->only(['destroy']);
+        $this->middleware(['permission:finance:list'])->only(['index', 'show']);
+        $this->middleware(['permission:finance:create'])->only(['store']);
+        $this->middleware(['permission:finance:edit'])->only(['update']);
+        $this->middleware(['permission:finance:delete'])->only(['destroy']);
  
         $this->authRepository = $ar;
  
@@ -55,7 +55,8 @@ class DailyCashFlowController extends Controller
  
         $query->with([
             'company:id,uuid,name',
-            'financeBillings:id,uuid,cash_flow_id,unit_transaction_billing_id,last_payment_at'
+            'unitTransactionBilling',
+            'goodsTransactionBilling',
         ]);
  
         try {
@@ -89,7 +90,47 @@ class DailyCashFlowController extends Controller
  
             $perPage = $request->per_page ?? 10;
             $data = $query->paginate($perPage);
- 
+
+            $currencyService = app(\App\Services\CurrencyService::class);
+            $exchangeRate = 0;
+            try {
+                $exchangeRate = (int) $currencyService->convertUsdToIdr('1');
+            } catch (\Exception $e) {
+                Log::warning('Exchange rate error in DailyCashFlowController: ' . $e->getMessage());
+            }
+
+            $data->getCollection()->transform(function ($item) use ($exchangeRate) {
+                $remainingPayment = 0;
+                $remainingPaymentUsd = 0.0;
+                $grandTotal = 0;
+
+                if ($item->unit_transaction_billing_id) {
+                    $billing = $item->unitTransactionBilling;
+                    if ($billing) {
+                        $grandTotal = $billing->grand_total;
+                        $totalPaid = FinanceBilling::whereHas('cashFlow', function ($q) use ($billing) {
+                            $q->where('unit_transaction_billing_id', $billing->id);
+                        })->sum('amount_original');
+                        $remainingPayment = $grandTotal - $totalPaid;
+                    }
+                } elseif ($item->goods_transaction_billing_id) {
+                    $billing = $item->goodsTransactionBilling;
+                    if ($billing) {
+                        $grandTotal = $billing->grand_total;
+                        $totalPaid = FinanceBilling::whereHas('cashFlow', function ($q) use ($billing) {
+                            $q->where('goods_transaction_billing_id', $billing->id);
+                        })->sum('amount_original');
+                        $remainingPayment = $grandTotal - $totalPaid;
+                    }
+                }
+
+                $item->grand_total = $grandTotal;
+                $item->remaining_payment = $remainingPayment;
+                $item->remaining_payment_usd = $exchangeRate > 0 ? round($remainingPayment / $exchangeRate, 2) : 0.0;
+
+                return $item;
+            });
+
             return $this->responseSuccess($data, 'Cash Flow list retrieved successfully', 200);
         } catch (Exception $err) {
             Log::error('Error while retrieving Cash Flow data : ' . $err->getMessage());
@@ -105,12 +146,52 @@ class DailyCashFlowController extends Controller
                 'company:id,uuid,name',
                 'financeBillings',
                 'financeBillings.cash:id,uuid,company_id,code,cash_name',
+                'unitTransactionBilling',
+                'goodsTransactionBilling',
             ])->find($id);
- 
+
             if (! $cashFlow) {
                 return $this->responseError(null, 'Cash Flow not found', 404);
             }
- 
+
+            $cashFlow->financeBillings->makeHidden('cashFlow');
+
+            $currencyService = app(\App\Services\CurrencyService::class);
+            $exchangeRate = 0;
+            try {
+                $exchangeRate = (int) $currencyService->convertUsdToIdr('1');
+            } catch (\Exception $e) {
+                Log::warning('Exchange rate error in DailyCashFlowController show: ' . $e->getMessage());
+            }
+
+            $remainingPayment = 0;
+            $remainingPaymentUsd = 0.0;
+            $grandTotal = 0;
+
+            if ($cashFlow->unit_transaction_billing_id) {
+                $billing = $cashFlow->unitTransactionBilling;
+                if ($billing) {
+                    $grandTotal = $billing->grand_total;
+                    $totalPaid = FinanceBilling::whereHas('cashFlow', function ($q) use ($billing) {
+                        $q->where('unit_transaction_billing_id', $billing->id);
+                    })->sum('amount_original');
+                    $remainingPayment = $grandTotal - $totalPaid;
+                }
+            } elseif ($cashFlow->goods_transaction_billing_id) {
+                $billing = $cashFlow->goodsTransactionBilling;
+                if ($billing) {
+                    $grandTotal = $billing->grand_total;
+                    $totalPaid = FinanceBilling::whereHas('cashFlow', function ($q) use ($billing) {
+                        $q->where('goods_transaction_billing_id', $billing->id);
+                    })->sum('amount_original');
+                    $remainingPayment = $grandTotal - $totalPaid;
+                }
+            }
+
+            $cashFlow->grand_total = $grandTotal;
+            $cashFlow->remaining_payment = $remainingPayment;
+            $cashFlow->remaining_payment_usd = $exchangeRate > 0 ? round($remainingPayment / $exchangeRate, 2) : 0.0;
+
             return $this->responseSuccess($cashFlow, 'Cash Flow data retrieved successfully', 200);
         } catch (Exception $err) {
             Log::error('Error while retrieving Cash Flow data : ' . $err->getMessage());
@@ -130,7 +211,6 @@ class DailyCashFlowController extends Controller
                 'credit' => 'required_without:debet|numeric|min:0',
                 'transaction_category' => 'required|string',
                 'payment_proof' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:2048',
-                'is_paid' => 'sometimes|boolean',
             ]);
  
             if ($request->hasFile('payment_proof')) {
@@ -166,7 +246,7 @@ class DailyCashFlowController extends Controller
                 'debet' => 'sometimes|numeric|min:0',
                 'credit' => 'sometimes|numeric|min:0',
                 'payment_proof' => 'sometimes|nullable|file|mimes:jpg,jpeg,png,pdf|max:2048',
-                'is_paid' => 'sometimes|boolean',
+                'is_paid' => 'sometimes|in:true,false',
             ]);
  
             if ($request->hasFile('payment_proof')) {
@@ -222,7 +302,7 @@ class DailyCashFlowController extends Controller
                     }
                 }
  
-                $data['is_paid'] = (bool) $request->is_paid;
+                $data['is_paid'] = $request->is_paid == 'true' ? true : false;
                 $cashFlow->update($data);
                 return $cashFlow->fresh();
             });
@@ -246,9 +326,9 @@ class DailyCashFlowController extends Controller
         try {
             $cashFlow = CashFlow::findOrFail($id);
  
-            if (!empty($cashFlow->unitTransactionBilling()->first())) {
+            if (!empty($cashFlow->unitTransactionBilling()->first()) || !empty($cashFlow->goodsTransactionBilling()->first())) {
                 throw ValidationException::withMessages([
-                    'unit_transaction_billing_id' => ['Cash Flow is linked to a unit transaction billing, cannot be deleted'],
+                    'billing' => ['Cash Flow is linked to a transaction billing, cannot be deleted'],
                 ]);
             }
  

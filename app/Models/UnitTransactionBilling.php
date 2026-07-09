@@ -34,7 +34,14 @@ class UnitTransactionBilling extends Model
  
     public function financeBillings()
     {
-        return $this->hasMany(FinanceBilling::class, 'unit_transaction_billing_id', 'id');
+        return $this->hasManyThrough(
+            FinanceBilling::class,
+            CashFlow::class,
+            'unit_transaction_billing_id',
+            'cash_flow_id',
+            'id',
+            'id'
+        );
     }
  
     public function unitTransactionBillingHistories()

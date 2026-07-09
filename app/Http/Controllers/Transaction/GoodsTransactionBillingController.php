@@ -118,6 +118,7 @@ class GoodsTransactionBillingController extends Controller
                 $cashFlow = CashFlow::create([
                     'company_id' => $transaction->company_id,
                     'unit_transaction_billing_id' => null,
+                    'goods_transaction_billing_id' => $billing->id,
                     'date' => now(),
                     'note' => "Billing untuk transaksi barang: {$transaction->code} ({$transaction->category})",
                     'debet' => $transaction->type === 'issue' ? $grandTotal : 0,
@@ -126,11 +127,7 @@ class GoodsTransactionBillingController extends Controller
 
                 // FinanceBilling data trigger (autocreate)
                 FinanceBilling::create([
-                    'goods_transaction_billing_id' => $billing->id,
                     'cash_flow_id' => $cashFlow->id,
-                    'grand_total' => $billing->grand_total,
-                    'last_payment_at' => now(),
-                    'is_valid' => false,
                 ]);
 
                 return $billing;

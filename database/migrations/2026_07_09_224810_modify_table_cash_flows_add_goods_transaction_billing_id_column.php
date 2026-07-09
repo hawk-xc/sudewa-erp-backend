@@ -11,7 +11,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('finance_billings', function (Blueprint $table) {
+        Schema::table('cash_flows', function (Blueprint $table) {
             $table->foreignId('goods_transaction_billing_id')->after('unit_transaction_billing_id')->nullable()->constrained('goods_transaction_billings')->cascadeOnDelete();
         });
     }
@@ -21,8 +21,8 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('finance_billings', function (Blueprint $table) {
-            //
+        Schema::table('cash_flows', function (Blueprint $table) {
+            $table->dropColumn('goods_transaction_billing_id');
         });
     }
 };

@@ -14,7 +14,6 @@ return new class extends Migration
         Schema::create('finance_billings', function (Blueprint $table) {
             $table->id();
             $table->uuid();
-            $table->foreignId('unit_transaction_billing_id')->nullable()->constrained('unit_transaction_billings')->cascadeOnDelete();
             $table->foreignId('cash_flow_id')->nullable()->constrained('cash_flows')->cascadeOnDelete();
             $table->foreignId('cash_id')->nullable()->constrained('cashes')->nullOnDelete();
             $table->foreignId('account_id')->nullable()->constrained('accounts')->nullOnDelete();
