@@ -215,14 +215,6 @@ class UnitTransaction extends Model
             $billing->update([
                 'grand_total' => $newGrandTotal,
             ]);
-
-            // Also update finance billing if exists
-            $financeBilling = $billing->financeBilling;
-            if ($financeBilling) {
-                $financeBilling->update([
-                    'grand_total' => $newGrandTotal,
-                ]);
-            }
         }
     }
 

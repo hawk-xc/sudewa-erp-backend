@@ -201,34 +201,22 @@ class UnitTransactionBillingHistoryController extends Controller
                     }
                 }
 
-                // Always ensure FinanceBilling exists on the first payment so finance department can process it
-                $existsFinanceBilling = FinanceBilling::where('unit_transaction_billing_id', $billing->id)->exists();
-                if (!$existsFinanceBilling) {
-                    FinanceBilling::create([
-                        'unit_transaction_billing_id' => $billing->id,
-                        'cash_flow_id' => null,
-                        'grand_total' => $billing->grand_total,
-                        'last_payment_at' => now(),
-                        'is_valid' => false,
-                    ]);
-                }
-
                 if ($remaining <= 0) {
-                    $billing->load(['unitTransactionBillingHistories.cashes', 'financeBilling.financeBillingItems.cash']);
-                    $financeBilling = $billing->financeBilling;
+                    $billing->load(['unitTransactionBillingHistories.cashes', 'financeBillings.cash']);
+                    $financeBillings = $billing->financeBillings;
 
                     $totalBca = 0;
                     $totalCash = 0;
                     $totalBcaUsd = 0;
 
-                    if ($financeBilling && $financeBilling->financeBillingItems->isNotEmpty()) {
-                        $totalBca = (int) $financeBilling->financeBillingItems->filter(function ($item) {
+                    if ($financeBillings->isNotEmpty()) {
+                        $totalBca = (int) $financeBillings->filter(function ($item) {
                             return $item->cash && $item->cash->code === 'bca_idr';
                         })->sum('amount');
-                        $totalCash = (int) $financeBilling->financeBillingItems->filter(function ($item) {
+                        $totalCash = (int) $financeBillings->filter(function ($item) {
                             return $item->cash && $item->cash->code === 'cash_idr';
                         })->sum('amount');
-                        $totalBcaUsd = (int) $financeBilling->financeBillingItems->filter(function ($item) {
+                        $totalBcaUsd = (int) $financeBillings->filter(function ($item) {
                             return $item->cash && $item->cash->code === 'bca_usd';
                         })->sum('amount_original');
                     }
@@ -242,7 +230,6 @@ class UnitTransactionBillingHistoryController extends Controller
                     $totalBcaUsdInIdr = (int) $billing->getTotalBcaUsdPaymentInIdr();
 
                     $createdCashFlowIds = [];
-                    $createdFinanceBillingIds = [];
 
                     $cf = CashFlow::updateOrCreate(
                         [
@@ -261,37 +248,14 @@ class UnitTransactionBillingHistoryController extends Controller
                     );
                     $createdCashFlowIds[] = $cf->id;
 
-                    $fb = FinanceBilling::where('unit_transaction_billing_id', $billing->id)
-                        ->where(function ($q) use ($cf) {
-                            $q->where('cash_flow_id', $cf->id)
-                                ->orWhereNull('cash_flow_id');
-                        })
-                        ->first();
+                    FinanceBilling::where('unit_transaction_billing_id', $billing->id)
+                        ->whereNull('cash_flow_id')
+                        ->update(['cash_flow_id' => $cf->id]);
 
-                    if ($fb) {
-                        $fb->update([
-                            'cash_flow_id' => $cf->id,
-                            'grand_total' => $billing->grand_total,
-                            'last_payment_at' => now(),
-                            'is_valid' => false,
-                        ]);
-                    } else {
-                        $fb = FinanceBilling::create([
-                            'unit_transaction_billing_id' => $billing->id,
-                            'cash_flow_id' => $cf->id,
-                            'grand_total' => $billing->grand_total,
-                            'last_payment_at' => now(),
-                            'is_valid' => false,
-                        ]);
-                    }
-                    $createdFinanceBillingIds[] = $fb->id;
+                    $cf->updateValidity();
 
                     CashFlow::where('unit_transaction_billing_id', $billing->id)
                         ->whereNotIn('id', $createdCashFlowIds)
-                        ->delete();
-
-                    FinanceBilling::where('unit_transaction_billing_id', $billing->id)
-                        ->whereNotIn('id', $createdFinanceBillingIds)
                         ->delete();
 
                     $unitTransaction = $billing->unitTransaction;
