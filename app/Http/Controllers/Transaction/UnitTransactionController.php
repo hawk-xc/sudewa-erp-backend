@@ -401,10 +401,11 @@ class UnitTransactionController extends Controller
     public function destroy(string $id)
     {
         try {
-            $data = UnitTransaction::with('unitTransactionBilling.financeBilling')->findOrFail($id);
+            $data = UnitTransaction::with('unitTransactionBilling.cashFlow')->findOrFail($id);
 
             if ($data->unitTransactionBilling) {
-                if ($data->unitTransactionBilling->financeBilling && $data->unitTransactionBilling->financeBilling->is_valid) {
+                $cashFlow = $data->unitTransactionBilling->cashFlow;
+                if ($cashFlow && $cashFlow->is_valid) {
                     return $this->responseError(null, 'Cannot delete because finance billing is already valid', 422);
                 }
 

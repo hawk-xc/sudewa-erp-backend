@@ -12,7 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('finance_billings', function (Blueprint $table) {
-            $table->bigInteger('grand_total')->default(0)->nullable(false)->after('last_payment_at');
+            $table->foreignId('goods_transaction_billing_id')->after('unit_transaction_billing_id')->nullable()->constrained('goods_transaction_billings')->cascadeOnDelete();
         });
     }
 
@@ -22,7 +22,7 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('finance_billings', function (Blueprint $table) {
-            $table->dropColumn('grand_total');
+            //
         });
     }
 };
