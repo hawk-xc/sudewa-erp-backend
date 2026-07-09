@@ -42,6 +42,7 @@ class DailyCashFlowController extends Controller
             'debet',
             'credit',
             'transaction_category',
+            'cash_flow_type',
             'payment_proof',
             'is_paid',
             'is_valid',
@@ -190,8 +191,8 @@ class DailyCashFlowController extends Controller
                 'company_id' => 'required|integer|exists:companies,id',
                 'date' => 'required|date',
                 'note' => 'nullable|string',
-                'debet' => 'required_without:credit|numeric|min:0',
-                'credit' => 'required_without:debet|numeric|min:0',
+                'debet' => 'required_without:credit|numeric|min:0|prohibits:credit',
+                'credit' => 'required_without:debet|numeric|min:0|prohibits:debet',
                 'transaction_category' => 'required|string',
                 'payment_proof' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:2048',
             ]);
@@ -202,6 +203,8 @@ class DailyCashFlowController extends Controller
                     'cash_flow_proof'
                 );
             }
+
+            $validated['cash_flow_type'] = $validated['debet'] > 0 ? 'debet' : 'credit';
 
             $cashFlow = DB::transaction(function () use ($validated) {
                 $cashFlow = CashFlow::create($validated);
@@ -226,8 +229,8 @@ class DailyCashFlowController extends Controller
             $validated = $request->validate([
                 'date' => 'sometimes|date',
                 'note' => 'sometimes|nullable|string',
-                'debet' => 'sometimes|numeric|min:0',
-                'credit' => 'sometimes|numeric|min:0',
+                'debet' => 'sometimes|numeric|min:0|prohibits:credit',
+                'credit' => 'sometimes|numeric|min:0|prohibits:debet',
                 'payment_proof' => 'sometimes|nullable|file|mimes:jpg,jpeg,png,pdf|max:2048',
                 'is_paid' => 'sometimes|in:true,false',
             ]);
@@ -245,13 +248,17 @@ class DailyCashFlowController extends Controller
 
             $data = $validated;
 
+            if ($request->filled('debet') || $request->filled('credit')) {
+                $data['cash_flow_type'] = ($data['debet'] ?? $cashFlow->debet) > 0 ? 'debet' : 'credit';
+            }
+
             $cashFlow = DB::transaction(function () use ($cashFlow, $data, $request) {
                 if ($request->filled('is_paid')) {
                     $isPaidRequest = $request->is_paid == "true";
 
                     if ($isPaidRequest && !$cashFlow->is_paid) {
                         // Transition from unpaid to paid: adjust cash
-                        $type = $cashFlow->debet > 0 ? 'sales' : 'purchase';
+                        $type = $cashFlow->cash_flow_type;
 
                         $financeBillings = $cashFlow->financeBillings;
                         if ($financeBillings->isNotEmpty()) {
@@ -267,8 +274,8 @@ class DailyCashFlowController extends Controller
                         }
                     } elseif (!$isPaidRequest && $cashFlow->is_paid) {
                         // Transition from paid to unpaid: reverse cash adjustment
-                        $type = $cashFlow->debet > 0 ? 'sales' : 'purchase';
-                        $reverseType = $type === 'sales' ? 'purchase' : 'sales';
+                        $type = $cashFlow->cash_flow_type;
+                        $reverseType = $type === 'debet' ? 'credit' : 'debet';
 
                         $financeBillings = $cashFlow->financeBillings;
                         if ($financeBillings->isNotEmpty()) {
@@ -321,8 +328,8 @@ class DailyCashFlowController extends Controller
 
             DB::transaction(function () use ($cashFlow) {
                 if ($cashFlow->is_paid) {
-                    $type = $cashFlow->debet > 0 ? 'sales' : 'purchase';
-                    $reverseType = $type === 'sales' ? 'purchase' : 'sales';
+                    $type = $cashFlow->cash_flow_type;
+                    $reverseType = $type === 'debet' ? 'credit' : 'debet';
 
                     $financeBillings = $cashFlow->financeBillings;
                     if ($financeBillings->isNotEmpty()) {

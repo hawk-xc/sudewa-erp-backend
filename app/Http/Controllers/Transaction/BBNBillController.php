@@ -2,17 +2,19 @@
 
 namespace App\Http\Controllers\Transaction;
 
-use App\Http\Controllers\Controller;
-use App\Models\BBNBill;
-use App\Models\Person;
-use App\Models\VehicleData;
-use App\Rules\RightPersonRule;
-use App\Traits\GlobalCodeNumberTrait;
-use App\Traits\ResponseTrait;
 use Exception;
-use Illuminate\Database\Eloquent\ModelNotFoundException;
+use App\Models\Person;
+use App\Models\BBNBill;
+use App\Models\VehicleData;
 use Illuminate\Http\Request;
+use App\Traits\ResponseTrait;
+use App\Rules\RightPersonRule;
+use App\Models\DitlantasProcess;
+use App\Models\VehicleRegistration;
 use Illuminate\Support\Facades\Log;
+use App\Http\Controllers\Controller;
+use App\Traits\GlobalCodeNumberTrait;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
  
 class BBNBillController extends Controller
 {
@@ -77,13 +79,13 @@ class BBNBillController extends Controller
             'paid_date' => 'nullable|date',
         ]);
  
-        $ditlantasProcess = \App\Models\DitlantasProcess::with('vendor.company')->findOrFail($validated['ditlantas_process_id']);
+        $ditlantasProcess = DitlantasProcess::with('vendor.company')->findOrFail($validated['ditlantas_process_id']);
  
         if (!$request->filled('bill_date')) {
             $validated['bill_date'] = now()->toDateTimeString();
         }
  
-        $notProcessedIds = \App\Models\VehicleRegistration::where('ditlantas_process_id', $validated['ditlantas_process_id'])
+        $notProcessedIds = VehicleRegistration::where('ditlantas_process_id', $validated['ditlantas_process_id'])
             ->where('is_already_processed', false)
             ->pluck('id');
  
@@ -91,7 +93,7 @@ class BBNBillController extends Controller
             return $this->responseError('Vehicle registration data has not been processed yet for IDs: ' . $notProcessedIds->implode(', '), 'Validation failed', 422);
         }
  
-        $notUpdatedIds = \App\Models\VehicleRegistration::where('ditlantas_process_id', $validated['ditlantas_process_id'])
+        $notUpdatedIds = VehicleRegistration::where('ditlantas_process_id', $validated['ditlantas_process_id'])
             ->where('is_update_additional_data', false)
             ->pluck('id');
  
@@ -104,7 +106,7 @@ class BBNBillController extends Controller
             return $this->responseError('A BBN Bill for this Ditlantas Process already exists', 'Duplicate data found', 422);
         }
   
-        $totalVehicleRegistrations = \App\Models\VehicleRegistration::where('ditlantas_process_id', $validated['ditlantas_process_id'])
+        $totalVehicleRegistrations = VehicleRegistration::where('ditlantas_process_id', $validated['ditlantas_process_id'])
             ->where('is_already_processed', true)
             ->count();
             
@@ -174,9 +176,9 @@ class BBNBillController extends Controller
             $bbnBill = BBNBill::findOrFail($id);
  
             if ($request->filled('ditlantas_process_id')) {
-                $ditlantasProcess = \App\Models\DitlantasProcess::findOrFail($validated['ditlantas_process_id']);
+                $ditlantasProcess = DitlantasProcess::findOrFail($validated['ditlantas_process_id']);
  
-                $unprocessedIds = \App\Models\VehicleRegistration::where('ditlantas_process_id', $validated['ditlantas_process_id'])
+                $unprocessedIds = VehicleRegistration::where('ditlantas_process_id', $validated['ditlantas_process_id'])
                     ->where('is_already_processed', false)
                     ->pluck('id');
 
@@ -191,7 +193,7 @@ class BBNBillController extends Controller
                     return $this->responseError('A BBN Bill for this Ditlantas Process already exists', 'Duplicate data found', 422);
                 }
 
-                $notUpdatedExists = \App\Models\VehicleRegistration::where('ditlantas_process_id', $validated['ditlantas_process_id'])
+                $notUpdatedExists = VehicleRegistration::where('ditlantas_process_id', $validated['ditlantas_process_id'])
                     ->where('is_update_additional_data', false)
                     ->exists();
 

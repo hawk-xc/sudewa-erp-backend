@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Finance;
 use App\Http\Controllers\Controller;
 use App\Models\UnitTypeDetailPpn;
 use App\Repositories\AuthRepository;
+use App\Traits\CalculateDecimalAmount;
 use App\Traits\ResponseTrait;
 use Exception;
 use Illuminate\Http\Request;
@@ -13,7 +14,7 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
 
 class PpnDataController extends Controller
 {
-    use ResponseTrait;
+    use ResponseTrait, CalculateDecimalAmount;
 
     protected AuthRepository $authRepository;
 
@@ -121,7 +122,7 @@ class PpnDataController extends Controller
                 $trxBrutto = $trx->getBrutoAmount();
 
                 $dppUnit = (int) $trxBrutto / 1.11;
-                $ppnUnit = (int) $dppUnit*0.11;
+                $ppnUnit = (int) $dppUnit * 0.11;
                 $hargaUnit = (int) $item->price;
 
                 if ($request->filled('min_price') && $hargaUnit < $request->min_price) {
@@ -176,12 +177,12 @@ class PpnDataController extends Controller
                         'color' => $detail->color,
                     ],
 
-                    'total_price' => $trx->getBrutoAmount(),
-                    'unit_price' => $hargaUnit,
-                    'dpp_amount' => $dppUnit,
-                    'ppn_11' => $ppnUnit,
+                    'total_price' => $this->calculateDecimalAmount($trx->getBrutoAmount()),
+                    'unit_price' => $this->calculateDecimalAmount($hargaUnit),
+                    'dpp_amount' => $this->calculateDecimalAmount($dppUnit),
+                    'ppn_11' => $this->calculateDecimalAmount($ppnUnit),
 
-                    'payment_amount' => $dppUnit + $ppnUnit,
+                    'payment_amount' => $this->calculateDecimalAmount($dppUnit + $ppnUnit),
                 ]);
             }
 
@@ -206,7 +207,6 @@ class PpnDataController extends Controller
                 'PPN Pembelian retrieved successfully',
                 200
             );
-
         } catch (Exception $err) {
             Log::error('Error PPN Purchase: ' . $err->getMessage());
 
@@ -244,7 +244,6 @@ class PpnDataController extends Controller
                 'PPN Purchase updated successfully',
                 200
             );
-
         } catch (\Illuminate\Validation\ValidationException $err) {
             return $this->responseError($err->errors(), 'Validation failed', 422);
         } catch (ModelNotFoundException $err) {
