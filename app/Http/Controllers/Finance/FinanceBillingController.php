@@ -290,6 +290,7 @@ class FinanceBillingController extends Controller
             $itemArray = $item->toArray();
             $itemArray['remaining_payment'] = $cashFlow->remaining_payment;
             $itemArray['remaining_payment_usd'] = $exchangeRate > 0 ? round($cashFlow->remaining_payment / $exchangeRate, 2) : 0.0;
+            $itemArray['is_paid'] = $cashFlow->remaining_payment == 0;
 
             return $this->responseSuccess($itemArray, 'Finance Billing created successfully', 201);
         } catch (ValidationException $e) {
@@ -406,20 +407,18 @@ class FinanceBillingController extends Controller
 
     public function destroy(string $id)
     {
+        $remainingPayment = 0;
+        $cashFlowId = null;
         try {
-            DB::transaction(function () use ($id) {
-                $payments = FinanceBilling::whereHas('cashFlow', function ($q) use ($id) {
-                    $q->where('unit_transaction_billing_id', $id);
-                })->get();
-                foreach ($payments as $payment) {
-                    if ($payment->payment_proof) {
-                        $this->destroyFile('finance_billing_proof/' . $payment->payment_proof);
-                    }
-                    $payment->delete();
-                }
+            DB::transaction(function () use ($id, &$cashFlowId, &$remainingPayment) {
+                $financeBilling = FinanceBilling::findOrFail((int) $id);
+                $cashFlowId = $financeBilling->cashFlow->id;
+
+                $financeBilling->delete();
+                $remainingPayment = CashFlow::findOrFail((int) $cashFlowId)->remaining_payment;
             });
 
-            return $this->responseSuccess([], 'Finance Billing successfully Deleted', 200);
+            return $this->responseSuccess(['remaining_payment' => $remainingPayment], 'Finance Billing successfully Deleted', 200);
         } catch (ModelNotFoundException $err) {
             $model = class_basename($err->getModel() ?: 'Data');
             $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
