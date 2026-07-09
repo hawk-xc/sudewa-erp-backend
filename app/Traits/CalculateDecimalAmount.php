@@ -1,61 +1,55 @@
 <?php
-
+ 
 namespace App\Traits;
-
+ 
 trait CalculateDecimalAmount
 {
     public function calculateDecimalAmount(int|float|string $amount): int
     {
-        [$wholeAmount, $decimalAmount, $isNegative] = $this->splitDecimalAmount($amount);
-
-        if ($decimalAmount < 50) {
-            return $isNegative ? -$wholeAmount : $wholeAmount;
+        $cleaned = trim((string) $amount);
+        
+        if (!is_numeric($cleaned)) {
+            // Remove thousands separators and normalize decimal separator to '.'
+            $lastComma = strrpos($cleaned, ',');
+            $lastDot = strrpos($cleaned, '.');
+            
+            if ($lastComma !== false && $lastDot !== false) {
+                if ($lastComma > $lastDot) {
+                    // comma is decimal, dots are thousands
+                    $cleaned = str_replace('.', '', $cleaned);
+                    $cleaned = str_replace(',', '.', $cleaned);
+                } else {
+                    // dot is decimal, commas are thousands
+                    $cleaned = str_replace(',', '', $cleaned);
+                }
+            } elseif ($lastComma !== false) {
+                // Only commas exist. If followed by exactly 3 digits, it's a thousands separator
+                $digitsAfter = strlen($cleaned) - $lastComma - 1;
+                if ($digitsAfter === 3) {
+                    $cleaned = str_replace(',', '', $cleaned);
+                } else {
+                    $cleaned = str_replace(',', '.', $cleaned);
+                }
+            } elseif ($lastDot !== false) {
+                // Only dots exist. If followed by exactly 3 digits, it's a thousands separator
+                $digitsAfter = strlen($cleaned) - $lastDot - 1;
+                if ($digitsAfter === 3) {
+                    $cleaned = str_replace('.', '', $cleaned);
+                }
+            }
         }
-
-        $roundedAmount = $wholeAmount + 1;
-
-        return $isNegative ? -$roundedAmount : $roundedAmount;
-    }
-
-    private function splitDecimalAmount(int|float|string $amount): array
-    {
-        $normalizedAmount = trim((string) $amount);
-        $isNegative = str_starts_with($normalizedAmount, '-');
-        $normalizedAmount = ltrim($normalizedAmount, '+-');
-
-        $decimalSeparator = $this->detectDecimalSeparator($normalizedAmount);
-
-        if ($decimalSeparator === null) {
-            return [(int) preg_replace('/\D/', '', $normalizedAmount), 0, $isNegative];
+        
+        if (is_numeric($cleaned)) {
+            return (int) round((float) $cleaned);
         }
-
-        $separatorPosition = strrpos($normalizedAmount, $decimalSeparator);
-        $wholeAmount = substr($normalizedAmount, 0, $separatorPosition);
-        $decimalAmount = substr($normalizedAmount, $separatorPosition + 1);
-
-        $wholeAmount = (int) preg_replace('/\D/', '', $wholeAmount);
-        $decimalAmount = (int) str_pad(substr(preg_replace('/\D/', '', $decimalAmount), 0, 2), 2, '0');
-
-        return [$wholeAmount, $decimalAmount, $isNegative];
-    }
-
-    private function detectDecimalSeparator(string $amount): ?string
-    {
-        $lastCommaPosition = strrpos($amount, ',');
-        $lastDotPosition = strrpos($amount, '.');
-
-        if ($lastCommaPosition !== false && $lastDotPosition !== false) {
-            return $lastCommaPosition > $lastDotPosition ? ',' : '.';
+        
+        // Fallback: strip everything except digits, minus sign, and decimal point
+        $isNegative = str_starts_with($cleaned, '-');
+        $cleaned = preg_replace('/[^0-9.]/', '', $cleaned);
+        if ($isNegative) {
+            $cleaned = '-' . $cleaned;
         }
-
-        if ($lastCommaPosition !== false) {
-            return strlen($amount) - $lastCommaPosition - 1 <= 2 ? ',' : null;
-        }
-
-        if ($lastDotPosition !== false) {
-            return strlen($amount) - $lastDotPosition - 1 <= 2 ? '.' : null;
-        }
-
-        return null;
+        
+        return is_numeric($cleaned) ? (int) round((float) $cleaned) : 0;
     }
 }
