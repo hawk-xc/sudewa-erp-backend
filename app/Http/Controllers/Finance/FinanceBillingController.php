@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 use App\Models\Cash;
 use App\Models\CashFlow;
 use App\Models\FinanceBilling;
-use App\Models\GoodsTransactionBilling;
 use App\Models\UnitTransactionBilling;
 use App\Models\UnitTypeDetailPpn;
 use App\Repositories\AuthRepository;
@@ -309,178 +308,6 @@ class FinanceBillingController extends Controller
 
     public function update(Request $request, string $id)
     {
-        return $this->updateItem($request, $id);
-    }
-
-    public function destroy(string $id)
-    {
-        try {
-            DB::transaction(function () use ($id) {
-                $payments = FinanceBilling::whereHas('cashFlow', function ($q) use ($id) {
-                    $q->where('unit_transaction_billing_id', $id);
-                })->get();
-                foreach ($payments as $payment) {
-                    if ($payment->payment_proof) {
-                        $this->destroyFile('finance_billing_proof/' . $payment->payment_proof);
-                    }
-                    $payment->delete();
-                }
-            });
-
-            return $this->responseSuccess([], 'Finance Billing successfully Deleted', 200);
-        } catch (ModelNotFoundException $err) {
-            $model = class_basename($err->getModel() ?: 'Data');
-            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
-
-            return $this->responseError(null, $friendlyModel . ' not found', 404);
-        } catch (Exception $err) {
-            return $this->responseError($err->getMessage(), 'Finance Billing Not Found or Failed Deleted', 500);
-        }
-    }
-
-    public function addItem(Request $request, string $unit_transaction_billing_id)
-    {
-        try {
-            $billing = UnitTransactionBilling::with('unitTransaction.warehouse')
-                ->findOrFail($unit_transaction_billing_id);
-
-            $companyId = $billing->unitTransaction->warehouse->company_id;
-
-            $validated = $request->validate([
-                'cash_id' => ['required', 'integer', 'exists:cashes,id', new RightCashRule($companyId)],
-                'account_id' => ['nullable', 'integer', 'exists:accounts,id', new RightAccountRule()],
-                'amount' => 'required|numeric|min:0.01',
-                'payment_proof' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:2048',
-                'payment_at' => 'nullable|date',
-                'note' => 'nullable|string',
-            ]);
-
-            if ($request->hasFile('payment_proof')) {
-                $validated['payment_proof'] = $this->storeFile(
-                    $request->file('payment_proof'),
-                    'finance_billing_proof'
-                );
-            }
-
-            $cash = Cash::findOrFail($validated['cash_id']);
-            $amount = (float) $validated['amount'];
-
-            if (str_contains(strtolower($cash->code), 'usd')) {
-                $currencyService = app(CurrencyService::class);
-                $exchangeRate = (int) $currencyService->convertUsdToIdr('1');
-                $amountOriginal = $this->calculateDecimalAmount($amount * $exchangeRate);
-            } else {
-                $amountOriginal = $this->calculateDecimalAmount($amount);
-            }
-            $validated['amount_original'] = $amountOriginal;
-            $validated['amount'] = $amount;
-
-            $newPayment = $amountOriginal;
-            $alreadyAllocated = FinanceBilling::whereHas('cashFlow', function ($q) use ($unit_transaction_billing_id) {
-                $q->where('unit_transaction_billing_id', $unit_transaction_billing_id);
-            })->sum('amount_original');
-            
-            $cashFlow = $billing->cashFlow;
-            $remainingAllowed = $cashFlow ? $cashFlow->remaining_payment : $billing->grand_total;
-
-            if ($newPayment > $remainingAllowed) {
-                return $this->responseError(
-                    'Payment amount exceeds remaining billing balance (' . number_format($remainingAllowed) . ').',
-                    'Validation failed',
-                    422
-                );
-            }
-
-            $item = DB::transaction(function () use ($validated, $billing, $newPayment, $alreadyAllocated, $unit_transaction_billing_id, $companyId) {
-                $itemData = $validated;
-
-                // Ensure a CashFlow exists for this billing
-                $cashFlow = $billing->cashFlow;
-                if (!$cashFlow) {
-                    $cashFlow = CashFlow::create([
-                        'company_id' => $companyId,
-                        'unit_transaction_billing_id' => $billing->id,
-                        'code' => $billing->unitTransaction->code . '-payment',
-                        'date' => $validated['payment_at'] ?? now(),
-                        'note' => "Pelunasan Total " . $billing->unitTransaction->code,
-                        'debet' => $billing->unitTransaction->type === 'sales' ? $billing->grand_total : 0,
-                        'debet_original' => $billing->unitTransaction->type === 'sales' ? $billing->grand_total : 0,
-                        'credit' => $billing->unitTransaction->type === 'purchase' ? $billing->grand_total : 0,
-                        'credit_original' => $billing->unitTransaction->type === 'purchase' ? $billing->grand_total : 0,
-                    ]);
-                }
-
-                $itemData['cash_flow_id'] = $cashFlow->id;
-
-                $item = FinanceBilling::create($itemData);
-
-                if (($alreadyAllocated + $newPayment) >= $billing->grand_total) {
-                    $unitTransaction = $billing->unitTransaction;
-                    if ($unitTransaction) {
-                        $unitTransaction->update([
-                            'stock_state' => 'inbound_incoming_goods',
-                        ]);
-
-                        foreach ($unitTransaction->unitTransactionItems as $itemObj) {
-                            $details = $unitTransaction->type === 'purchase'
-                                ? $itemObj->unitTransactionItemDetails
-                                : $itemObj->unitTypeSoldDetails;
-
-                            foreach ($details as $detail) {
-                                $unitTransactionType = $unitTransaction->type;
-                                $type = 'ppn_' . $unitTransactionType;
-
-                                $exists = UnitTypeDetailPpn::where('unit_transaction_item_detail_id', $detail->id)
-                                    ->where('type', $type)
-                                    ->exists();
-
-                                if (! $exists) {
-                                    UnitTypeDetailPpn::create([
-                                        'unit_transaction_item_detail_id' => $detail->id,
-                                        'unit_transaction_id' => $unitTransaction->id,
-                                        'type' => $type,
-                                    ]);
-                                }
-                            }
-                        }
-                    }
-                }
-
-                if ($cashFlow) {
-                    $cashFlow->updateValidity();
-                }
-
-                return $item;
-            });
-
-            $currencyService = app(CurrencyService::class);
-            $exchangeRate = (int) $currencyService->convertUsdToIdr('1');
-
-            $cashFlow = $billing->cashFlow;
-            $remainingAmount = $cashFlow ? $cashFlow->remaining_payment : 0;
-            $remainingAmountUsd = $exchangeRate > 0 ? round($remainingAmount / $exchangeRate, 2) : 0.0;
-
-            $itemArray = $item->toArray();
-            $itemArray['remaining_amount'] = $remainingAmount;
-            $itemArray['remaining_amount_usd'] = $remainingAmountUsd;
-
-            return $this->responseSuccess($itemArray, 'Finance Billing Item created successfully', 201);
-        } catch (ValidationException $e) {
-            return $this->responseError($e->errors(), 'Validation failed', 422);
-        } catch (ModelNotFoundException $err) {
-            $model = class_basename($err->getModel() ?: 'Data');
-            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
-
-            return $this->responseError(null, $friendlyModel . ' not found', 404);
-        } catch (Exception $err) {
-            Log::error('Error While storing Finance Billing Item data : ' . $err->getMessage());
-
-            return $this->responseError($err->getMessage(), 'Finance Billing Item creation failed', 500);
-        }
-    }
-
-    public function updateItem(Request $request, string $id)
-    {
         try {
             $item = FinanceBilling::findOrFail($id);
 
@@ -554,24 +381,15 @@ class FinanceBillingController extends Controller
 
             $itemFresh = $item->fresh();
             $cashFlow = $itemFresh->cashFlow;
-            $remainingPayment = 0;
-            $remainingPaymentUsd = 0.0;
- 
-            if ($cashFlow) {
-                $currencyService = app(CurrencyService::class);
-                $exchangeRate = (int) $currencyService->convertUsdToIdr('1');
- 
-                $grandTotal = $cashFlow->debet > 0 ? $cashFlow->debet : $cashFlow->credit;
-                $totalPaid = FinanceBilling::where('cash_flow_id', $cashFlow->id)->sum('amount_original');
-                $remainingPayment = $grandTotal - $totalPaid;
-                $remainingPaymentUsd = $exchangeRate > 0 ? round($remainingPayment / $exchangeRate, 2) : 0.0;
-            }
+
+            $currencyService = app(CurrencyService::class);
+            $exchangeRate = (int) $currencyService->convertUsdToIdr('1');
 
             $itemArray = $itemFresh->toArray();
-            $itemArray['remaining_payment'] = $remainingPayment;
-            $itemArray['remaining_payment_usd'] = $remainingPaymentUsd;
+            $itemArray['remaining_payment'] = $cashFlow ? $cashFlow->remaining_payment : 0;
+            $itemArray['remaining_payment_usd'] = $cashFlow && $exchangeRate > 0 ? round($cashFlow->remaining_payment / $exchangeRate, 2) : 0.0;
 
-            return $this->responseSuccess($itemArray, 'Finance Billing Item updated successfully', 200);
+            return $this->responseSuccess($itemArray, 'Finance Billing updated successfully', 200);
         } catch (ValidationException $e) {
             return $this->responseError($e->errors(), 'Validation failed', 422);
         } catch (ModelNotFoundException $err) {
@@ -580,38 +398,35 @@ class FinanceBillingController extends Controller
 
             return $this->responseError(null, $friendlyModel . ' not found', 404);
         } catch (Exception $err) {
-            Log::error('Error While updating Finance Billing Item data : ' . $err->getMessage());
+            Log::error('Error While updating Finance Billing data : ' . $err->getMessage());
 
-            return $this->responseError($err->getMessage(), 'Finance Billing Item update failed', 500);
+            return $this->responseError($err->getMessage(), 'Finance Billing update failed', 500);
         }
     }
 
-    public function destroyItem(string $id)
+    public function destroy(string $id)
     {
         try {
-            $item = FinanceBilling::findOrFail($id);
-
-            DB::transaction(function () use ($item) {
-                if ($item->payment_proof) {
-                    $this->destroyFile('finance_billing_proof/' . $item->payment_proof);
-                }
-
-                $cashFlow = $item->cashFlow;
-                $item->delete();
-
-                if ($cashFlow) {
-                    $cashFlow->updateValidity();
+            DB::transaction(function () use ($id) {
+                $payments = FinanceBilling::whereHas('cashFlow', function ($q) use ($id) {
+                    $q->where('unit_transaction_billing_id', $id);
+                })->get();
+                foreach ($payments as $payment) {
+                    if ($payment->payment_proof) {
+                        $this->destroyFile('finance_billing_proof/' . $payment->payment_proof);
+                    }
+                    $payment->delete();
                 }
             });
 
-            return $this->responseSuccess([], 'Finance Billing Item successfully Deleted', 200);
+            return $this->responseSuccess([], 'Finance Billing successfully Deleted', 200);
         } catch (ModelNotFoundException $err) {
             $model = class_basename($err->getModel() ?: 'Data');
             $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
 
             return $this->responseError(null, $friendlyModel . ' not found', 404);
         } catch (Exception $err) {
-            return $this->responseError($err->getMessage(), 'Finance Billing Item Not Found or Failed Deleted', 500);
+            return $this->responseError($err->getMessage(), 'Finance Billing Not Found or Failed Deleted', 500);
         }
     }
 }
