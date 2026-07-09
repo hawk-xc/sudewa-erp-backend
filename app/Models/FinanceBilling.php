@@ -1,17 +1,17 @@
 <?php
- 
+
 namespace App\Models;
- 
+
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
- 
+
 class FinanceBilling extends Model
 {
     use HasFactory;
-    
+
     protected $table = 'finance_billings';
- 
+
     protected $fillable = [
         'uuid',
         'cash_flow_id',
@@ -23,7 +23,7 @@ class FinanceBilling extends Model
         'payment_at',
         'note',
     ];
- 
+
     protected $casts = [
         'cash_flow_id' => 'integer',
         'cash_id' => 'integer',
@@ -33,15 +33,10 @@ class FinanceBilling extends Model
         'payment_at' => 'date',
     ];
 
-    protected $appends = [
-        'unit_transaction_billing_id',
-        'goods_transaction_billing_id',
-    ];
-
     protected $hidden = [
         'cashFlow',
     ];
- 
+
     public function getUnitTransactionBillingAttribute()
     {
         return $this->cashFlow?->unitTransactionBilling;
@@ -61,22 +56,22 @@ class FinanceBilling extends Model
     {
         return $this->cashFlow?->goods_transaction_billing_id;
     }
- 
+
     public function cashFlow()
     {
         return $this->belongsTo(CashFlow::class);
     }
- 
+
     public function cash()
     {
         return $this->belongsTo(Cash::class);
     }
- 
+
     public function account()
     {
         return $this->belongsTo(Account::class);
     }
- 
+
     protected static function booted()
     {
         static::creating(function ($model) {

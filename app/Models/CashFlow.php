@@ -1,20 +1,20 @@
 <?php
- 
+
 namespace App\Models;
- 
+
 use App\Models\Cash;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
- 
+
 class CashFlow extends Model
 {
     use HasFactory;
- 
+
     protected $table = 'cash_flows';
- 
+
     protected $fillable = [
         'uuid',
         'code',
@@ -22,6 +22,7 @@ class CashFlow extends Model
         'unit_transaction_billing_id',
         'goods_transaction_billing_id',
         'transaction_category',
+        'cash_flow_type',
         'date',
         'note',
         'debet',
@@ -32,7 +33,7 @@ class CashFlow extends Model
         'is_paid',
         'is_valid',
     ];
- 
+
     protected $casts = [
         'company_id' => 'integer',
         'unit_transaction_billing_id' => 'integer',
@@ -45,12 +46,24 @@ class CashFlow extends Model
         'is_paid' => 'boolean',
         'is_valid' => 'boolean',
     ];
- 
+
+    protected $appends = [
+        'remaining_payment'
+    ];
+
+    public function getRemainingPaymentAttribute()
+    {
+        $totalPaid = $this->financeBillings()->sum('amount_original');
+        $expectedAmount = $this->debet > 0 ? $this->debet : $this->credit;
+
+        return $expectedAmount - $totalPaid;
+    }
+
     public function company()
     {
         return $this->belongsTo(Company::class);
     }
- 
+
     public function unitTransactionBilling()
     {
         return $this->belongsTo(UnitTransactionBilling::class, 'unit_transaction_billing_id', 'id');
@@ -60,47 +73,47 @@ class CashFlow extends Model
     {
         return $this->belongsTo(GoodsTransactionBilling::class, 'goods_transaction_billing_id', 'id');
     }
- 
+
     public function financeBillings()
     {
         return $this->hasMany(FinanceBilling::class, 'cash_flow_id', 'id');
     }
- 
+
     public function updateValidity()
     {
         $totalPaid = $this->financeBillings()->sum('amount_original');
         $expectedAmount = $this->debet > 0 ? $this->debet : $this->credit;
-        
+
         $this->update([
             'is_valid' => $totalPaid >= $expectedAmount,
         ]);
     }
- 
+
     protected static function booted()
     {
         static::creating(function ($model) {
             if (empty($model->uuid)) {
                 $model->uuid = (string) Str::uuid();
             }
- 
+
             if (empty($model->code)) {
                 DB::transaction(function () use ($model) {
- 
+
                     $today = Carbon::now()->format('Ymd');
                     $prefix = 'TRX' . $today;
- 
+
                     $last = self::where('code', 'like', $prefix . '%')
                         ->lockForUpdate()
                         ->orderBy('code', 'desc')
                         ->first();
- 
+
                     if ($last) {
                         $lastNumber = (int) substr($last->code, -5);
                         $nextNumber = $lastNumber + 1;
                     } else {
                         $nextNumber = 1;
                     }
- 
+
                     $model->code = $prefix . str_pad($nextNumber, 5, '0', STR_PAD_LEFT);
                 });
             }

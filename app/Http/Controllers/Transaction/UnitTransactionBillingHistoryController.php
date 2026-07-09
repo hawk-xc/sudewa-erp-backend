@@ -113,6 +113,15 @@ class UnitTransactionBillingHistoryController extends Controller
                 'unitTransaction.unitTransactionItems.unitTransactionItemDetails',
             ])->findOrFail($validated['unit_transaction_billing_id']);
 
+            $transactionType = $billing->unitTransaction->type;
+            $cashFlowType = null;
+
+            if ($transactionType === 'purchase') {
+                $cashFlowType = 'credit';
+            } else {
+                $cashFlowType = 'debet';
+            }
+
             $bca = $validated['bca_payment_amount'] ?? 0;
             $cash = $validated['cash_payment_amount'] ?? 0;
             $bcaUsd = $validated['bca_payment_usd_amount'] ?? 0;
@@ -161,7 +170,7 @@ class UnitTransactionBillingHistoryController extends Controller
                 ]);
             }
 
-            DB::transaction(function () use ($billing, $validated, $newTotalPaid, $cashSlug, $usdInIdr, $exchangeRate) {
+            DB::transaction(function () use ($billing, $validated, $newTotalPaid, $cashFlowType, $cashSlug, $usdInIdr, $exchangeRate) {
                 $history = UnitTransactionBillingHistory::create([
                     'unit_transaction_billing_id' => $billing->id,
                     'payment_at' => $validated['payment_at'] ?? now(),
@@ -239,6 +248,7 @@ class UnitTransactionBillingHistoryController extends Controller
                             'company_id' => $companyId,
                             'code' => $billing->unitTransaction->code . '-payment',
                             'date' => $validated['payment_at'] ?? now(),
+                            'cash_flow_type' => $cashFlowType,
                             'note' => "Pelunasan Total " . $billing->unitTransaction->code,
                             'debet' => $billing->unitTransaction->type === 'sales' ? $billing->grand_total : 0,
                             'debet_original' => $billing->unitTransaction->type === 'sales' ? $billing->grand_total : 0,
