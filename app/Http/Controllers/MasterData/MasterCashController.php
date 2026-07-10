@@ -26,7 +26,7 @@ class MasterCashController extends Controller
 {
     use ResponseTrait, GlobalCodeNumberTrait;
 
-    protected $cashTable = ['id', 'uuid', 'company_id', 'account_id', 'code', 'description', 'type', 'amount', 'created_at'];
+    protected $cashTable = ['id', 'uuid', 'company_id', 'account_id', 'code', 'cash_name', 'description', 'type', 'amount', 'created_at'];
 
     protected AuthRepository $authRepository;
 
@@ -81,7 +81,6 @@ class MasterCashController extends Controller
                 'Cash list retrieved successfully',
                 200
             );
-
         } catch (\Exception $e) {
             Log::error('Error retrieving cash list: ' . $e->getMessage());
 
@@ -145,7 +144,6 @@ class MasterCashController extends Controller
                 'Cash retrieved successfully',
                 200
             );
-
         } catch (\Exception $e) {
             return $this->responseError('The requested resource could not be found.', 'Resource Not Found', 404);
         }
@@ -175,14 +173,12 @@ class MasterCashController extends Controller
                 'Cash updated successfully',
                 200
             );
-
         } catch (\Illuminate\Validation\ValidationException $e) {
             return $this->responseError(
                 $e->errors(),
                 'Validation failed while updating cash',
                 422
             );
-
         } catch (\Exception $e) {
             Log::error('Error updating cash: ' . $e->getMessage());
 
