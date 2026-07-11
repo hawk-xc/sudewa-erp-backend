@@ -7,6 +7,7 @@ use App\Models\Cash;
 use App\Models\CashFlow;
 use App\Models\FinanceBilling;
 use App\Models\TransactionFlow;
+use App\Models\UnitTransaction;
 use App\Models\UnitTransactionBilling;
 use App\Models\UnitTransactionBillingHistory;
 use App\Traits\FileTrait;
@@ -273,6 +274,8 @@ class UnitTransactionBillingHistoryController extends Controller
                     $itemCount = $unitTransaction->unitTransactionItems->count();
                     $transactionTypeLabel = $unitTransaction->type === 'sales' ? 'Penjualan' : 'Pembelian';
                     $prefixLabel = $unitTransaction->type === 'sales' ? 'diterima' : 'dibayar';
+
+                    $unitTransaction->update(['stock_state' => 'inbound_incoming_goods']);
 
                     TransactionFlow::updateOrCreate(
                         ['unit_transaction_id' => $unitTransaction->id],

@@ -268,6 +268,7 @@ class GoodsTransactionDetailController extends Controller
                     }
 
                     WarehouseMovement::create([
+                        'person_id' => $transaction->person_id,
                         'warehouse_activity_id' => $activity->id,
                         'goods_transaction_id' => $transaction->id,
                         'goods_transaction_detail_id' => $detail->id,
