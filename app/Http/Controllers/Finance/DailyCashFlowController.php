@@ -107,6 +107,8 @@ class DailyCashFlowController extends Controller
                     $grandTotal = $item->unitTransactionBilling->grand_total;
                 } elseif ($item->goods_transaction_billing_id && $item->goodsTransactionBilling) {
                     $grandTotal = $item->goodsTransactionBilling->grand_total;
+                } else {
+                    $grandTotal = $item->debet > 0 ? $item->debet : $item->credit;
                 }
 
                 $item->grand_total = $grandTotal;

@@ -868,96 +868,41 @@ class UnitTransactionController extends Controller
             $search = $validated['search'];
             $isStrict = isset($validated['is_strict']) && $validated['is_strict'] === 'true';
 
-            $query = UnitTransaction::query();
+            $query = UnitTransactionItemDetail::query();
 
-            // type filter
-            if ($request->filled('type') && in_array($request->type, ['purchase', 'sales'])) {
-                $query->where('type', (string) $request->type);
+            // Search by search_of on UnitTransactionItemDetail
+            if ($searchOf === 'in_stock') {
+                $query->where('in_stock', $search === 'true' || $search === '1');
+            } else {
+                if ($isStrict) {
+                    $query->where($searchOf, $search);
+                } else {
+                    $query->where($searchOf, 'like', "%{$search}%");
+                }
             }
 
+            // Filter by transaction type
+            if ($request->filled('type') && in_array($request->type, ['purchase', 'sales'])) {
+                $query->whereHas('unitTransactionItem.unitTransaction', function ($q) use ($request) {
+                    $q->where('type', (string) $request->type);
+                });
+            }
+
+            // Eager load relationships
             $query->with([
-                'warehouse:id,uuid,name,capacity',
-                'person:id,uuid,code,type,name',    
-                'transactionFlow:id,uuid,transaction_date,description',
-                'unitTransactionBilling:id,uuid,unit_transaction_id,grand_total,last_payment_at,is_paid',
-                'unitTransactionItems',
-                'unitTransactionItems.unitTransactionItemDetails',
-                'unitTransactionItems.unitTypeSoldDetails',
+                'unitTransactionItem:id,uuid,unit_transaction_id',
+                'unitTransactionItem.unitTransaction:id,uuid,code,type,stock_state',
             ]);
 
-            $query->select($this->unitTransactionTable);
+            // Pagination
+            $perPage = $request->per_page ?? 10;
+            $data = $query->paginate($perPage);
 
-            $query->where(function ($q) use ($searchOf, $search, $isStrict) {
-                // Search via purchase item details
-                $q->whereHas('unitTransactionItems.unitTransactionItemDetails', function ($subQ) use ($searchOf, $search, $isStrict) {
-                    if ($searchOf === 'in_stock') {
-                        $subQ->where('in_stock', $search === 'true' || $search === '1');
-                    } else {
-                        if ($isStrict) {
-                            $subQ->where($searchOf, $search);
-                        } else {
-                            $subQ->where($searchOf, 'like', "%{$search}%");
-                        }
-                    }
-                })
-                // Search via sales item details (belongsToMany)
-                ->orWhereHas('unitTransactionItems.unitTypeSoldDetails', function ($subQ) use ($searchOf, $search, $isStrict) {
-                    if ($searchOf === 'in_stock') {
-                        $subQ->where('in_stock', $search === 'true' || $search === '1');
-                    } else {
-                        if ($isStrict) {
-                            $subQ->where($searchOf, $search);
-                        } else {
-                            $subQ->where($searchOf, 'like', "%{$search}%");
-                        }
-                    }
-                });
-            });
-
-            $query->orderBy(
-                in_array($request->sort_by, $this->unitTransactionTable) ? $request->sort_by : 'id',
-                $request->sort_order === 'asc' ? 'asc' : 'desc'
-            );
-
-            $data = $query->paginate($request->per_page ?? 10);
-
-            $data->getCollection()->transform(function ($item) {
-                $item->transaction_bruto_total = $item->getBrutoAmount();
-                $item->transaction_dpp_total = $item->getSumAmount('dpp_total_price');
-                $item->transaction_ppn_total = $item->getSumAmount('ppn_total_price');
-                $item->transaction_bbn_total = $item->getSumAmount('bbn_price');
-                $item->transaction_other_fee = $item->getSumAmount('other_fee');
-                $item->expedition_fee_total = $item->unitTransactionItems->sum('expedition_fee');
-
-                if ($item->unitTransactionBilling) {
-                    $billing = $item->unitTransactionBilling;
-
-                    $totalCash = $billing->getTotalCashPayment();
-                    $totalBca = $billing->getTotalBcaCashPayment();
-
-                    $totalPaid = $totalCash + $totalBca;
-                    $remaining = (int) $billing->grand_total - $totalPaid;
-
-                    $item->billing_summary = [
-                        'grand_total' => (int) $billing->grand_total,
-                        'total_cash_payment' => $totalCash,
-                        'total_bca_payment' => $totalBca,
-                        'total_paid' => $totalPaid,
-                        'remaining_payment' => $remaining,
-                        'is_paid' => $billing->is_paid,
-                    ];
-                } else {
-                    $item->billing_summary = null;
-                }
-
-                return $item;
-            });
-
-            return $this->responseSuccess($data, 'Unit Transaction list retrieved successfully', 200);
+            return $this->responseSuccess($data, 'Unit Transaction details retrieved successfully', 200);
         } catch (ValidationException $err) {
             return $this->responseError($err->errors(), 'Validation failed', 422);
         } catch (Exception $err) {
-            Log::error('Error while searching Unit Transaction by item details : ' . $err->getMessage());
+            Log::error('Error while searching Unit Transaction details: ' . $err->getMessage());
 
             return $this->responseError($err->getMessage(), 'Search failed', 500);
         }
