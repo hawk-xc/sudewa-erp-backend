@@ -243,6 +243,9 @@ Route::group(
             Route::group(['prefix' => 'unit-transaction', 'as' => 'unit-transaction.'], function () {
                 Route::post('unit-transaction-item-detail/{unit_transaction_item_id}/import', [UnitTransactionItemDetailController::class, 'import']);
 
+                // Search Unit Transaction Item Details Data
+                Route::get('search-unit-transaction-item-details', [UnitTransactionController::class, 'searchUnitTransactionDetails']);
+
                 // unit transaction item details counter validator
                 Route::get('unit-transaction-billing/check-right-amount', [UnitTransactionBillingController::class, 'checkRightAmount']);
 
