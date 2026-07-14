@@ -199,8 +199,8 @@ class FinanceBillingController extends Controller
             $cashFlow = CashFlow::findOrFail($validated['cash_flow_id']);
             $companyId = $cashFlow->company_id;
 
-            if ($cashFlow->is_valid === true && $cashFlow->is_paid === false) {
-                return $this->responseError(null, 'Cannot add payment because the cash flow is already valid but unpaid.', 422);
+            if ($cashFlow->is_valid === true && $cashFlow->is_paid === true) {
+                return $this->responseError(null, 'Cannot add payment because the cash flow is already paid and valid.', 422);
             }
 
             $rightCashRule = new RightCashRule($companyId);
@@ -420,7 +420,7 @@ class FinanceBillingController extends Controller
             $financeBilling = FinanceBilling::findOrFail((int) $id);
             $cashFlow = $financeBilling->cashFlow;
 
-            if ($cashFlow && $cashFlow->is_valid === true && $cashFlow->is_paid === false) {
+            if ($cashFlow && $cashFlow->is_paid === true) {
                 return $this->responseError(null, 'Cannot delete payment because the cash flow is already valid but unpaid.', 422);
             }
 
