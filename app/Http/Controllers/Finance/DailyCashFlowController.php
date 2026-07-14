@@ -96,7 +96,7 @@ class DailyCashFlowController extends Controller
             $exchangeRate = 0;
             try {
                 $exchangeRate = (int) $currencyService->convertUsdToIdr('1');
-            } catch (\Exception $e) {
+            } catch (Exception $e) {
                 Log::warning('Exchange rate error in DailyCashFlowController: ' . $e->getMessage());
             }
 
@@ -146,7 +146,7 @@ class DailyCashFlowController extends Controller
             $exchangeRate = 0;
             try {
                 $exchangeRate = (int) $currencyService->convertUsdToIdr('1');
-            } catch (\Exception $e) {
+            } catch (Exception $e) {
                 Log::warning('Exchange rate error in DailyCashFlowController show: ' . $e->getMessage());
             }
 
@@ -195,9 +195,11 @@ class DailyCashFlowController extends Controller
                 'note' => 'nullable|string',
                 'debet' => 'required_without:credit|numeric|min:0|prohibits:credit',
                 'credit' => 'required_without:debet|numeric|min:0|prohibits:debet',
-                'transaction_category' => 'nullable|string|in:in:general,operational,director_receivable,shareholder_receivable,receivable,inventory',
+                'transaction_category' => 'nullable|string|in:general,operational,director_receivable,shareholder_receivable,receivable,inventory',
                 'payment_proof' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:2048',
             ]);
+
+            $debet = $request->filled('debet') ?? 0;
 
             if ($request->hasFile('payment_proof')) {
                 $validated['payment_proof'] = $this->storeFile(
@@ -206,7 +208,7 @@ class DailyCashFlowController extends Controller
                 );
             }
 
-            $validated['cash_flow_type'] = $validated['debet'] > 0 ? 'debet' : 'credit';
+            $validated['cash_flow_type'] = $debet > 0 ? 'debet' : 'credit';
 
             $cashFlow = DB::transaction(function () use ($validated) {
                 $cashFlow = CashFlow::create($validated);
