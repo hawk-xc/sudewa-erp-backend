@@ -199,6 +199,10 @@ class FinanceBillingController extends Controller
             $cashFlow = CashFlow::findOrFail($validated['cash_flow_id']);
             $companyId = $cashFlow->company_id;
 
+            if ($cashFlow->is_valid === true && $cashFlow->is_paid === false) {
+                return $this->responseError(null, 'Cannot add payment because the cash flow is already valid but unpaid.', 422);
+            }
+
             $rightCashRule = new RightCashRule($companyId);
             $validator = Validator::make($request->only('cash_id'), [
                 'cash_id' => [$rightCashRule],
@@ -311,6 +315,11 @@ class FinanceBillingController extends Controller
     {
         try {
             $item = FinanceBilling::findOrFail($id);
+            $cashFlow = $item->cashFlow;
+
+            if ($cashFlow && $cashFlow->is_valid === true && $cashFlow->is_paid === false) {
+                return $this->responseError(null, 'Cannot update payment because the cash flow is already valid but unpaid.', 422);
+            }
 
             $validated = $request->validate([
                 'cash_id' => 'sometimes|integer|exists:cashes,id',
@@ -407,13 +416,17 @@ class FinanceBillingController extends Controller
 
     public function destroy(string $id)
     {
-        $remainingPayment = 0;
-        $cashFlowId = null;
         try {
-            DB::transaction(function () use ($id, &$cashFlowId, &$remainingPayment) {
-                $financeBilling = FinanceBilling::findOrFail((int) $id);
-                $cashFlowId = $financeBilling->cashFlow->id;
+            $financeBilling = FinanceBilling::findOrFail((int) $id);
+            $cashFlow = $financeBilling->cashFlow;
 
+            if ($cashFlow && $cashFlow->is_valid === true && $cashFlow->is_paid === false) {
+                return $this->responseError(null, 'Cannot delete payment because the cash flow is already valid but unpaid.', 422);
+            }
+
+            $remainingPayment = 0;
+            $cashFlowId = $cashFlow->id;
+            DB::transaction(function () use ($financeBilling, $cashFlowId, &$remainingPayment) {
                 $financeBilling->delete();
                 $remainingPayment = CashFlow::findOrFail((int) $cashFlowId)->remaining_payment;
             });

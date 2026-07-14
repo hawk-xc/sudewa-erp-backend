@@ -249,6 +249,10 @@ class DailyCashFlowController extends Controller
                 );
             }
 
+            if ($request->filled('is_paid') && $request->is_paid === 'true' && !$cashFlow->is_valid) {
+                return $this->responseError(null, 'Cannot mark cash flow as paid because it is not valid.', 422);
+            }
+
             $data = $validated;
 
             if ($request->filled('debet') || $request->filled('credit')) {
