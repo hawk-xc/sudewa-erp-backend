@@ -1,0 +1,34 @@
+services:
+  erp-backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: erp-backend:latest
+    container_name: erp-backend
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      - .:/app
+      - /app/vendor
+      - ./.env:/app/.env
+    networks:
+      - playground-net
+
+  nginx:
+    image: nginx:alpine
+    container_name: erp-nginx
+    restart: unless-stopped
+    ports:
+      - "8083:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf
+      - .:/app
+    depends_on:
+      - erp-backend
+    networks:
+      - playground-net
+
+networks:
+  playground-net:
+    external: true
