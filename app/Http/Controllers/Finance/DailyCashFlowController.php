@@ -238,6 +238,10 @@ class DailyCashFlowController extends Controller
                 'is_paid' => 'sometimes|in:true,false',
             ]);
 
+            if ($cashFlow->is_paid === true && $cashFlow->is_valid === false) {
+                return $this->responseError(null, 'Cannot mark cash flow as paid because it is already paid but not valid.', 422);
+            }
+
             if ($request->hasFile('payment_proof')) {
                 if ($cashFlow->payment_proof) {
                     $this->destroyFile('cash_flow_proof/' . $cashFlow->payment_proof);
