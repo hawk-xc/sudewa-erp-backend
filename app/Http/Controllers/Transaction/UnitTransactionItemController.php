@@ -43,8 +43,14 @@ class UnitTransactionItemController extends Controller
             'hpp_per_unit_price',
             'dpp_per_unit_price',
             'ppn_per_unit_price',
+            'hpp_total_price',
+            'dpp_total_price',
+            'ppn_total_price',
+            'expedition_fee',
             'other_fee',
+            'ppn_percentage',
             'created_at',
+            'updated_at',
         ];
     }
 

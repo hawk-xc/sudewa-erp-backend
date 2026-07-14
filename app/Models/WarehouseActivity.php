@@ -8,9 +8,11 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
+use App\Traits\GlobalCodeNumberTrait;
+
 class WarehouseActivity extends Model
 {
-    use HasFactory;
+    use HasFactory, GlobalCodeNumberTrait;
 
     protected $table = 'warehouse_activities';
 
@@ -61,25 +63,10 @@ class WarehouseActivity extends Model
             }
 
             if (empty($model->activity_number)) {
-                DB::transaction(function () use ($model) {
-
-                    $today = Carbon::now()->format('Ymd');
-                    $prefix = 'TMU'.$today;
-
-                    $last = self::where('activity_number', 'like', $prefix.'%')
-                        ->lockForUpdate()
-                        ->orderBy('activity_number', 'desc')
-                        ->first();
-
-                    if ($last) {
-                        $lastNumber = (int) substr($last->activity_number, -5);
-                        $nextNumber = $lastNumber + 1;
-                    } else {
-                        $nextNumber = 1;
-                    }
-
-                    $model->activity_number = $prefix.str_pad($nextNumber, 5, '0', STR_PAD_LEFT);
-                });
+                $warehouse = Warehouse::with('company')->find($model->warehouse_id);
+                $companySlug = $warehouse && $warehouse->company ? $warehouse->company->slug : 'wjm';
+                $feature = $model->activity_type === 'receipt' ? 'penerimaan_unit' : 'pengeluaran_unit';
+                $model->activity_number = (new self)->code($companySlug, $feature);
             }
         });
     }
