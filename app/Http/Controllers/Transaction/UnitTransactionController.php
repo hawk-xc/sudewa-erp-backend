@@ -166,6 +166,7 @@ class UnitTransactionController extends Controller
             $data->unit_transaction_bruto_total_actual = $data->getBrutoAmountActual();
             $data->unit_transaction_bruto_refund = $data->getBrutoAmountRefund();
             $data->unit_transaction_bruto_return = $data->getBrutoAmountReturn();
+            $data->total_operational_fee = $data->unitTransactionItems->sum('bbn_price') + $data->unitTransactionItems->sum('expedition_fee') + $data->unitTransactionItems->sum('other_fee');
 
             if ($data->unitTransactionBilling) {
                 $billing = $data->unitTransactionBilling;

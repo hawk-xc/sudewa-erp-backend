@@ -181,7 +181,7 @@ trait GlobalCodeNumberTrait
                 $modelClass = WarehouseActivity::class;
                 $column = 'activity_number';
                 $additionalConstraints = [['activity_type', '=', 'issue']];
-                $prefix = 'OUT-' . strtoupper($compKey) . '/' . date('Ymd') . '-';
+                $prefix = 'KR-' . strtoupper($compKey) . '/' . date('Ymd') . '-';
                 break;
 
             // Warehouse TR
