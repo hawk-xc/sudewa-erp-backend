@@ -60,21 +60,25 @@ trait GlobalCodeNumberTrait
         switch ($feature) {
             // Master Data
             case 'supplier':
-                $modelClass = Person::class;
-                $additionalConstraints = [['type', '=', 'supplier']];
-                if ($compKey === 'wjm') $prefix = 'SP-M/';
-                elseif ($compKey === 'win') $prefix = 'SP-I/';
-                elseif ($compKey === 'aad') $prefix = 'SP-A/';
-                else $prefix = 'SP-' . strtoupper(substr($compKey, 0, 1)) . '/';
+                // $modelClass = Person::class;
+                // $additionalConstraints = [['type', '=', 'supplier']];
+                // if ($compKey === 'wjm') $prefix = 'SP-M/';
+                // elseif ($compKey === 'win') $prefix = 'SP-I/';
+                // elseif ($compKey === 'aad') $prefix = 'SP-A/';
+                // else $prefix = 'SP-' . strtoupper(substr($compKey, 0, 1)) . '/';
+
+                $prefix = 'SPL-';
                 break;
             case 'customer':
-                $modelClass = Person::class;
-                $additionalConstraints = [['type', '=', 'customer']];
-                if ($compKey === 'wjm') $prefix = 'CS-M/';
-                elseif ($compKey === 'win') $prefix = 'CS-I/';
-                elseif ($compKey === 'aad') $prefix = 'CS-A/';
-                elseif ($compKey === 'wjt') $prefix = 'CS-T/';
-                else $prefix = 'CS-' . strtoupper(substr($compKey, 0, 1)) . '/';
+                // $modelClass = Person::class;
+                // $additionalConstraints = [['type', '=', 'customer']];
+                // if ($compKey === 'wjm') $prefix = 'CS-M/';
+                // elseif ($compKey === 'win') $prefix = 'CS-I/';
+                // elseif ($compKey === 'aad') $prefix = 'CS-A/';
+                // elseif ($compKey === 'wjt') $prefix = 'CS-T/';
+                // else $prefix = 'CS-' . strtoupper(substr($compKey, 0, 1)) . '/';
+
+                $prefix = 'CUST-';
                 break;
             case 'aset':
             case 'asset':
@@ -87,23 +91,29 @@ trait GlobalCodeNumberTrait
                 else $prefix = 'AS-' . strtoupper(substr($compKey, 0, 1)) . '/';
                 break;
             case 'dealer':
-                $modelClass = Person::class;
-                $additionalConstraints = [['type', '=', 'dealer']];
-                if ($compKey === 'wjt') $prefix = 'DL-T/';
-                elseif ($compKey === 'wjy') $prefix = 'DL-Y/';
-                else $prefix = 'DL-' . strtoupper(substr($compKey, 0, 1)) . '/';
+                // $modelClass = Person::class;
+                // $additionalConstraints = [['type', '=', 'dealer']];
+                // if ($compKey === 'wjt') $prefix = 'DL-T/';
+                // elseif ($compKey === 'wjy') $prefix = 'DL-Y/';
+                // else $prefix = 'DL-' . strtoupper(substr($compKey, 0, 1)) . '/';
+
+                $prefix = 'DLR-';
                 break;
             case 'vendor':
-                $modelClass = Person::class;
-                $additionalConstraints = [['type', '=', 'vendor']];
-                if ($compKey === 'wjy') $prefix = 'VN-Y/';
-                else $prefix = 'VN-' . strtoupper(substr($compKey, 0, 1)) . '/';
+                // $modelClass = Person::class;
+                // $additionalConstraints = [['type', '=', 'vendor']];
+                // if ($compKey === 'wjy') $prefix = 'VN-Y/';
+                // else $prefix = 'VN-' . strtoupper(substr($compKey, 0, 1)) . '/';
+                
+                $prefix = 'VDR-';
                 break;
             case 'driver':
-                $modelClass = Person::class;
-                $additionalConstraints = [['type', '=', 'driver']];
-                if ($compKey === 'wjt') $prefix = 'DR-T/';
-                else $prefix = 'DR-' . strtoupper(substr($compKey, 0, 1)) . '/';
+                // $modelClass = Person::class;
+                // $additionalConstraints = [['type', '=', 'driver']];
+                // if ($compKey === 'wjt') $prefix = 'DR-T/';
+                // else $prefix = 'DR-' . strtoupper(substr($compKey, 0, 1)) . '/';
+
+                $prefix = 'DRV-';
                 break;
             case 'tarif':
                 $modelClass = Tarif::class;
