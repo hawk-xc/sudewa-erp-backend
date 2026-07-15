@@ -113,7 +113,7 @@ class UserController extends Controller
             $user->plain_password = $plainPassword;
 
             return $this->responseSuccess($user, 'User created successfully');
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             DB::rollBack();
 
             return $this->responseError(null, $e->getMessage(), 500);
@@ -137,7 +137,7 @@ class UserController extends Controller
             return $this->responseError(null, 'User not found', 404);
         }
 
-        $data = array_filter($request->only(['name', 'email', 'password', 'username', 'firstname', 'lastname']), function ($value) {
+        $data = array_filter($request->only(['name', 'email', 'password', 'username', 'firstname', 'lastname', 'role', 'roles']), function ($value) {
             return ! is_null($value) && $value !== '';
         });
 
@@ -166,6 +166,43 @@ class UserController extends Controller
         }
         $request->validate($rules);
 
+        $rolesToSync = null;
+        if (array_key_exists('role', $data) || array_key_exists('roles', $data)) {
+            $rolesToSync = [];
+            if (array_key_exists('role', $data)) {
+                $rolesToSync[] = $data['role'];
+            }
+            if (array_key_exists('roles', $data)) {
+                $rolesVal = $data['roles'];
+                if (is_array($rolesVal)) {
+                    $rolesToSync = array_merge($rolesToSync, $rolesVal);
+                } elseif (is_string($rolesVal)) {
+                    if (str_contains($rolesVal, ',')) {
+                        $rolesToSync = array_merge($rolesToSync, array_map('trim', explode(',', $rolesVal)));
+                    } else {
+                        $rolesToSync[] = $rolesVal;
+                    }
+                }
+            }
+            $rolesToSync = array_values(array_unique(array_filter($rolesToSync, function ($val) {
+                return !is_null($val) && $val !== '';
+            })));
+
+            if (!empty($rolesToSync)) {
+                $existingRolesCount = DB::table('roles')->whereIn('name', $rolesToSync)->count();
+                if ($existingRolesCount !== count($rolesToSync)) {
+                    return $this->responseError(null, 'One or more provided roles do not exist.', 422);
+                }
+            }
+
+            if ($user->hasRole('admin') && !in_array('admin', $rolesToSync)) {
+                $adminCount = User::role('admin')->count();
+                if ($adminCount <= 1) {
+                    return $this->responseError(null, 'Cannot change role of the last admin user. There must be at least one admin.', 422);
+                }
+            }
+        }
+
         DB::beginTransaction();
         try {
             if (isset($data['password'])) {
@@ -179,12 +216,19 @@ class UserController extends Controller
                 $data['fullname'] = $firstname.' '.$lastname;
             }
 
-            $user->fill($data);
+            $modelData = $data;
+            unset($modelData['role'], $modelData['roles']);
+
+            $user->fill($modelData);
             $user->save();
+
+            if (is_array($rolesToSync)) {
+                $user->syncRoles($rolesToSync);
+            }
 
             DB::commit();
 
-            return $this->responseSuccess($user, 'User updated successfully');
+            return $this->responseSuccess($user->load('roles'), 'User updated successfully');
         } catch (\Exception $e) {
             DB::rollBack();
 
@@ -209,7 +253,7 @@ class UserController extends Controller
             DB::commit();
 
             return $this->responseSuccess(null, 'User deleted successfully');
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             DB::rollBack();
 
             return $this->responseError(null, $e->getMessage(), 500);
@@ -263,7 +307,7 @@ class UserController extends Controller
             DB::commit();
 
             return $this->responseSuccess($user->load('roles'), 'Roles revoked successfully');
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             DB::rollBack();
 
             return $this->responseError(null, $e->getMessage(), 500);
@@ -286,7 +330,7 @@ class UserController extends Controller
             DB::commit();
 
             return $this->responseSuccess($user, 'User activated successfully');
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             DB::rollBack();
 
             return $this->responseError(null, $e->getMessage(), 500);
@@ -307,7 +351,7 @@ class UserController extends Controller
             DB::commit();
 
             return $this->responseSuccess($user, 'User deactivated successfully');
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             DB::rollBack();
 
             return $this->responseError(null, $e->getMessage(), 500);
