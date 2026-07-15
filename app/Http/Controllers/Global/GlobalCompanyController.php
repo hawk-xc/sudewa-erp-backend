@@ -7,6 +7,7 @@ use App\Models\Company;
 use App\Models\Module;
 use App\Services\CurrencyService;
 use App\Traits\ResponseTrait;
+use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -288,9 +289,9 @@ class GlobalCompanyController extends Controller
             'amount' => 'required|integer',
         ]);
 
+        try {
         $idrAmount = $currencyService->convertUsdToIdr($request->amount);
 
-        if ($idrAmount) {
             return $this->responseSuccess(
                 [
                     'result' => $idrAmount,
@@ -298,8 +299,9 @@ class GlobalCompanyController extends Controller
                 'USD converted to IDR',
                 200
             );
-        } else {
-            return $this->responseError([], 'Currency Convert Service Error', 500);
+
+        } catch (Exception $err) {
+            return $this->responseError($err->getMessage(), 'Currency Convert Service Error', 500);
         }
     }
 }
