@@ -254,4 +254,101 @@ class AuthController extends Controller
     {
         return $this->responseSuccess(null, 'Token is valid');
     }
+
+    public function hasPermissions(Request $request): JsonResponse
+    {
+        try {
+            $user = $this->guard()->user();
+            if (!$user) {
+                return $this->responseError(null, 'Unauthorized', 401);
+            }
+
+            // Get all user permissions
+            $userPermissions = $user->getAllPermissions()->pluck('name')->toArray();
+
+            $companyId = $request->query('company_id') ?: $request->query('id');
+
+            if ($companyId) {
+                // Find company by ID, UUID, or Slug
+                $company = \App\Models\Company::with('modules')->find($companyId);
+
+                if (!$company) {
+                    $company = \App\Models\Company::with('modules')
+                        ->where('uuid', $companyId)
+                        ->first();
+                }
+
+                if (!$company) {
+                    $company = \App\Models\Company::with('modules')
+                        ->where('slug', $companyId)
+                        ->first();
+                }
+
+                if (!$company) {
+                    return $this->responseError(
+                        null,
+                        'Company not found',
+                        404
+                    );
+                }
+
+                // Get active modules of the company
+                $activeModuleSlugs = $company->modules->pluck('slug')->toArray();
+
+                $validModules = ['master-data', 'transaction', 'warehouse', 'finance', 'report'];
+
+                // Filter permissions
+                $filteredPermissions = array_filter($userPermissions, function ($permission) use ($activeModuleSlugs, $validModules) {
+                    $parts = explode(':', $permission);
+                    $prefix = $parts[0] ?? '';
+
+                    // If the permission prefix matches one of our defined modules,
+                    // check if that module is active in the company.
+                    if (in_array($prefix, $validModules)) {
+                        return in_array($prefix, $activeModuleSlugs);
+                    }
+
+                    // If the permission is a system-wide permission (e.g. user, role, permission),
+                    // allow it by default.
+                    return true;
+                });
+
+                $filteredPermissions = array_values($filteredPermissions);
+
+                return $this->responseSuccess(
+                    [
+                        'company' => [
+                            'id' => $company->id,
+                            'uuid' => $company->uuid,
+                            'name' => $company->name,
+                            'slug' => $company->slug,
+                            'type' => $company->type,
+                            'modules' => $activeModuleSlugs,
+                        ],
+                        'permissions' => $filteredPermissions,
+                    ],
+                    'Company module permissions retrieved successfully',
+                    200
+                );
+            }
+
+            // If no company ID is provided, return all permissions
+            return $this->responseSuccess(
+                [
+                    'permissions' => $userPermissions,
+                ],
+                'User permissions retrieved successfully',
+                200
+            );
+
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('Error retrieving user permissions: ' . $e->getMessage());
+
+            return $this->responseError(
+                null,
+                'Failed to retrieve permissions',
+                500
+            );
+        }
+    }
 }

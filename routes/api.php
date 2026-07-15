@@ -98,6 +98,7 @@ Route::group(
             Route::put('new-password', [AuthController::class, 'newPassword'])->name('new-password');
             Route::post('forgot-password', [AuthController::class, 'sendResetLink'])->name('forgot-password');
             Route::post('reset-password', [AuthController::class, 'resetPassword'])->name('reset-password');
+            Route::get('has-permissions', [AuthController::class, 'hasPermissions']);
         });
 
         // User API
