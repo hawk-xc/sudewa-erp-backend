@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Module;
 use App\Models\User;
 use App\Repositories\AuthRepository;
+use App\Traits\FileTrait;
 use App\Traits\ResponseTrait;
 use Exception;
 use Illuminate\Http\JsonResponse;
@@ -16,7 +17,7 @@ use Illuminate\Support\Str;
 
 class UserController extends Controller
 {
-    use ResponseTrait;
+    use FileTrait, ResponseTrait;
 
     protected AuthRepository $authRepository;
 
@@ -79,6 +80,7 @@ class UserController extends Controller
             'lastname' => 'nullable|string|max:255',
             'roles' => 'nullable|string',
             'roles.*' => 'string|exists:roles,name',
+            'avatar' => 'nullable|file|mimes:jpg,jpeg,png|max:2048',
         ]);
 
         DB::beginTransaction();
@@ -101,6 +103,13 @@ class UserController extends Controller
 
             $data['password'] = Hash::make($plainPassword);
             $data['secure_password'] = encrypt($plainPassword);
+
+            if ($request->hasFile('avatar')) {
+                $data['avatar'] = $this->storeFile(
+                    $request->file('avatar'),
+                    'user_avatar'
+                );
+            }
 
             $user = User::create($data);
 
@@ -137,7 +146,12 @@ class UserController extends Controller
             return $this->responseError(null, 'User not found', 404);
         }
 
-        $data = array_filter($request->only(['name', 'email', 'password', 'username', 'firstname', 'lastname', 'role', 'roles']), function ($value) {
+        $keys = ['name', 'email', 'password', 'username', 'firstname', 'lastname', 'role', 'roles'];
+        if ($request->hasFile('avatar') || $request->has('avatar')) {
+            $keys[] = 'avatar';
+        }
+
+        $data = array_filter($request->only($keys), function ($value) {
             return ! is_null($value) && $value !== '';
         });
 
@@ -146,6 +160,9 @@ class UserController extends Controller
         }
 
         $rules = [];
+        if ($request->hasFile('avatar') || array_key_exists('avatar', $data)) {
+            $rules['avatar'] = 'nullable|file|mimes:jpg,jpeg,png|max:2048';
+        }
         if (array_key_exists('name', $data)) {
             $rules['name'] = 'string|max:255';
         }
@@ -214,6 +231,17 @@ class UserController extends Controller
                 $firstname = $data['firstname'] ?? $user->firstname;
                 $lastname = $data['lastname'] ?? $user->lastname;
                 $data['fullname'] = $firstname.' '.$lastname;
+            }
+
+            if ($request->hasFile('avatar')) {
+                if ($user->avatar) {
+                    $this->destroyFile('user_avatar/' . $user->avatar);
+                }
+
+                $data['avatar'] = $this->storeFile(
+                    $request->file('avatar'),
+                    'user_avatar'
+                );
             }
 
             $modelData = $data;
