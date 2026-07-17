@@ -1,55 +1,84 @@
 <?php
- 
+
 namespace App\Traits;
- 
+
 trait CalculateDecimalAmount
 {
+    /**
+     * Membulatkan angka berdasarkan 2 digit desimal.
+     *
+     * Contoh:
+     * 10.000,56 => 10.001
+     * 10.000,50 => 10.000
+     * 10.000,44 => 10.000
+     */
+    private function roundAmount(float $amount): int
+    {
+        $absolute = abs($amount);
+
+        $integer = floor($absolute);
+        $decimal = (int) round(($absolute - $integer) * 100);
+
+        $result = $decimal > 50
+            ? ceil($absolute)
+            : floor($absolute);
+
+        return $amount < 0
+            ? -(int) $result
+            : (int) $result;
+    }
+
     public function calculateDecimalAmount(int|float|string $amount): int
     {
         $cleaned = trim((string) $amount);
-        
+
         if (!is_numeric($cleaned)) {
-            // Remove thousands separators and normalize decimal separator to '.'
             $lastComma = strrpos($cleaned, ',');
             $lastDot = strrpos($cleaned, '.');
-            
+
             if ($lastComma !== false && $lastDot !== false) {
                 if ($lastComma > $lastDot) {
-                    // comma is decimal, dots are thousands
+                    // Format Indonesia: 10.000,56
                     $cleaned = str_replace('.', '', $cleaned);
                     $cleaned = str_replace(',', '.', $cleaned);
                 } else {
-                    // dot is decimal, commas are thousands
+                    // Format Internasional: 10,000.56
                     $cleaned = str_replace(',', '', $cleaned);
                 }
             } elseif ($lastComma !== false) {
-                // Only commas exist. If followed by exactly 3 digits, it's a thousands separator
                 $digitsAfter = strlen($cleaned) - $lastComma - 1;
+
                 if ($digitsAfter === 3) {
+                    // 10,000
                     $cleaned = str_replace(',', '', $cleaned);
                 } else {
+                    // 10000,56
                     $cleaned = str_replace(',', '.', $cleaned);
                 }
             } elseif ($lastDot !== false) {
-                // Only dots exist. If followed by exactly 3 digits, it's a thousands separator
                 $digitsAfter = strlen($cleaned) - $lastDot - 1;
+
                 if ($digitsAfter === 3) {
+                    // 10.000
                     $cleaned = str_replace('.', '', $cleaned);
                 }
             }
         }
-        
+
         if (is_numeric($cleaned)) {
-            return (int) round((float) $cleaned);
+            return $this->roundAmount((float) $cleaned);
         }
-        
-        // Fallback: strip everything except digits, minus sign, and decimal point
+
         $isNegative = str_starts_with($cleaned, '-');
+
         $cleaned = preg_replace('/[^0-9.]/', '', $cleaned);
+
         if ($isNegative) {
             $cleaned = '-' . $cleaned;
         }
-        
-        return is_numeric($cleaned) ? (int) round((float) $cleaned) : 0;
+
+        return is_numeric($cleaned)
+            ? $this->roundAmount((float) $cleaned)
+            : 0;
     }
 }
