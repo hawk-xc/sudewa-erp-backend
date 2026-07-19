@@ -25,4 +25,14 @@ class TaxVersion extends Model
     {
         return $this->belongsTo(Tax::class);
     }
+
+    public function dppUnitTransactionItems()
+    {
+        return $this->hasMany(UnitTransactionItem::class, 'dpp_tax_id');
+    }
+
+    public function ppnUnitTransactionItems()
+    {
+        return $this->hasMany(UnitTransactionItem::class, 'ppn_tax_id');
+    }
 }

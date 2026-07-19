@@ -17,6 +17,12 @@ class UnitTransactionItem extends Model
         'unit_transaction_id',
         'unit_type_id',
         'sparepart_id',
+
+        'dpp_tax_id',
+        'dpp_tax_rate',
+        'ppn_tax_id',
+        'ppn_tax_rate',
+
         'qty_total',
         'price',
         'price_per_unit_usd',
@@ -30,10 +36,13 @@ class UnitTransactionItem extends Model
         'hpp_total_price',
         'dpp_total_price',
         'ppn_total_price',
-        'ppn_percentage',
     ];
 
     protected $casts = [
+        'dpp_tax_id' => 'integer',
+        'dpp_tax_rate' => 'float',
+        'ppn_tax_id' => 'integer',
+        'ppn_tax_rate' => 'float',
         'transaction_date' => 'date',
         'quantity' => 'integer',
         'price' => 'integer',
@@ -64,6 +73,16 @@ class UnitTransactionItem extends Model
     public function sparepart()
     {
         return $this->belongsTo(Sparepart::class);
+    }
+
+    public function dppTax()
+    {
+        return $this->belongsTo(TaxVersion::class, 'dpp_tax_id');
+    }
+
+    public function ppnTax()
+    {
+        return $this->belongsTo(TaxVersion::class, 'ppn_tax_id');
     }
 
     public function unitTransactionItemDetails()

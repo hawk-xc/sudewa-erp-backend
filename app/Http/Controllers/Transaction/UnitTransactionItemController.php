@@ -20,7 +20,7 @@ class UnitTransactionItemController extends Controller
 {
     use CalculateDecimalAmount, GlobalCodeNumberTrait, ResponseTrait;
 
-    protected $unitTransactionItemTable;
+    protected array $unitTransactionItemTable;
 
     public function __construct()
     {
@@ -109,9 +109,9 @@ class UnitTransactionItemController extends Controller
             $model = class_basename($err->getModel() ?: 'Data');
             $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
 
-            return $this->responseError(null, $friendlyModel.' not found', 404);
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
         } catch (Exception $err) {
-            Log::error('Error While retrieved Unit Transaction Item data : '.$err->getMessage());
+            Log::error('Error While retrieved Unit Transaction Item data : ' . $err->getMessage());
 
             return $this->responseError($err->getMessage(), 'Unit Transaction Item list retrieved Failed', 500);
         }
@@ -131,7 +131,7 @@ class UnitTransactionItemController extends Controller
             $model = class_basename($err->getModel() ?: 'Data');
             $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
 
-            return $this->responseError(null, $friendlyModel.' not found', 404);
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
         } catch (Exception $err) {
             return $this->responseError($err->getMessage(), 'Unit Transaction Item not found', 404);
         }
@@ -254,9 +254,9 @@ class UnitTransactionItemController extends Controller
             $model = class_basename($err->getModel() ?: 'Data');
             $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
 
-            return $this->responseError(null, $friendlyModel.' not found', 404);
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
         } catch (Exception $err) {
-            Log::error('Error While storing Unit Transaction Item data : '.$err->getMessage());
+            Log::error('Error While storing Unit Transaction Item data : ' . $err->getMessage());
 
             return $this->responseError($err->getMessage(), 'Unit Transaction Item creation failed', 500);
         }
@@ -444,9 +444,9 @@ class UnitTransactionItemController extends Controller
             $model = class_basename($err->getModel() ?: 'Data');
             $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
 
-            return $this->responseError(null, $friendlyModel.' not found', 404);
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
         } catch (Exception $err) {
-            Log::error('Error While updating Unit Transaction Item data : '.$err->getMessage());
+            Log::error('Error While updating Unit Transaction Item data : ' . $err->getMessage());
 
             return $this->responseError($err->getMessage(), 'Unit Transaction Item update failed', 500);
         }
@@ -466,7 +466,7 @@ class UnitTransactionItemController extends Controller
             $model = class_basename($err->getModel() ?: 'Data');
             $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
 
-            return $this->responseError(null, $friendlyModel.' not found', 404);
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
         } catch (Exception $err) {
             return $this->responseError([], 'Unit Transaction Item Not Found or Failed Deleted', 500);
         }
@@ -488,7 +488,7 @@ class UnitTransactionItemController extends Controller
             $model = class_basename($err->getModel() ?: 'Data');
             $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
 
-            return $this->responseError(null, $friendlyModel.' not found', 404);
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
         } catch (Exception $err) {
             return $this->responseError(null, 'Unit Transaction Item Detail Not Found or Failed Deleted', 500);
         }
