@@ -4,16 +4,12 @@ namespace App\Http\Controllers\Finance;
 
 use Exception;
 use App\Models\Cash;
-use App\Models\BBNBill;
-use App\Rules\RightCashRule;
 use Illuminate\Http\Request;
 use App\Traits\ResponseTrait;
 use App\Models\WithholdingTax;
-use App\Models\UnitTransaction;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use App\Http\Controllers\Controller;
-use Illuminate\Validation\ValidationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 
 class WithHoldingTaxController extends Controller
@@ -34,8 +30,6 @@ class WithHoldingTaxController extends Controller
             'source',
             'company_id',
             'cash_id',
-            'unit_transaction_id',
-            'bbn_bill_id',
             'no_invoice',
             'withholding_number',
             'withholding_age',
@@ -56,8 +50,6 @@ class WithHoldingTaxController extends Controller
         $query = WithholdingTax::with([
             'company:id,name,slug',
             'cash:id,uuid,company_id,code,cash_name,type',
-            'unitTransaction:id,uuid,warehouse_id,code,type',
-            'bbnBill'
         ]);
 
         try {
@@ -103,30 +95,7 @@ class WithHoldingTaxController extends Controller
         $validated = $request->validate([
             'source' => 'required|in:internal,external',
             'company_id' => 'required|exists:companies,id',
-            'cash_id' => [
-                'required',
-                'exists:cashes,id',
-                new RightCashRule(function () use ($request) {
-                    if ($request->filled('unit_transaction_id')) {
-                        $unitTransaction = UnitTransaction::find((int) $request->unit_transaction_id);
-                        if ($unitTransaction && $unitTransaction->warehouse && $unitTransaction->warehouse->company) {
-                            $request['company_id'] = $unitTransaction->warehouse->company->id;
-                            return [1, 2, 5];
-                        }
-                        return null;
-                    }
-                    if ($request->filled('bbn_bill_id')) {
-                        $bbnBill = BBNBill::find($request->bbn_bill_id);
-                        if ($bbnBill && $bbnBill->branch && $bbnBill->branch->company) {
-                            $request['company_id'] = $bbnBill->branch->company->id;
-                        }
-                        return 3;
-                    }
-                    return null;
-                }),
-            ],
-            'unit_transaction_id' => 'nullable|exists:unit_transactions,id|unique:withholding_taxes,unit_transaction_id',
-            'bbn_bill_id' => 'nullable|exists:bbn_bills,id|unique:withholding_taxes,bbn_bill_id',
+            'cash_id' => 'required|exists:cashes,id',
             'no_invoice' => 'nullable|string|max:255',
             'withholding_number' => 'required|string|max:100|unique:withholding_taxes,withholding_number',
             'withholding_age' => 'required|integer',
@@ -163,7 +132,7 @@ class WithHoldingTaxController extends Controller
     public function show(string $id)
     {
         try {
-            $withholdingTax = WithholdingTax::with(['cash', 'unitTransaction', 'bbnBill'])->findOrFail($id);
+            $withholdingTax = WithholdingTax::with(['cash'])->findOrFail($id);
             return $this->responseSuccess($withholdingTax, 'Withholding Tax retrieved successfully');
         } catch (ModelNotFoundException $err) {
             return $this->responseError(null, 'Withholding Tax not found', 404);
@@ -183,25 +152,7 @@ class WithHoldingTaxController extends Controller
 
             $validated = $request->validate([
                 'source' => 'sometimes|required|in:internal,external',
-                'cash_id' => [
-                    'sometimes',
-                    'required',
-                    'exists:cashes,id',
-                    new RightCashRule(function () use ($request, $withholdingTax) {
-                        $unitTransactionId = $request->has('unit_transaction_id') ? $request->unit_transaction_id : $withholdingTax->unit_transaction_id;
-                        $bbnBillId = $request->has('bbn_bill_id') ? $request->bbn_bill_id : $withholdingTax->bbn_bill_id;
-
-                        if (!empty($unitTransactionId)) {
-                            return [1, 2, 3];
-                        }
-                        if (!empty($bbnBillId)) {
-                            return 3;
-                        }
-                        return null;
-                    }),
-                ],
-                'unit_transaction_id' => 'nullable|exists:unit_transactions,id|unique:withholding_taxes,unit_transaction_id,' . $id,
-                'bbn_bill_id' => 'nullable|exists:bbn_bills,id|unique:withholding_taxes,bbn_bill_id,' . $id,
+                'cash_id' => 'sometimes|required|exists:cashes,id',
                 'withholding_number' => 'sometimes|required|string|max:100|unique:withholding_taxes,withholding_number,' . $id,
                 'withholding_age' => 'sometimes|required|integer',
                 'pph_amount' => 'sometimes|required|numeric|min:0',
