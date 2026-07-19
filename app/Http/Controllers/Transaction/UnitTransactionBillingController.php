@@ -80,7 +80,6 @@ class UnitTransactionBillingController extends Controller
                 'Unit Transaction Billing list retrieved successfully',
                 200
             );
-
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $err) {
             $model = class_basename($err->getModel() ?: 'Data');
             $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
@@ -127,7 +126,6 @@ class UnitTransactionBillingController extends Controller
             $data->total_payment_count = $totalPaymentCount;
 
             return $this->responseSuccess($data, 'Billing retrieved successfully', 200);
-
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $err) {
             $model = class_basename($err->getModel() ?: 'Data');
             $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
@@ -145,31 +143,12 @@ class UnitTransactionBillingController extends Controller
             ]);
 
             $unitTransaction = UnitTransaction::with([
-                    'unitTransactionItems.unitTransactionItemDetails',
-                    'unitTransactionItems.unitTransactionItemSales'
-                ])
+                'unitTransactionItems.unitTransactionItemDetails',
+                'unitTransactionItems.unitTransactionItemSales'
+            ])
                 ->findOrFail($validated['unit_transaction_id']);
 
-            // unit type detail checker
-            // foreach ($unitTransaction->unitTransactionItems as $item) {
-            //     $actualQty = $unitTransaction->type === 'purchase'
-            //         ? $item->unitTransactionItemDetails->count()
-            //         : $item->unitTransactionItemSales->count();
-
-            //     if ((int) $item->qty_total !== (int) $actualQty) {
-            //         throw ValidationException::withMessages([
-            //             "message" => 'The unit transaction items are invalid. Please ensure all items have the correct amount of details/sales records.',
-            //             "hint" => "unit transaction item detail count not filled correct with unit transcation item qty total"
-            //         ]);
-            //     }
-            // }
-
-            // get bruto total
-            // if ($unitTransaction->type === 'purchase') {
-            //     $grandTotal = $unitTransaction->getBrutoAmountActual();
-            // } else {
             $grandTotal = $unitTransaction->getBrutoAmount();
-            // }
 
             if ($grandTotal <= 0) {
                 throw ValidationException::withMessages([
@@ -188,7 +167,6 @@ class UnitTransactionBillingController extends Controller
             });
 
             return $this->responseSuccess($billing, 'Billing created successfully', 201);
-
         } catch (ValidationException $err) {
             return $this->responseError($err->errors(), 'Validation failed', 422);
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $err) {
@@ -250,14 +228,12 @@ class UnitTransactionBillingController extends Controller
 
             $billingFresh = $billing->fresh('unitTransactionBillingHistories');
             $billingFresh->remaining_payment = $billingFresh->getRemainingPayment();
-            $billingFresh->remaining_payment_usd = $billingFresh->getRemainingPaymentUsd();
 
             return $this->responseSuccess(
                 $billingFresh,
                 'Payment added successfully',
                 200
             );
-
         } catch (ValidationException $err) {
             return $this->responseError($err->errors(), 'Validation failed', 422);
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $err) {
@@ -276,10 +252,9 @@ class UnitTransactionBillingController extends Controller
         try {
             $billing = UnitTransactionBilling::findOrFail($id);
 
-            DB::transaction(fn () => $billing->delete());
+            DB::transaction(fn() => $billing->delete());
 
             return $this->responseSuccess($billing, 'Billing deleted successfully', 200);
-
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $err) {
             $model = class_basename($err->getModel() ?: 'Data');
             $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
@@ -300,9 +275,9 @@ class UnitTransactionBillingController extends Controller
             ]);
 
             $unitTransaction = UnitTransaction::with([
-                    'unitTransactionItems.unitTransactionItemDetails',
-                    'unitTransactionItems.unitTransactionItemSales'
-                ])
+                'unitTransactionItems.unitTransactionItemDetails',
+                'unitTransactionItems.unitTransactionItemSales'
+            ])
                 ->findOrFail($validated['unit_transaction_id']);
 
             if ((int) $unitTransaction->warehouse->company_id !== (int) $validated['company_id']) {
@@ -349,7 +324,6 @@ class UnitTransactionBillingController extends Controller
                 'is_valid' => true,
                 'summary' => $summary,
             ], 'Valid', 200);
-
         } catch (ValidationException $err) {
             return $this->responseError($err->errors(), 'Validation failed', 422);
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $err) {
