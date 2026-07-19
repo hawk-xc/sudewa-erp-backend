@@ -58,6 +58,12 @@ class PermissionSeeder extends Seeder
 
             ['name' => 'permission:view', 'description' => 'Melihat detail izin'],
             ['name' => 'permission:list', 'description' => 'Menampilkan daftar izin'],
+
+            ['name' => 'settings:create', 'description' => 'Membuat pengaturan baru'],
+            ['name' => 'settings:list', 'description' => 'Menampilkan daftar pengaturan'],
+            ['name' => 'settings:view', 'description' => 'Melihat detail pengaturan'],
+            ['name' => 'settings:edit', 'description' => 'Mengubah data pengaturan'],
+            ['name' => 'settings:delete', 'description' => 'Menghapus pengaturan'],
         ];
 
         foreach ($permissions as $permission) {
@@ -70,6 +76,5 @@ class PermissionSeeder extends Seeder
         $admin = Role::firstOrCreate(['name' => 'admin']);
 
         $admin->syncPermissions(Permission::all());
-
     }
 }

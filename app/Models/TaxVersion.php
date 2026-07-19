@@ -18,6 +18,7 @@ class TaxVersion extends Model
         'effective_from',
         'effective_until',
         'is_default',
+        'is_lock',
     ];
 
     public function tax()

@@ -19,7 +19,7 @@ class Tax extends Model
         'is_lock',
     ];
 
-    public function TaxVersions()
+    public function taxVersions()
     {
         return $this->hasMany(TaxVersion::class, 'tax_id', 'id');
     }
@@ -46,23 +46,12 @@ class Tax extends Model
         }
     }
 
-    public function getDefault(string $taxCode)
+    public function getDefault()
     {
         try {
-            $tax = $this->where('code', $taxCode)->first();
-            if (!$tax) {
-                throw new Exception('Tax not found');
-            }
-
-            $taxVersion = TaxVersion::where('tax_id', $tax->id)
+            return $this->taxVersions()
                 ->where('is_default', true)
-                ->first();
-
-            if (!$taxVersion) {
-                throw new Exception('Tax version not found');
-            }
-
-            return $taxVersion;
+                ->firstOrFail();
         } catch (Exception $err) {
             Log::error('Error getting default tax: ' . $err->getMessage());
             return null;

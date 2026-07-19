@@ -19,6 +19,7 @@ return new class extends Migration
             $table->date('effective_from')->nullable(true);
             $table->date('effective_until')->nullable(true);
             $table->boolean('is_default')->nullable(false)->default(false);
+            $table->boolean('is_lock')->nullable(false)->default(false);
             $table->timestamps();
         });
     }

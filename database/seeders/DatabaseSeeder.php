@@ -21,11 +21,11 @@ class DatabaseSeeder extends Seeder
         $this->call(CompanySeeder::class);
         $this->call(ModuleSeeder::class);
         $this->call(FeatureSeeder::class);
-        
+
         // app flow pivot
         $this->call(CompanyHasModuleSeeder::class);
         $this->call(ModuleHasFeatureSeeder::class);
-        
+
         // Dummy Data
         $this->call(BrandSeeder::class);
         $this->call(MainCompanyWarehouseSeeder::class);
@@ -33,5 +33,8 @@ class DatabaseSeeder extends Seeder
         // Default Group Account and Account Data
         $this->call(DefaultAccountSeeder::class);
         $this->call(VehicleFleetSeeder::class);
+
+        // Tax and Tax Version
+        $this->call(TaxSeeder::class);
     }
 }

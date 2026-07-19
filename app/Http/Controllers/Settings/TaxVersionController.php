@@ -25,7 +25,7 @@ class TaxVersionController extends Controller
         $this->middleware(['permission:settings:edit'])->only('update');
         $this->middleware(['permission:settings:delete'])->only(['destroy']);
 
-        $this->taxVersionTable = ['id', 'tax_id', 'name', 'rate', 'effective_from', 'effective_until', 'is_default', 'created_at'];
+        $this->taxVersionTable = ['id', 'tax_id', 'name', 'rate', 'effective_from', 'effective_until', 'is_default', 'is_lock', 'created_at'];
     }
 
     /**
@@ -64,27 +64,32 @@ class TaxVersionController extends Controller
     /**
      * Store a new tax version.
      */
-    public function store(Request $request, string $taxId)
+    public function store(Request $request)
     {
         try {
-            $tax = Tax::findOrFail($taxId);
-
             $validated = $request->validate([
+                'tax_id' => 'required|exists:taxes,id',
                 'name' => 'required|string|max:255',
                 'rate' => 'required|integer|min:0',
                 'effective_from' => 'nullable|date',
                 'effective_until' => 'nullable|date|after_or_equal:effective_from',
-                'is_default' => 'boolean',
+                'is_default' => 'string',
             ]);
 
-            $data = DB::transaction(function () use ($tax, $validated) {
+            if ($request->filled('is_default')) {
+                if ($request->is_default == 'true' || $request->is_default == 1) {
+                    $validated['is_default'] = true;
+                }
+            }
+
+            $data = DB::transaction(function () use ($validated) {
                 if (!empty($validated['is_default']) && $validated['is_default']) {
-                    TaxVersion::where('tax_id', $tax->id)
+                    TaxVersion::where('tax_id', $validated['tax_id'])
                         ->where('is_default', true)
                         ->update(['is_default' => false]);
                 }
 
-                return $tax->TaxVersions()->create($validated);
+                return TaxVersion::create($validated);
             });
 
             return $this->responseSuccess($data, 'Tax Version created successfully', 201);
@@ -120,13 +125,23 @@ class TaxVersionController extends Controller
         try {
             $taxVersion = TaxVersion::findOrFail($id);
 
+            if ($taxVersion->is_lock) {
+                return $this->responseError(null, 'Cannot update locked tax version', 422);
+            }
+
             $validated = $request->validate([
                 'name' => 'sometimes|required|string|max:255',
                 'rate' => 'sometimes|required|integer|min:0',
                 'effective_from' => 'nullable|date',
                 'effective_until' => 'nullable|date|after_or_equal:effective_from',
-                'is_default' => 'boolean',
+                'is_default' => 'sometimes|string',
             ]);
+
+            if ($request->filled('is_default')) {
+                if ($request->is_default == 'true' || $request->is_default == 1) {
+                    $validated['is_default'] = true;
+                }
+            }
 
             $data = DB::transaction(function () use ($taxVersion, $validated) {
                 if (!empty($validated['is_default']) && $validated['is_default']) {
@@ -158,12 +173,13 @@ class TaxVersionController extends Controller
             $taxVersion = TaxVersion::findOrFail($id);
 
             $count = TaxVersion::where('tax_id', $taxVersion->tax_id)->count();
-            if ($count <= 1) {
-                return $this->responseError(null, 'Cannot delete the last tax version', 422);
-            }
 
             if ($taxVersion->is_default) {
                 return $this->responseError(null, 'Cannot delete default tax version', 422);
+            }
+
+            if ($taxVersion->is_lock) {
+                return $this->responseError(null, 'Cannot delete locked tax version', 422);
             }
 
             DB::transaction(function () use ($taxVersion) {

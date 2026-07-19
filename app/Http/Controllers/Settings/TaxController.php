@@ -34,6 +34,12 @@ class TaxController extends Controller
     {
         $query = Tax::query();
 
+        $query->select($this->taxTable);
+
+        $query->with(['taxVersions' => function ($q) {
+            $q->select(['id', 'tax_id', 'name', 'is_default'])->where('is_default', 1);
+        }]);
+
         try {
             if ($request->filled('search')) {
                 $search = $request->search;
@@ -69,7 +75,6 @@ class TaxController extends Controller
         $validated = $request->validate([
             'code' => 'required|string|max:50|unique:taxes,code',
             'name' => 'required|string|max:255',
-            'is_lock' => 'boolean',
         ]);
 
         try {
@@ -98,6 +103,11 @@ class TaxController extends Controller
             Log::error('Error showing Tax: ' . $err->getMessage());
             return $this->responseError($err->getMessage(), 'Failed to retrieve Tax details', 500);
         }
+    }
+
+    public function getDefault(string $code)
+    {
+        $taxCode = Tax::where('code', $code)->first()->taxVersion->where('is_default', 1)->latest()->first();
     }
 
     /**

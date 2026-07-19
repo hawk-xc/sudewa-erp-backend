@@ -51,19 +51,19 @@ class BBNBill extends Model
             ->get()
             ->sum(function ($reg) {
                 return $reg->stck_fee +
-                       $reg->bbn_registration_fee +
-                       $reg->notice_fee +
-                       $reg->pmi_fee +
-                       $reg->physical_check_fee +
-                       $reg->nik_validation_fee +
-                       $reg->garwil_fee +
-                       $reg->built_up_fee +
-                       $reg->acceleration_fee +
-                       $reg->plate_recommendation_fee +
-                       $reg->service_fee +
-                       $reg->skpd_fee +
-                       $reg->stamp_fee +
-                       $reg->pnbp_bpkb;
+                    $reg->bbn_registration_fee +
+                    $reg->notice_fee +
+                    $reg->pmi_fee +
+                    $reg->physical_check_fee +
+                    $reg->nik_validation_fee +
+                    $reg->garwil_fee +
+                    $reg->built_up_fee +
+                    $reg->acceleration_fee +
+                    $reg->plate_recommendation_fee +
+                    $reg->service_fee +
+                    $reg->skpd_fee +
+                    $reg->stamp_fee +
+                    $reg->pnbp_bpkb;
             });
 
         // Add PPh 23 (2%)
@@ -80,19 +80,19 @@ class BBNBill extends Model
             ->get()
             ->sum(function ($reg) {
                 return $reg->stck_fee +
-                       $reg->bbn_registration_fee +
-                       $reg->notice_fee +
-                       $reg->pmi_fee +
-                       $reg->physical_check_fee +
-                       $reg->nik_validation_fee +
-                       $reg->garwil_fee +
-                       $reg->built_up_fee +
-                       $reg->acceleration_fee +
-                       $reg->plate_recommendation_fee +
-                       $reg->service_fee +
-                       $reg->skpd_fee +
-                       $reg->stamp_fee +
-                       $reg->pnbp_bpkb;
+                    $reg->bbn_registration_fee +
+                    $reg->notice_fee +
+                    $reg->pmi_fee +
+                    $reg->physical_check_fee +
+                    $reg->nik_validation_fee +
+                    $reg->garwil_fee +
+                    $reg->built_up_fee +
+                    $reg->acceleration_fee +
+                    $reg->plate_recommendation_fee +
+                    $reg->service_fee +
+                    $reg->skpd_fee +
+                    $reg->stamp_fee +
+                    $reg->pnbp_bpkb;
             });
 
         // Add PPh 23 (2%)
@@ -124,10 +124,5 @@ class BBNBill extends Model
     public function bbnBillBillings()
     {
         return $this->hasMany(BBNBillBilling::class, 'bbn_bill_id');
-    }
-
-    public function withholdingTaxes()
-    {
-        return $this->hasMany(WithholdingTax::class, 'bbn_bill_id');
     }
 }
