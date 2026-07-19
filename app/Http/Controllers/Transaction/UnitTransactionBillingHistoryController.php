@@ -102,6 +102,18 @@ class UnitTransactionBillingHistoryController extends Controller
                 'payment_proof' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:2048',
             ]);
 
+            $filledPayments = array_filter([
+                'bca_payment_amount'     => $validated['bca_payment_amount'] ?? 0,
+                'bca_payment_usd_amount' => $validated['bca_payment_usd_amount'] ?? 0,
+                'cash_payment_amount'    => $validated['cash_payment_amount'] ?? 0,
+            ], fn($v) => $v > 0);
+
+            if (count($filledPayments) > 1) {
+                throw ValidationException::withMessages([
+                    'payment' => 'Only one payment method is allowed per transaction. Please fill only one of: bca_payment_amount, bca_payment_usd_amount, or cash_payment_amount.',
+                ]);
+            }
+
             if ($request->hasFile('payment_proof')) {
                 $validated['payment_proof'] = $this->storeFile(
                     $request->file('payment_proof'),
@@ -127,8 +139,6 @@ class UnitTransactionBillingHistoryController extends Controller
             $cash = $validated['cash_payment_amount'] ?? 0;
             $bcaUsd = $validated['bca_payment_usd_amount'] ?? 0;
 
-            // USD diinput secara manual dalam IDR, tidak perlu konversi via API
-            // Cek apakah billing ini SUDAH PERNAH ada pembayaran bca_usd sebelumnya
             $existingUsdPayment = DB::table('cash_unit_transaction_billing_history')
                 ->join('unit_transaction_billing_histories', 'unit_transaction_billing_histories.id', '=', 'cash_unit_transaction_billing_history.unit_transaction_billing_history_id')
                 ->join('cashes', 'cashes.id', '=', 'cash_unit_transaction_billing_history.cash_id')
@@ -136,10 +146,8 @@ class UnitTransactionBillingHistoryController extends Controller
                 ->where('cashes.code', 'bca_usd')
                 ->exists();
 
-            // usdPaymentSet = true jika request ini pakai USD ATAU sudah ada riwayat USD sebelumnya
             $usdPaymentSet = $bcaUsd > 0 || $existingUsdPayment;
 
-            // Total payment untuk validasi grand total (bca_idr + cash_idr + usd manual)
             $paymentTotal = $bca + $cash + $bcaUsd;
 
             if ($paymentTotal <= 0) {
@@ -148,7 +156,6 @@ class UnitTransactionBillingHistoryController extends Controller
                 ]);
             }
 
-            // Hitung total sebelumnya hanya dari bca_idr dan cash_idr
             $totalPaidBeforeList = DB::table('cash_unit_transaction_billing_history')
                 ->join('unit_transaction_billing_histories', 'unit_transaction_billing_histories.id', '=', 'cash_unit_transaction_billing_history.unit_transaction_billing_history_id')
                 ->join('cashes', 'cashes.id', '=', 'cash_unit_transaction_billing_history.cash_id')
@@ -182,7 +189,6 @@ class UnitTransactionBillingHistoryController extends Controller
                     'note' => $validated['note'] ?? null,
                 ]);
 
-                // Hitung remaining hanya dari bca_idr dan cash_idr
                 $totalIdrOnly = DB::table('cash_unit_transaction_billing_history')
                     ->join('unit_transaction_billing_histories', 'unit_transaction_billing_histories.id', '=', 'cash_unit_transaction_billing_history.unit_transaction_billing_history_id')
                     ->join('cashes', 'cashes.id', '=', 'cash_unit_transaction_billing_history.cash_id')
@@ -193,8 +199,6 @@ class UnitTransactionBillingHistoryController extends Controller
                 $newIdrPayment = ($validated['bca_payment_amount'] ?? 0) + ($validated['cash_payment_amount'] ?? 0);
                 $totalIdrPaid = $totalIdrOnly + $newIdrPayment;
 
-                // Jika ada pembayaran USD (request ini atau riwayat sebelumnya),
-                // remaining_payment = 0 dan is_paid = false (USD tidak dianggap lunas otomatis)
                 if ($usdPaymentSet) {
                     $remaining = 0;
                     $billing->update([
@@ -232,98 +236,10 @@ class UnitTransactionBillingHistoryController extends Controller
                         }
                     }
                 }
-
-                if ($remaining <= 0) {
-                    $billing->load(['unitTransactionBillingHistories.cashes', 'financeBillings.cash']);
-                    $financeBillings = $billing->financeBillings;
-
-                    $totalBca = 0;
-                    $totalCash = 0;
-                    $totalBcaUsd = 0;
-
-                    if ($financeBillings->isNotEmpty()) {
-                        $totalBca = (int) $financeBillings->filter(function ($item) {
-                            return $item->cash && $item->cash->code === 'bca_idr';
-                        })->sum('amount');
-                        $totalCash = (int) $financeBillings->filter(function ($item) {
-                            return $item->cash && $item->cash->code === 'cash_idr';
-                        })->sum('amount');
-                        $totalBcaUsd = (int) $financeBillings->filter(function ($item) {
-                            return $item->cash && $item->cash->code === 'bca_usd';
-                        })->sum('amount_original');
-                    }
-
-                    if ($totalBca == 0 && $totalCash == 0 && $totalBcaUsd == 0) {
-                        $totalBca = (int) $billing->getTotalBcaCashPayment();
-                        $totalCash = (int) $billing->getTotalCashPayment();
-                        $totalBcaUsd = (int) $billing->getTotalBcaUsdPayment();
-                    }
-
-                    $totalBcaUsdInIdr = (int) $billing->getTotalBcaUsdPaymentInIdr();
-
-                    $createdCashFlowIds = [];
-
-                    $cf = CashFlow::updateOrCreate(
-                        [
-                            'unit_transaction_billing_id' => $billing->id,
-                        ],
-                        [
-                            'company_id' => $companyId,
-                            'code' => $billing->unitTransaction->code . '-payment',
-                            'date' => $validated['payment_at'] ?? now(),
-                            'cash_flow_type' => $cashFlowType,
-                            'note' => "Pelunasan Total " . $billing->unitTransaction->code,
-                            'debet' => $billing->unitTransaction->type === 'sales' ? $billing->grand_total : 0,
-                            'debet_original' => $billing->unitTransaction->type === 'sales' ? $billing->grand_total : 0,
-                            'credit' => $billing->unitTransaction->type === 'purchase' ? $billing->grand_total : 0,
-                            'credit_original' => $billing->unitTransaction->type === 'purchase' ? $billing->grand_total : 0,
-                        ]
-                    );
-                    $createdCashFlowIds[] = $cf->id;
-
-                    $cf->updateValidity();
-
-                    CashFlow::where('unit_transaction_billing_id', $billing->id)
-                        ->whereNotIn('id', $createdCashFlowIds)
-                        ->delete();
-
-                    $unitTransaction = $billing->unitTransaction;
-                    $itemDetails = $unitTransaction->unitTransactionItems->map(function ($item) {
-                        $name = $item->unitType?->name ?? $item->sparepart?->name ?? 'Unknown';
-                        return "{$item->qty_total} {$name}";
-                    })->implode(', ');
-
-                    $itemCount = $unitTransaction->unitTransactionItems->count();
-                    $transactionTypeLabel = $unitTransaction->type === 'sales' ? 'Penjualan' : 'Pembelian';
-                    $prefixLabel = $unitTransaction->type === 'sales' ? 'diterima' : 'dibayar';
-
-                    $unitTransaction->update(['stock_state' => 'inbound_incoming_goods']);
-
-                    TransactionFlow::updateOrCreate(
-                        ['unit_transaction_id' => $unitTransaction->id],
-                        [
-                            'company_id' => $companyId,
-                            'code' => $unitTransaction->code,
-                            'transaction_date' => now(),
-                            'unit_transaction_id' => $unitTransaction->id,
-                            'name' => $unitTransaction->person->name ?? null,
-                            'description' => "{$transactionTypeLabel} {$prefixLabel} dimuka ke-{$itemCount} unit spm: {$itemDetails}",
-                            'bank_usd_debit' => $unitTransaction->type === 'sales' ? $totalBcaUsd : 0,
-                            'bank_usd_debit_original' => $unitTransaction->type === 'sales' ? $totalBcaUsdInIdr : 0,
-                            'bank_idr_debit' => $unitTransaction->type === 'sales' ? $totalBca : 0,
-                            'cash_idr_debit' => $unitTransaction->type === 'sales' ? $totalCash : 0,
-                            'bank_idr_credit' => $unitTransaction->type === 'purchase' ? $totalBca : 0,
-                            'bank_usd_credit' => $unitTransaction->type === 'purchase' ? $totalBcaUsd : 0,
-                            'bank_usd_credit_original' => $unitTransaction->type === 'purchase' ? $totalBcaUsdInIdr : 0,
-                            'cash_idr_credit' => $unitTransaction->type === 'purchase' ? $totalCash : 0,
-                        ]
-                    );
-                }
             });
 
             $billingFresh = $billing->fresh('unitTransactionBillingHistories');
 
-            // Jika billing memiliki pembayaran bca_usd, remaining_payment selalu 0
             $billingFresh->remaining_payment = $usdPaymentSet ? 0 : $billingFresh->getRemainingPayment();
 
             return $this->responseSuccess(
@@ -359,6 +275,18 @@ class UnitTransactionBillingHistoryController extends Controller
                 'payment_proof' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:2048',
             ]);
 
+            $filledPayments = array_filter([
+                'bca_payment_amount'     => $validated['bca_payment_amount'] ?? 0,
+                'bca_payment_usd_amount' => $validated['bca_payment_usd_amount'] ?? 0,
+                'cash_payment_amount'    => $validated['cash_payment_amount'] ?? 0,
+            ], fn($v) => $v > 0);
+
+            if (count($filledPayments) > 1) {
+                throw ValidationException::withMessages([
+                    'payment' => 'Only one payment method is allowed per transaction. Please fill only one of: bca_payment_amount, bca_payment_usd_amount, or cash_payment_amount.',
+                ]);
+            }
+
             DB::transaction(function () use ($history, $validated, $request) {
                 $billing = $history->unitTransactionBilling;
                 $companyId = $billing->unitTransaction->warehouse->company_id;
@@ -378,8 +306,6 @@ class UnitTransactionBillingHistoryController extends Controller
 
                 $bcaUsdPivot = $history->cashes->where('code', 'bca_usd')->first();
                 $historyBcaUsdPaymentAmount = $bcaUsdPivot ? $bcaUsdPivot->pivot->amount : 0;
-                $historyBcaUsdOriginalAmount = $bcaUsdPivot ? $bcaUsdPivot->pivot->original_amount : 0;
-                $historyBcaUsdExchangeAmount = $bcaUsdPivot ? $bcaUsdPivot->pivot->exchange_amount : 0;
 
                 $diffs = [
                     'cash_idr' => (array_key_exists('cash_payment_amount', $validated) ? $validated['cash_payment_amount'] : $historyCashPaymentAmount) - $historyCashPaymentAmount,
@@ -387,25 +313,7 @@ class UnitTransactionBillingHistoryController extends Controller
                     'bca_usd' => (array_key_exists('bca_payment_usd_amount', $validated) ? $validated['bca_payment_usd_amount'] : $historyBcaUsdPaymentAmount) - $historyBcaUsdPaymentAmount,
                 ];
 
-                $usdInIdr = $historyBcaUsdOriginalAmount;
-                $exchangeRate = $historyBcaUsdExchangeAmount;
-                if (array_key_exists('bca_payment_usd_amount', $validated) && $validated['bca_payment_usd_amount'] != $historyBcaUsdPaymentAmount) {
-                    $newUsdVal = $validated['bca_payment_usd_amount'];
-                    if ($newUsdVal > 0) {
-                        $currencyService = app(CurrencyService::class);
-                        $exchangeRate = (int) $currencyService->convertUsdToIdr('1');
-                        if (!$exchangeRate) {
-                            throw new \Exception('Failed to convert USD to IDR via Unirate API.');
-                        }
-                        $usdInIdr = (int) ($newUsdVal * $exchangeRate);
-                    } else {
-                        $usdInIdr = 0;
-                        $exchangeRate = 0;
-                    }
-                }
-
                 foreach (['cash_idr', 'bca_idr', 'bca_usd'] as $slug) {
-                    $diff = $diffs[$slug];
                     $newVal = match ($slug) {
                         'cash_idr' => array_key_exists('cash_payment_amount', $validated) ? $validated['cash_payment_amount'] : $historyCashPaymentAmount,
                         'bca_idr' => array_key_exists('bca_payment_amount', $validated) ? $validated['bca_payment_amount'] : $historyBcaPaymentAmount,
@@ -416,11 +324,8 @@ class UnitTransactionBillingHistoryController extends Controller
                     if ($cash) {
                         if ($newVal > 0) {
                             $existingPivot = $history->cashes->where('id', $cash->id)->first();
+                            // USD disimpan langsung sebagai manual IDR, tanpa exchange_rate
                             $pivotData = ['amount' => $newVal];
-                            if ($slug === 'bca_usd') {
-                                $pivotData['original_amount'] = $usdInIdr;
-                                $pivotData['exchange_amount'] = $exchangeRate;
-                            }
                             if ($existingPivot) {
                                 $history->cashes()->updateExistingPivot($cash->id, $pivotData);
                             } else {
@@ -437,30 +342,45 @@ class UnitTransactionBillingHistoryController extends Controller
                     'payment_proof' => $validated['payment_proof'] ?? $history->payment_proof,
                 ]);
 
-                $totalPaidList = DB::table('cash_unit_transaction_billing_history')
+                // Cek apakah billing ini memiliki pembayaran bca_usd (history lain atau current)
+                $hasUsdPayment = DB::table('cash_unit_transaction_billing_history')
+                    ->join('unit_transaction_billing_histories', 'unit_transaction_billing_histories.id', '=', 'cash_unit_transaction_billing_history.unit_transaction_billing_history_id')
+                    ->join('cashes', 'cashes.id', '=', 'cash_unit_transaction_billing_history.cash_id')
+                    ->where('unit_transaction_billing_histories.unit_transaction_billing_id', $billing->id)
+                    ->where('cashes.code', 'bca_usd')
+                    ->exists();
+
+                // Hitung total_paid dari semua jenis pembayaran
+                $totalPaid = DB::table('cash_unit_transaction_billing_history')
                     ->join('unit_transaction_billing_histories', 'unit_transaction_billing_histories.id', '=', 'cash_unit_transaction_billing_history.unit_transaction_billing_history_id')
                     ->join('cashes', 'cashes.id', '=', 'cash_unit_transaction_billing_history.cash_id')
                     ->where('unit_transaction_billing_histories.unit_transaction_billing_id', $billing->id)
                     ->whereIn('cashes.code', ['cash_idr', 'bca_idr', 'bca_usd'])
-                    ->select('cashes.code', 'cash_unit_transaction_billing_history.amount', 'cash_unit_transaction_billing_history.original_amount')
-                    ->get();
+                    ->sum('cash_unit_transaction_billing_history.amount');
 
-                $totalPaid = 0;
-                foreach ($totalPaidList as $item) {
-                    if ($item->code === 'bca_usd') {
-                        $totalPaid += $item->original_amount;
-                    } else {
-                        $totalPaid += $item->amount;
-                    }
+                // Hitung remaining hanya dari bca_idr dan cash_idr
+                $totalIdrPaid = DB::table('cash_unit_transaction_billing_history')
+                    ->join('unit_transaction_billing_histories', 'unit_transaction_billing_histories.id', '=', 'cash_unit_transaction_billing_history.unit_transaction_billing_history_id')
+                    ->join('cashes', 'cashes.id', '=', 'cash_unit_transaction_billing_history.cash_id')
+                    ->where('unit_transaction_billing_histories.unit_transaction_billing_id', $billing->id)
+                    ->whereIn('cashes.code', ['cash_idr', 'bca_idr'])
+                    ->sum('cash_unit_transaction_billing_history.amount');
+
+                // Jika ada pembayaran USD, remaining=0 dan is_paid=false
+                if ($hasUsdPayment) {
+                    $billing->update([
+                        'total_paid'        => $totalPaid,
+                        'remaining_payment' => 0,
+                        'is_paid'           => false,
+                    ]);
+                } else {
+                    $remaining = $billing->grand_total - $totalIdrPaid;
+                    $billing->update([
+                        'total_paid'        => $totalPaid,
+                        'remaining_payment' => $remaining,
+                        'is_paid'           => $remaining <= 0,
+                    ]);
                 }
-
-                $remaining = $billing->grand_total - $totalPaid;
-
-                $billing->update([
-                    'total_paid' => $totalPaid,
-                    'remaining_payment' => $remaining,
-                    'is_paid' => $remaining <= 0,
-                ]);
             });
 
             return $this->responseSuccess($history->fresh(), 'History updated successfully', 200);

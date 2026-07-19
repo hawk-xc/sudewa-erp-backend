@@ -3,9 +3,12 @@
 namespace App\Http\Controllers\Transaction;
 
 use App\Http\Controllers\Controller;
+use App\Models\CashFlow;
+use App\Models\FinanceBilling;
+use App\Models\TransactionFlow;
 use App\Models\UnitTransaction;
 use App\Models\UnitTransactionBilling;
-use App\Models\FinanceBilling;
+use App\Traits\FileTrait;
 use App\Traits\GlobalCodeNumberTrait;
 use App\Traits\ResponseTrait;
 use Exception;
@@ -16,7 +19,7 @@ use Illuminate\Validation\ValidationException;
 
 class UnitTransactionBillingController extends Controller
 {
-    use ResponseTrait, GlobalCodeNumberTrait;
+    use FileTrait, ResponseTrait, GlobalCodeNumberTrait;
 
     protected array $unitTransactionBillingTable;
 
@@ -68,9 +71,19 @@ class UnitTransactionBillingController extends Controller
 
                 $item->total_cash_payment = $item->getTotalCashPayment();
                 $item->total_bca_cash_payment = $item->getTotalBcaCashPayment();
+                $item->total_usd_payment = $item->getTotalBcaUsdPayment();
                 $item->total_paid = $item->getTotalPaid();
-                $item->remaining_payment = $item->getRemainingPayment();
-                $item->remaining_payment_usd = $item->getRemainingPaymentUsd();
+
+                // Cek apakah ada pembayaran bca_usd
+                $hasUsdPayment = \DB::table('cash_unit_transaction_billing_history')
+                    ->join('unit_transaction_billing_histories', 'unit_transaction_billing_histories.id', '=', 'cash_unit_transaction_billing_history.unit_transaction_billing_history_id')
+                    ->join('cashes', 'cashes.id', '=', 'cash_unit_transaction_billing_history.cash_id')
+                    ->where('unit_transaction_billing_histories.unit_transaction_billing_id', $item->id)
+                    ->where('cashes.code', 'bca_usd')
+                    ->exists();
+
+                $item->remaining_payment = $hasUsdPayment ? 0 : $item->getRemainingPayment();
+                $item->usd_payment_set = $hasUsdPayment;
 
                 return $item;
             });
@@ -105,24 +118,27 @@ class UnitTransactionBillingController extends Controller
 
             $totalCash = $data->getTotalCashPayment();
             $totalBca = $data->getTotalBcaCashPayment();
-
             $totalUsd = $data->getTotalBcaUsdPayment();
+            $totalIdrPaid = $totalCash + $totalBca;
+            $totalPaid = $totalIdrPaid + $totalUsd;
 
-            $totalPaid = $totalCash + $totalBca + $data->getTotalBcaUsdPaymentInIdr();
+            // Cek apakah ada pembayaran bca_usd
+            $hasUsdPayment = \DB::table('cash_unit_transaction_billing_history')
+                ->join('unit_transaction_billing_histories', 'unit_transaction_billing_histories.id', '=', 'cash_unit_transaction_billing_history.unit_transaction_billing_history_id')
+                ->join('cashes', 'cashes.id', '=', 'cash_unit_transaction_billing_history.cash_id')
+                ->where('unit_transaction_billing_histories.unit_transaction_billing_id', $data->id)
+                ->where('cashes.code', 'bca_usd')
+                ->exists();
 
-            $remaining = $data->grand_total - $totalPaid;
-
+            $remaining = $hasUsdPayment ? 0 : ($data->grand_total - $totalIdrPaid);
             $totalPaymentCount = $histories->count();
 
             $data->total_cash_payment = $totalCash;
             $data->total_bca_payment = $totalBca;
-
+            $data->total_usd_payment = $totalUsd;
             $data->total_paid = $totalPaid;
             $data->remaining_payment = $remaining;
-            $data->remaining_payment_usd = $data->getRemainingPaymentUsd();
-
-            $data->total_usd_payment = $totalUsd;
-
+            $data->usd_payment_set = $hasUsdPayment;
             $data->total_payment_count = $totalPaymentCount;
 
             return $this->responseSuccess($data, 'Billing retrieved successfully', 200);
@@ -183,55 +199,136 @@ class UnitTransactionBillingController extends Controller
     public function update(Request $request, string $id)
     {
         try {
-            $billing = UnitTransactionBilling::with('unitTransaction')->findOrFail($id);
+            $billing = UnitTransactionBilling::with([
+                'unitTransaction.warehouse',
+                'unitTransaction.unitTransactionItems',
+                'financeBillings.cash',
+                'unitTransactionBillingHistories.cashes',
+            ])->findOrFail($id);
 
             $validated = $request->validate([
-                'amount' => 'required|numeric|min:1',
-                'payment_method' => 'required|in:cash,bca',
-                'payment_at' => 'nullable|date',
+                'grand_total'     => 'sometimes|numeric|min:1',
+                'last_payment_at' => 'sometimes|nullable|date',
+                'is_paid'         => 'sometimes|string',
             ]);
 
-            $amount = $validated['amount'];
+            $isPaidTrue = $request->filled('is_paid')
+                && ($validated['is_paid'] == 'true' || $validated['is_paid'] == '1');
 
-            $totalPaid = $billing->unitTransactionBillingHistories()->sum('amount');
+            if ($isPaidTrue) {
+                $validated['is_paid'] = true;
 
-            $newTotalPaid = $totalPaid + $amount;
+                $hasUsdHistory = DB::table('cash_unit_transaction_billing_history')
+                    ->join('unit_transaction_billing_histories', 'unit_transaction_billing_histories.id', '=', 'cash_unit_transaction_billing_history.unit_transaction_billing_history_id')
+                    ->join('cashes', 'cashes.id', '=', 'cash_unit_transaction_billing_history.cash_id')
+                    ->where('unit_transaction_billing_histories.unit_transaction_billing_id', $billing->id)
+                    ->where('cashes.code', 'bca_usd')
+                    ->exists();
 
-            if ($newTotalPaid > $billing->grand_total) {
-                throw ValidationException::withMessages([
-                    'amount' => 'Payment exceeds remaining amount.',
-                ]);
+                if (!$hasUsdHistory) {
+                    $totalIdrPaid = DB::table('cash_unit_transaction_billing_history')
+                        ->join('unit_transaction_billing_histories', 'unit_transaction_billing_histories.id', '=', 'cash_unit_transaction_billing_history.unit_transaction_billing_history_id')
+                        ->join('cashes', 'cashes.id', '=', 'cash_unit_transaction_billing_history.cash_id')
+                        ->where('unit_transaction_billing_histories.unit_transaction_billing_id', $billing->id)
+                        ->whereIn('cashes.code', ['cash_idr', 'bca_idr'])
+                        ->sum('cash_unit_transaction_billing_history.amount');
+
+                    if ($totalIdrPaid < $billing->grand_total) {
+                        throw ValidationException::withMessages([
+                            'is_paid' => 'Cannot mark as paid: payment is incomplete. Total IDR payment (' . number_format($totalIdrPaid) . ') is less than grand total (' . number_format($billing->grand_total) . ').',
+                        ]);
+                    }
+                }
             }
 
-            DB::transaction(function () use ($billing, $validated, $newTotalPaid) {
-                $billing->unitTransactionBillingHistories()->create([
-                    'amount' => $validated['amount'],
-                    'payment_method' => $validated['payment_method'],
-                    'payment_at' => $validated['payment_at'] ?? now(),
-                ]);
+            DB::transaction(function () use ($billing, $validated, $isPaidTrue) {
+                $billing->update($validated);
 
-                $remaining = $billing->grand_total - $newTotalPaid;
+                if ($isPaidTrue) {
+                    $unitTransaction = $billing->unitTransaction;
+                    $companyId       = $unitTransaction->warehouse->company_id;
+                    $cashFlowType    = $unitTransaction->type === 'purchase' ? 'credit' : 'debet';
 
-                $billing->update([
-                    'total_paid' => $newTotalPaid,
-                    'remaining_payment' => $remaining,
-                    'is_paid' => $remaining <= 0,
-                    'last_payment_at' => now(),
-                ]);
+                    $financeBillings = $billing->financeBillings;
 
-                if ($remaining <= 0) {
-                    $billing->unitTransaction->update([
-                        'stock_state' => 'inbound_purcase_order',
-                    ]);
+                    $totalBca    = 0;
+                    $totalCash   = 0;
+                    $totalBcaUsd = 0;
+
+                    if ($financeBillings->isNotEmpty()) {
+                        $totalBca    = (int) $financeBillings->filter(fn($i) => $i->cash && $i->cash->code === 'bca_idr')->sum('amount');
+                        $totalCash   = (int) $financeBillings->filter(fn($i) => $i->cash && $i->cash->code === 'cash_idr')->sum('amount');
+                        $totalBcaUsd = (int) $financeBillings->filter(fn($i) => $i->cash && $i->cash->code === 'bca_usd')->sum('amount_original');
+                    }
+
+                    if ($totalBca == 0 && $totalCash == 0 && $totalBcaUsd == 0) {
+                        $totalBca    = (int) $billing->getTotalBcaCashPayment();
+                        $totalCash   = (int) $billing->getTotalCashPayment();
+                        $totalBcaUsd = (int) $billing->getTotalBcaUsdPayment();
+                    }
+
+                    $totalBcaUsdInIdr = (int) $billing->getTotalBcaUsdPaymentInIdr();
+
+                    $createdCashFlowIds = [];
+
+                    $cf = CashFlow::updateOrCreate(
+                        ['unit_transaction_billing_id' => $billing->id],
+                        [
+                            'company_id'      => $companyId,
+                            'code'            => $unitTransaction->code . '-payment',
+                            'date'            => $billing->last_payment_at ?? now(),
+                            'cash_flow_type'  => $cashFlowType,
+                            'note'            => 'Pelunasan Total ' . $unitTransaction->code,
+                            'debet'           => $unitTransaction->type === 'sales' ? $billing->grand_total : 0,
+                            'debet_original'  => $unitTransaction->type === 'sales' ? $billing->grand_total : 0,
+                            'credit'          => $unitTransaction->type === 'purchase' ? $billing->grand_total : 0,
+                            'credit_original' => $unitTransaction->type === 'purchase' ? $billing->grand_total : 0,
+                        ]
+                    );
+                    $createdCashFlowIds[] = $cf->id;
+
+                    $cf->updateValidity();
+
+                    CashFlow::where('unit_transaction_billing_id', $billing->id)
+                        ->whereNotIn('id', $createdCashFlowIds)
+                        ->delete();
+
+                    $itemDetails = $unitTransaction->unitTransactionItems->map(function ($item) {
+                        $name = $item->unitType?->name ?? $item->sparepart?->name ?? 'Unknown';
+                        return "{$item->qty_total} {$name}";
+                    })->implode(', ');
+
+                    $itemCount            = $unitTransaction->unitTransactionItems->count();
+                    $transactionTypeLabel = $unitTransaction->type === 'sales' ? 'Penjualan' : 'Pembelian';
+                    $prefixLabel          = $unitTransaction->type === 'sales' ? 'diterima' : 'dibayar';
+
+                    $unitTransaction->update(['stock_state' => 'inbound_incoming_goods']);
+
+                    TransactionFlow::updateOrCreate(
+                        ['unit_transaction_id' => $unitTransaction->id],
+                        [
+                            'company_id'               => $companyId,
+                            'code'                     => $unitTransaction->code,
+                            'transaction_date'         => now(),
+                            'unit_transaction_id'      => $unitTransaction->id,
+                            'name'                     => $unitTransaction->person->name ?? null,
+                            'description'              => "{$transactionTypeLabel} {$prefixLabel} dimuka ke-{$itemCount} unit spm: {$itemDetails}",
+                            'bank_usd_debit'           => $unitTransaction->type === 'sales' ? $totalBcaUsd : 0,
+                            'bank_usd_debit_original'  => $unitTransaction->type === 'sales' ? $totalBcaUsdInIdr : 0,
+                            'bank_idr_debit'           => $unitTransaction->type === 'sales' ? $totalBca : 0,
+                            'cash_idr_debit'           => $unitTransaction->type === 'sales' ? $totalCash : 0,
+                            'bank_idr_credit'          => $unitTransaction->type === 'purchase' ? $totalBca : 0,
+                            'bank_usd_credit'          => $unitTransaction->type === 'purchase' ? $totalBcaUsd : 0,
+                            'bank_usd_credit_original' => $unitTransaction->type === 'purchase' ? $totalBcaUsdInIdr : 0,
+                            'cash_idr_credit'          => $unitTransaction->type === 'purchase' ? $totalCash : 0,
+                        ]
+                    );
                 }
             });
 
-            $billingFresh = $billing->fresh('unitTransactionBillingHistories');
-            $billingFresh->remaining_payment = $billingFresh->getRemainingPayment();
-
             return $this->responseSuccess(
-                $billingFresh,
-                'Payment added successfully',
+                $billing->fresh(),
+                'Billing updated successfully',
                 200
             );
         } catch (ValidationException $err) {
@@ -250,9 +347,42 @@ class UnitTransactionBillingController extends Controller
     public function destroy(string $id)
     {
         try {
-            $billing = UnitTransactionBilling::findOrFail($id);
+            $billing = UnitTransactionBilling::with([
+                'cashFlow.financeBillings.cash',
+            ])->findOrFail($id);
 
-            DB::transaction(fn() => $billing->delete());
+            DB::transaction(function () use ($billing) {
+                $cashFlow = $billing->cashFlow;
+
+                // Hapus CashFlow terkait dan adjust balik nominal kas
+                if ($cashFlow) {
+                    if ($cashFlow->is_paid) {
+                        $type        = $cashFlow->cash_flow_type;
+                        $reverseType = $type === 'debet' ? 'credit' : 'debet';
+
+                        $financeBillings = $cashFlow->financeBillings;
+                        if ($financeBillings->isNotEmpty()) {
+                            $companyId = $cashFlow->company_id;
+                            foreach ($financeBillings as $item) {
+                                $cash   = $item->cash;
+                                $amount = (float) $item->amount;
+
+                                if ($cash && $cash->company_id === $companyId && $amount > 0) {
+                                    $cash->adjustAmount($amount, $reverseType);
+                                }
+                            }
+                        }
+                    }
+
+                    if ($cashFlow->payment_proof) {
+                        $this->destroyFile('cash_flow_proof/' . $cashFlow->payment_proof);
+                    }
+
+                    $cashFlow->delete();
+                }
+
+                $billing->delete();
+            });
 
             return $this->responseSuccess($billing, 'Billing deleted successfully', 200);
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $err) {

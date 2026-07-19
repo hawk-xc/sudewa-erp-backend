@@ -91,18 +91,28 @@ class FinanceBillingController extends Controller
 
             $data = $query->paginate($request->per_page ?? 10);
 
-            $currencyService = app(CurrencyService::class);
-            $exchangeRate = (int) $currencyService->convertUsdToIdr('1');
-
-            $data->getCollection()->transform(function ($item) use ($exchangeRate) {
+            $data->getCollection()->transform(function ($item) {
                 $cashFlow = $item->cashFlow;
+                $unitTransactionBilling = $cashFlow?->unitTransactionBilling;
 
                 $grandTotal = $cashFlow ? ($cashFlow->debet > 0 ? $cashFlow->debet : $cashFlow->credit) : 0;
-                $totalPaid = $cashFlow ? FinanceBilling::where('cash_flow_id', $cashFlow->id)->sum('amount_original') : 0;
-                $remaining = $grandTotal - $totalPaid;
 
-                $item->remaining_payment = $remaining;
-                $item->remaining_payment_usd = $exchangeRate > 0 ? round($remaining / $exchangeRate, 2) : 0.0;
+                // Cek apakah billing ini memiliki pembayaran bca_usd
+                $hasUsdPayment = $unitTransactionBilling
+                    ? DB::table('cash_unit_transaction_billing_history')
+                    ->join('unit_transaction_billing_histories', 'unit_transaction_billing_histories.id', '=', 'cash_unit_transaction_billing_history.unit_transaction_billing_history_id')
+                    ->join('cashes', 'cashes.id', '=', 'cash_unit_transaction_billing_history.cash_id')
+                    ->where('unit_transaction_billing_histories.unit_transaction_billing_id', $unitTransactionBilling->id)
+                    ->where('cashes.code', 'bca_usd')
+                    ->exists()
+                    : false;
+
+                if ($hasUsdPayment) {
+                    $item->remaining_payment = 0;
+                } else {
+                    $totalPaid = $cashFlow ? FinanceBilling::where('cash_flow_id', $cashFlow->id)->sum('amount_original') : 0;
+                    $item->remaining_payment = $grandTotal - $totalPaid;
+                }
 
                 return $item;
             });
@@ -129,13 +139,9 @@ class FinanceBillingController extends Controller
                 })
                 ->get();
 
-            $currencyService = app(CurrencyService::class);
-            $exchangeRate = (int) $currencyService->convertUsdToIdr('1');
-
             $totalPaid = $payments->sum('amount_original');
             $cashFlow = CashFlow::where('unit_transaction_billing_id', $id)->first();
             $grandTotal = $cashFlow ? ($cashFlow->debet > 0 ? $cashFlow->debet : $cashFlow->credit) : 0;
-            $remaining = $grandTotal - $totalPaid;
 
             $totalBca = $payments->filter(function ($item) {
                 return $item->cash && $item->cash->code === 'bca_idr';
@@ -153,6 +159,18 @@ class FinanceBillingController extends Controller
                 return $item->cash && $item->cash->code === 'bca_usd';
             })->sum('amount_original');
 
+            // Cek apakah ada pembayaran bca_usd pada billing ini
+            $hasUsdPayment = $payments->contains(function ($item) {
+                return $item->cash && $item->cash->code === 'bca_usd';
+            });
+
+            // remaining hanya dari IDR; jika ada USD maka 0
+            $totalIdrPaid = $payments->filter(function ($item) {
+                return $item->cash && in_array($item->cash->code, ['bca_idr', 'cash_idr']);
+            })->sum('amount_original');
+
+            $remaining = $hasUsdPayment ? 0 : ($grandTotal - $totalIdrPaid);
+
             $data = new \stdClass();
             $data->id = $billing->id;
             $data->uuid = $billing->uuid;
@@ -167,7 +185,7 @@ class FinanceBillingController extends Controller
             $data->total_usd_payment_original = $totalUsdOriginal;
             $data->total_paid = $totalPaid;
             $data->remaining_payment = $remaining;
-            $data->remaining_payment_usd = $exchangeRate > 0 ? round($remaining / $exchangeRate, 2) : 0.0;
+            $data->usd_payment_set = $hasUsdPayment;
             $data->total_payment_count = $payments->count();
 
             return $this->responseSuccess($data, 'Finance Billing retrieved successfully', 200);
@@ -221,13 +239,8 @@ class FinanceBillingController extends Controller
             $cash = Cash::findOrFail($validated['cash_id']);
             $amount = (float) $validated['amount'];
 
-            if (str_contains(strtolower($cash->code), 'usd')) {
-                $currencyService = app(CurrencyService::class);
-                $exchangeRate = (int) $currencyService->convertUsdToIdr('1');
-                $amountOriginal = $this->calculateDecimalAmount($amount * $exchangeRate);
-            } else {
-                $amountOriginal = $this->calculateDecimalAmount($amount);
-            }
+            // USD diinput secara manual dalam IDR, tidak perlu konversi via API
+            $amountOriginal = $this->calculateDecimalAmount($amount);
             $validated['amount_original'] = $amountOriginal;
             $validated['amount'] = $amount;
             $validated['cash_flow_id'] = $cashFlow->id;
@@ -288,13 +301,17 @@ class FinanceBillingController extends Controller
                 return $item;
             });
 
-            $currencyService = app(CurrencyService::class);
-            $exchangeRate = (int) $currencyService->convertUsdToIdr('1');
+            $cashFlow->refresh();
+
+            $cashFlow->load('financeBillings.cash');
+            $hasUsdPayment = $cashFlow->financeBillings->contains(function ($fb) {
+                return $fb->cash?->code === 'bca_usd';
+            });
 
             $itemArray = $item->toArray();
-            $itemArray['remaining_payment'] = $cashFlow->remaining_payment;
-            $itemArray['remaining_payment_usd'] = $exchangeRate > 0 ? round($cashFlow->remaining_payment / $exchangeRate, 2) : 0.0;
+            $itemArray['remaining_payment'] = $hasUsdPayment ? 0 : $cashFlow->remaining_payment;
             $itemArray['is_paid'] = $cashFlow->remaining_payment == 0;
+            $itemArray['usd_payment_set'] = $hasUsdPayment;
 
             return $this->responseSuccess($itemArray, 'Finance Billing created successfully', 201);
         } catch (ValidationException $e) {
@@ -392,12 +409,19 @@ class FinanceBillingController extends Controller
             $itemFresh = $item->fresh();
             $cashFlow = $itemFresh->cashFlow;
 
-            $currencyService = app(CurrencyService::class);
-            $exchangeRate = (int) $currencyService->convertUsdToIdr('1');
+            // Cek apakah billing memiliki pembayaran bca_usd
+            if ($cashFlow) {
+                $cashFlow->load('financeBillings.cash');
+            }
+            $hasUsdPayment = $cashFlow
+                ? $cashFlow->financeBillings->contains(function ($fb) {
+                    return $fb->cash?->code === 'bca_usd';
+                })
+                : false;
 
             $itemArray = $itemFresh->toArray();
-            $itemArray['remaining_payment'] = $cashFlow ? $cashFlow->remaining_payment : 0;
-            $itemArray['remaining_payment_usd'] = $cashFlow && $exchangeRate > 0 ? round($cashFlow->remaining_payment / $exchangeRate, 2) : 0.0;
+            $itemArray['remaining_payment'] = $hasUsdPayment ? 0 : ($cashFlow ? $cashFlow->remaining_payment : 0);
+            $itemArray['usd_payment_set'] = $hasUsdPayment;
 
             return $this->responseSuccess($itemArray, 'Finance Billing updated successfully', 200);
         } catch (ValidationException $e) {

@@ -112,7 +112,6 @@ class DailyCashFlowController extends Controller
                 }
 
                 $item->grand_total = $grandTotal;
-                $item->remaining_payment_usd = $exchangeRate > 0 ? round($item->remaining_payment / $exchangeRate, 2) : 0.0;
 
                 return $item;
             });
@@ -176,7 +175,6 @@ class DailyCashFlowController extends Controller
 
             $cashFlow->grand_total = $grandTotal;
             $cashFlow->remaining_payment = $remainingPayment;
-            $cashFlow->remaining_payment_usd = $exchangeRate > 0 ? round($remainingPayment / $exchangeRate, 2) : 0.0;
 
             return $this->responseSuccess($cashFlow, 'Cash Flow data retrieved successfully', 200);
         } catch (Exception $err) {
