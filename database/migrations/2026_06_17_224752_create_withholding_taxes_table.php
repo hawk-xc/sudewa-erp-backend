@@ -18,10 +18,10 @@ return new class extends Migration
             $table->foreignId('cash_id')->nullable(false)->constrained('cashes')->onDelete('cascade');
             $table->foreignId('unit_transaction_id')->nullable(true)->constrained('unit_transactions')->onDelete('cascade');
             $table->foreignId('bbn_bill_id')->nullable(true)->constrained('bbn_bills')->onDelete('cascade');
-            $table->foreignId('do_invoice_id')->nullable(true)->constrained('do_invoices')->onDelete('cascade');
+            $table->string('no_invoice')->nullable(true);
             $table->string('withholding_number')->unique(true)->nullable(false);
-            $table->integer('withholding_age')->nullable(false);
-            $table->bigInteger('pph_amount')->nullable(false);
+            $table->integer('withholding_age')->nullable(false)->default(0);
+            $table->bigInteger('pph_amount')->nullable(false)->default(0);
             $table->string('pph_description')->nullable(true);
             $table->bigInteger('payment_amount')->nullable(false)->default(0);
             $table->date('payment_date')->default(now())->nullable(false);

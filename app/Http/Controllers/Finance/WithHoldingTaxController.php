@@ -23,10 +23,10 @@ class WithHoldingTaxController extends Controller
 
     public function __construct()
     {
-        $this->middleware(['permission:finance:list'])->only(['index', 'show']);
-        $this->middleware(['permission:finance:create'])->only('store');
-        $this->middleware(['permission:finance:edit'])->only('update');
-        $this->middleware(['permission:finance:delete'])->only(['destroy']);
+        $this->middleware(['permission:transaction:list'])->only(['index', 'show']);
+        $this->middleware(['permission:transaction:create'])->only('store');
+        $this->middleware(['permission:transaction:edit'])->only('update');
+        $this->middleware(['permission:transaction:delete'])->only(['destroy']);
 
         $this->withholdingTaxTable = [
             'id',
@@ -35,7 +35,7 @@ class WithHoldingTaxController extends Controller
             'cash_id',
             'unit_transaction_id',
             'bbn_bill_id',
-            'do_invoice_id',
+            'no_invoice',
             'withholding_number',
             'withholding_age',
             'pph_amount',
@@ -56,8 +56,7 @@ class WithHoldingTaxController extends Controller
             'company:id,name,slug',
             'cash:id,uuid,company_id,code,cash_name,type',
             'unitTransaction:id,uuid,warehouse_id,code,type',
-            'bbnBill',
-            'doInvoice:id,uuid,code,customer_id,date'
+            'bbnBill'
         ]);
 
         try {
@@ -100,20 +99,6 @@ class WithHoldingTaxController extends Controller
      */
     public function store(Request $request)
     {
-        $filledRelations = collect([
-            $request->unit_transaction_id,
-            $request->bbn_bill_id,
-            $request->do_invoice_id,
-        ])->filter();
-
-        if ($filledRelations->count() !== 1) {
-            throw ValidationException::withMessages([
-                'unit_transaction_id' => ['Exactly one of unit_transaction_id, bbn_bill_id, or do_invoice_id must be provided.'],
-                'bbn_bill_id' => ['Exactly one of unit_transaction_id, bbn_bill_id, or do_invoice_id must be provided.'],
-                'do_invoice_id' => ['Exactly one of unit_transaction_id, bbn_bill_id, or do_invoice_id must be provided.'],
-            ]);
-        }
-
         $validated = $request->validate([
             'source' => 'required|in:internal,external',
             'cash_id' => [
@@ -132,17 +117,12 @@ class WithHoldingTaxController extends Controller
                         $request['company_id'] = 3;
                         return 3;
                     }
-                    if ($request->filled('do_invoice_id')) {
-                        $request['company_id'] = 4;
-
-                        return 4;
-                    }
                     return null;
                 }),
             ],
             'unit_transaction_id' => 'nullable|exists:unit_transactions,id|unique:withholding_taxes,unit_transaction_id',
             'bbn_bill_id' => 'nullable|exists:bbn_bills,id|unique:withholding_taxes,bbn_bill_id',
-            'do_invoice_id' => 'nullable|exists:do_invoices,id|unique:withholding_taxes,do_invoice_id',
+            'no_invoice' => 'nullable|string|max:255',
             'withholding_number' => 'required|string|max:100|unique:withholding_taxes,withholding_number',
             'withholding_age' => 'required|integer',
             'pph_amount' => 'required|numeric|min:0',
@@ -178,7 +158,7 @@ class WithHoldingTaxController extends Controller
     public function show(string $id)
     {
         try {
-            $withholdingTax = WithholdingTax::with(['cash', 'unitTransaction', 'bbnBill', 'doInvoice'])->findOrFail($id);
+            $withholdingTax = WithholdingTax::with(['cash', 'unitTransaction', 'bbnBill'])->findOrFail($id);
             return $this->responseSuccess($withholdingTax, 'Withholding Tax retrieved successfully');
         } catch (ModelNotFoundException $err) {
             return $this->responseError(null, 'Withholding Tax not found', 404);
@@ -205,7 +185,6 @@ class WithHoldingTaxController extends Controller
                     new RightCashRule(function () use ($request, $withholdingTax) {
                         $unitTransactionId = $request->has('unit_transaction_id') ? $request->unit_transaction_id : $withholdingTax->unit_transaction_id;
                         $bbnBillId = $request->has('bbn_bill_id') ? $request->bbn_bill_id : $withholdingTax->bbn_bill_id;
-                        $doInvoiceId = $request->has('do_invoice_id') ? $request->do_invoice_id : $withholdingTax->do_invoice_id;
 
                         if (!empty($unitTransactionId)) {
                             return [1, 2, 3];
@@ -213,15 +192,11 @@ class WithHoldingTaxController extends Controller
                         if (!empty($bbnBillId)) {
                             return 3;
                         }
-                        if (!empty($doInvoiceId)) {
-                            return 4;
-                        }
                         return null;
                     }),
                 ],
                 'unit_transaction_id' => 'nullable|exists:unit_transactions,id|unique:withholding_taxes,unit_transaction_id,' . $id,
                 'bbn_bill_id' => 'nullable|exists:bbn_bills,id|unique:withholding_taxes,bbn_bill_id,' . $id,
-                'do_invoice_id' => 'nullable|exists:do_invoices,id|unique:withholding_taxes,do_invoice_id,' . $id,
                 'withholding_number' => 'sometimes|required|string|max:100|unique:withholding_taxes,withholding_number,' . $id,
                 'withholding_age' => 'sometimes|required|integer',
                 'pph_amount' => 'sometimes|required|numeric|min:0',

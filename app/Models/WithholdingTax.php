@@ -18,7 +18,7 @@ class WithholdingTax extends Model
         'cash_id',
         'unit_transaction_id',
         'bbn_bill_id',
-        'do_invoice_id',
+        'no_invoice',
         'withholding_number',
         'withholding_age',
         'pph_amount',
@@ -32,7 +32,7 @@ class WithholdingTax extends Model
         'cash_id' => 'integer',
         'unit_transaction_id' => 'integer',
         'bbn_bill_id' => 'integer',
-        'do_invoice_id' => 'integer',
+        'no_invoice' => 'string',
         'withholding_age' => 'integer',
         'pph_amount' => 'integer',
         'payment_amount' => 'integer',
@@ -69,13 +69,5 @@ class WithholdingTax extends Model
     public function bbnBill(): BelongsTo
     {
         return $this->belongsTo(BBNBill::class);
-    }
-
-    /**
-     * Get the DO invoice associated with the withholding tax.
-     */
-    public function doInvoice(): BelongsTo
-    {
-        return $this->belongsTo(DOInvoice::class);
     }
 }
