@@ -2,18 +2,19 @@
 
 namespace App\Http\Controllers\Finance;
 
-use App\Http\Controllers\Controller;
-use App\Models\Cash;
-use App\Models\UnitTransaction;
-use App\Models\WithholdingTax;
-use App\Rules\RightCashRule;
-use App\Traits\ResponseTrait;
 use Exception;
-use Illuminate\Database\Eloquent\ModelNotFoundException;
+use App\Models\Cash;
+use App\Models\BBNBill;
+use App\Rules\RightCashRule;
 use Illuminate\Http\Request;
+use App\Traits\ResponseTrait;
+use App\Models\WithholdingTax;
+use App\Models\UnitTransaction;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use App\Http\Controllers\Controller;
 use Illuminate\Validation\ValidationException;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 
 class WithHoldingTaxController extends Controller
 {
@@ -70,7 +71,7 @@ class WithHoldingTaxController extends Controller
                 $search = $request->search;
                 $query->where(function ($q) use ($search) {
                     $q->where('withholding_number', 'like', "%$search%")
-                      ->orWhere('pph_description', 'like', "%$search%");
+                        ->orWhere('pph_description', 'like', "%$search%");
                 });
             }
 
@@ -101,6 +102,7 @@ class WithHoldingTaxController extends Controller
     {
         $validated = $request->validate([
             'source' => 'required|in:internal,external',
+            'company_id' => 'required|exists:companies,id',
             'cash_id' => [
                 'required',
                 'exists:cashes,id',
@@ -114,7 +116,10 @@ class WithHoldingTaxController extends Controller
                         return null;
                     }
                     if ($request->filled('bbn_bill_id')) {
-                        $request['company_id'] = 3;
+                        $bbnBill = BBNBill::find($request->bbn_bill_id);
+                        if ($bbnBill && $bbnBill->branch && $bbnBill->branch->company) {
+                            $request['company_id'] = $bbnBill->branch->company->id;
+                        }
                         return 3;
                     }
                     return null;

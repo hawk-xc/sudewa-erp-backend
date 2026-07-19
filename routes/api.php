@@ -236,7 +236,7 @@ Route::group(
             Route::get('goods-transaction-stock-material-issue', [GoodsTransactionStockController::class, 'issueMaterial']);
         });
 
-        // Transaction API
+        // Transaction/Administration API
         Route::group(['prefix' => 'transaction', 'as' => 'transaction.'], function () {
             Route::apiResource('transaction-flow', TransactionFlowController::class);
 
@@ -308,6 +308,9 @@ Route::group(
             Route::apiResource('bbn-bill', BBNBillController::class);
             Route::apiResource('bbn-bill-billing', BBNBillBillingController::class);
             Route::apiResource('bbn-bill-billing-item', BBNBillBillingItemController::class);
+
+            // Withholding Tax
+            Route::apiResource('withholding-tax', WithHoldingTaxController::class);
         });
 
         // Finance
@@ -342,9 +345,6 @@ Route::group(
             Route::get('bbn-billing', [FinanceBBNBillController::class, 'index']);
             Route::get('bbn-billing/{id}', [FinanceBBNBillController::class, 'show']);
             Route::put('bbn-billing/{id}', [FinanceBBNBillController::class, 'update']);
-
-            // Withholding Tax
-            Route::apiResource('withholding-tax', WithHoldingTaxController::class);
         });
 
         // Report Data
