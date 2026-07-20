@@ -161,6 +161,8 @@ class UnitTransactionController extends Controller
                 'unitTransactionItems.unitTypeSoldDetails',
                 'unitTransactionItems.dppTax:id,tax_id',
                 'unitTransactionItems.dppTax.tax:id,name,code',
+                'unitTransactionItems.ppnTax:id,tax_id',
+                'unitTransactionItems.ppnTax.tax:id,name,code',
             ])
                 ->select($this->unitTransactionTable)
                 ->findOrFail($id);
