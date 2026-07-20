@@ -71,8 +71,10 @@ class UnitTransactionItemController extends Controller
             $query->select($this->unitTransactionItemTable)
                 ->with([
                     'unitTransaction:id,uuid,code,warehouse_id',
-                    'dppTax:id,code,name,rate',
-                    'ppnTax:id,code,name,rate',
+                    'dppTax:id,tax_id,name,rate',
+                    'dppTax.tax:id,code,name',
+                    'ppnTax:id,tax_id,name,rate',
+                    'ppnTax.tax:id,code,name',
                 ]);
 
             if ($request->filled('search')) {
