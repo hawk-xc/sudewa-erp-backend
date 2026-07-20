@@ -392,6 +392,8 @@ Route::group(
 
         // Settings
         Route::group(['prefix' => 'settings', 'as' => 'settings.'], function () {
+            Route::get('tax/{code}/default', [TaxController::class, 'getDefault']);
+            
             Route::apiResource('tax', TaxController::class);
             Route::apiResource('tax-version', TaxVersionController::class);
         });

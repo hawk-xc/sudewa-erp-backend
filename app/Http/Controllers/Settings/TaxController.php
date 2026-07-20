@@ -107,7 +107,13 @@ class TaxController extends Controller
 
     public function getDefault(string $code)
     {
-        $taxCode = Tax::where('code', $code)->first()->taxVersion->where('is_default', 1)->latest()->first();
+        try {
+            $taxCode = Tax::where('code', $code)->first()->getDefault();
+
+            return $this->responseSuccess($taxCode, 'Successfully get Tax version data');
+        } catch (Exception $err) {
+            return $this->responseError($err->getMessage(), 'Failed get Tax version default data on this Tax data');
+        }
     }
 
     /**
