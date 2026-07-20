@@ -6,6 +6,7 @@ use App\Exports\UnitTransactionUnitTypeStockExport;
 use App\Http\Controllers\Controller;
 use App\Models\Company;
 use App\Models\Person;
+use App\Models\Tax;
 use App\Models\UnitTransaction;
 use App\Models\UnitTransactionItem;
 use App\Models\UnitTransactionItemDetail;
@@ -239,9 +240,12 @@ class UnitTransactionController extends Controller
                 'qty_total' => 'required_with:unit_type_id,sparepart_id|integer|min:1',
                 'price' => 'required_with:unit_type_id,sparepart_id|numeric',
                 'bbn_price' => 'nullable|numeric',
+                'expedition_fee' => 'nullable|numeric',
                 'other_fee' => 'nullable|numeric',
                 'price_usd' => 'nullable|numeric',
                 'price_per_unit_usd' => 'nullable|numeric',
+                'dpp_tax_id' => 'nullable|integer|exists:taxes,id',
+                'ppn_tax_id' => 'nullable|integer|exists:taxes,id',
             ]);
 
             if ($request->filled('unit_type_id') && $request->filled('sparepart_id')) {
@@ -305,13 +309,52 @@ class UnitTransactionController extends Controller
                         }
                     }
 
+                    if ($request->filled('dpp_tax_id')) {
+                        $taxDefault = $this->resolveTax('dpp', $request->dpp_tax_id);
+
+                        $dppTaxRate = $taxDefault['rate'];
+                        $dppTaxId = $taxDefault['id'];
+                    } else {
+                        $taxDefault = $this->resolveTax('dpp', null);
+
+                        $dppTaxId = $taxDefault['id'];
+                        $dppTaxRate = $taxDefault['rate'];
+                    }
+
+                    if ($request->filled('ppn_tax_id')) {
+                        $taxDefault = $this->resolveTax('ppn', $request->ppn_tax_id);
+
+                        $ppnTaxRate = $taxDefault['rate'];
+                        $ppnTaxId = $taxDefault['id'];
+                    } else {
+                        $taxDefault = $this->resolveTax('ppn', null);
+
+                        $ppnTaxId = $taxDefault['id'];
+                        $ppnTaxRate = $taxDefault['rate'];
+                    }
+
                     $additional_fee =
                         ($request->bbn_price ?? 0) +
+                        ($request->expedition_fee ?? 0) +
                         ($request->other_fee ?? 0);
-                    $hpp = (int)$request->price - (int)$additional_fee;
-                    $dpp = $this->calculateDecimalAmount($hpp / 1.11);
-                    $ppn = $this->calculateDecimalAmount($dpp * 0.11);
 
+                    $hpp = $request->price - $additional_fee;
+
+                    $hpp = $this->calculateDecimalAmount($hpp);
+
+                    $dpp = $dppTaxRate > 0 ? ($hpp / ($dppTaxRate / 100)) : 0;
+                    $ppn = $dpp * ($ppnTaxRate / 100);
+
+                    $hppPerUnitPrice = $this->calculateDecimalAmount($hpp);
+                    $dppPerUnitPrice = $this->calculateDecimalAmount($dpp);
+                    $ppnPerUnitPrice = $this->calculateDecimalAmount($ppn);
+
+                    $hppTotalPrice = $this->calculateDecimalAmount($hpp * $request->qty_total);
+                    $dppTotalPrice = $this->calculateDecimalAmount($dpp * $request->qty_total);
+                    $ppnTotalPrice = $this->calculateDecimalAmount($ppn * $request->qty_total);
+
+                    $pricePerUnitUsd = $request->price_per_unit_usd ?? 0;
+                    $priceUsd = $request->price_usd ?? ($pricePerUnitUsd * $request->qty_total);
 
                     UnitTransactionItem::create([
                         'unit_transaction_id' => $unitTransaction->id,
@@ -320,19 +363,24 @@ class UnitTransactionController extends Controller
                         'qty_total' => $request->qty_total,
                         'price' => $request->price,
                         'bbn_price' => $request->bbn_price ?? 0,
-                        'other_fee' => $request->other_fee ?? 0,
                         'expedition_fee' => $request->expedition_fee ?? 0,
+                        'other_fee' => $request->other_fee ?? 0,
 
-                        'hpp_per_unit_price' => $hpp,
-                        'dpp_per_unit_price' => $dpp,
-                        'ppn_per_unit_price' => $ppn,
+                        'dpp_tax_id' => $dppTaxId,
+                        'dpp_tax_rate' => $dppTaxRate,
+                        'ppn_tax_id' => $ppnTaxId,
+                        'ppn_tax_rate' => $ppnTaxRate,
 
-                        'hpp_total_price' => $hpp * $request->qty_total,
-                        'dpp_total_price' => $dpp * $request->qty_total,
-                        'ppn_total_price' => $ppn * $request->qty_total,
+                        'hpp_per_unit_price' => $hppPerUnitPrice,
+                        'dpp_per_unit_price' => $dppPerUnitPrice,
+                        'ppn_per_unit_price' => $ppnPerUnitPrice,
 
-                        'price_usd' => $request->price_usd,
-                        'price_per_unit_usd' => $request->price_per_unit_usd,
+                        'hpp_total_price' => $hppTotalPrice,
+                        'dpp_total_price' => $dppTotalPrice,
+                        'ppn_total_price' => $ppnTotalPrice,
+
+                        'price_per_unit_usd' => $pricePerUnitUsd,
+                        'price_usd' => $priceUsd,
                     ]);
                 }
 
@@ -907,5 +955,21 @@ class UnitTransactionController extends Controller
 
             return $this->responseError($err->getMessage(), 'Search failed', 500);
         }
+    }
+
+    private function resolveTax(string $code, ?int $id): array
+    {
+        if ($id) {
+            $tax = Tax::findOrFail($id);
+        } else {
+            $tax = Tax::where('code', $code)->firstOrFail();
+        }
+
+        $version = $tax->getDefault();
+
+        return [
+            'id' => $tax->id,
+            'rate' => $version->rate,
+        ];
     }
 }

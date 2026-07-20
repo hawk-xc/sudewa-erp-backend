@@ -167,17 +167,23 @@ class UnitTransactionItemController extends Controller
             ]);
 
             if ($request->filled('dpp_tax_id')) {
-                $validated['dpp_tax_rate'] = $this->resolveTax('dpp', $request->dpp_tax_id)['rate'];
+                $taxDefault = $this->resolveTax('dpp', $request->dpp_tax_id);
+                
+                $validated['dpp_tax_rate'] = $taxDefault['rate'];
             } else {
                 $taxDefault = $this->resolveTax('dpp', null);
+
                 $validated['dpp_tax_id'] = $taxDefault['id'];
                 $validated['dpp_tax_rate'] = $taxDefault['rate'];
             }
 
             if ($request->filled('ppn_tax_id')) {
-                $validated['ppn_tax_rate'] = $this->resolveTax('ppn', $request->ppn_tax_id)['rate'];
+                $taxDefault = $this->resolveTax('ppn', $request->ppn_tax_id);
+
+                $validated['ppn_tax_rate'] = $taxDefault['rate'];
             } else {
                 $taxDefault = $this->resolveTax('ppn', null);
+
                 $validated['ppn_tax_id'] = $taxDefault['id'];
                 $validated['ppn_tax_rate'] = $taxDefault['rate'];
             }
