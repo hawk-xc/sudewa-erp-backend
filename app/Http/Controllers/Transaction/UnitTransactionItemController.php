@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Transaction;
 
 use App\Http\Controllers\Controller;
+use App\Models\Tax;
 use App\Models\UnitTransaction;
 use App\Models\UnitTransactionItem;
 use App\Models\UnitType;
@@ -48,7 +49,10 @@ class UnitTransactionItemController extends Controller
             'ppn_total_price',
             'expedition_fee',
             'other_fee',
-            'ppn_percentage',
+            'dpp_tax_id',
+            'dpp_tax_rate',
+            'ppn_tax_id',
+            'ppn_tax_rate',
             'created_at',
             'updated_at',
         ];
@@ -67,6 +71,8 @@ class UnitTransactionItemController extends Controller
             $query->select($this->unitTransactionItemTable)
                 ->with([
                     'unitTransaction:id,uuid,code,warehouse_id',
+                    'dppTax:id,code,name,rate',
+                    'ppnTax:id,code,name,rate',
                 ]);
 
             if ($request->filled('search')) {
@@ -124,6 +130,8 @@ class UnitTransactionItemController extends Controller
                 'unitTransaction',
                 'unitTransactionItemDetails',
                 'unitTransactionItemSales',
+                'dppTax',
+                'ppnTax',
             ])->select($this->unitTransactionItemTable)->findOrFail($id);
 
             return $this->responseSuccess($item, 'Unit Transaction Item retrieved successfully', 200);
@@ -154,7 +162,25 @@ class UnitTransactionItemController extends Controller
                 'ppn_per_unit_price' => 'nullable|numeric',
                 'expedition_fee' => 'nullable|numeric',
                 'other_fee' => 'nullable|numeric',
+                'dpp_tax_id' => 'nullable|integer|exists:taxes,id',
+                'ppn_tax_id' => 'nullable|integer|exists:taxes,id',
             ]);
+
+            if ($request->filled('dpp_tax_id')) {
+                $validated['dpp_tax_rate'] = $this->resolveTax('dpp', $request->dpp_tax_id)['rate'];
+            } else {
+                $taxDefault = $this->resolveTax('dpp', null);
+                $validated['dpp_tax_id'] = $taxDefault['id'];
+                $validated['dpp_tax_rate'] = $taxDefault['rate'];
+            }
+
+            if ($request->filled('ppn_tax_id')) {
+                $validated['ppn_tax_rate'] = $this->resolveTax('ppn', $request->ppn_tax_id)['rate'];
+            } else {
+                $taxDefault = $this->resolveTax('ppn', null);
+                $validated['ppn_tax_id'] = $taxDefault['id'];
+                $validated['ppn_tax_rate'] = $taxDefault['rate'];
+            }
 
             $unitTransaction = UnitTransaction::findOrFail($request->unit_transaction_id);
             $unitTransactionItems = $unitTransaction->unitTransactionItems;
@@ -230,16 +256,17 @@ class UnitTransactionItemController extends Controller
                 $hpp = $request->price - $additional_fee;
 
                 $hpp = $this->calculateDecimalAmount($hpp);
-                $dpp = $this->calculateDecimalAmount($hpp / 1.11);
-                $ppn = $this->calculateDecimalAmount($dpp * 0.11);
+                
+                $dpp = $hpp / ($validated['dpp_tax_rate'] / 100);
+                $ppn = $dpp * ($validated['ppn_tax_rate'] / 100);
 
-                $validated['hpp_per_unit_price'] = $hpp;
-                $validated['dpp_per_unit_price'] = $dpp;
-                $validated['ppn_per_unit_price'] = $ppn;
+                $validated['hpp_per_unit_price'] = $this->calculateDecimalAmount($hpp);
+                $validated['dpp_per_unit_price'] = $this->calculateDecimalAmount($dpp);
+                $validated['ppn_per_unit_price'] = $this->calculateDecimalAmount($ppn);
 
-                $validated['hpp_total_price'] = $hpp * $request->qty_total;
-                $validated['dpp_total_price'] = $dpp * $request->qty_total;
-                $validated['ppn_total_price'] = $ppn * $request->qty_total;
+                $validated['hpp_total_price'] = $this->calculateDecimalAmount($hpp * $request->qty_total);
+                $validated['dpp_total_price'] = $this->calculateDecimalAmount($dpp * $request->qty_total);
+                $validated['ppn_total_price'] = $this->calculateDecimalAmount($ppn * $request->qty_total);
 
                 $validated['price_per_unit_usd'] = $request->price_per_unit_usd ?? 0;
                 $validated['price_usd'] = $request->price_usd ?? ($validated['price_per_unit_usd'] * $request->qty_total);
@@ -264,49 +291,89 @@ class UnitTransactionItemController extends Controller
 
     public function getFormula(Request $request)
     {
-        $request->validate([
-            'qty_total' => 'nullable|integer|min:1',
-            'price' => 'nullable|numeric|min:0',
-            'price_per_unit_usd' => 'nullable|numeric|min:0',
-            'bbn_price' => 'nullable|numeric|min:0',
-            'expedition_fee' => 'nullable|numeric|min:0',
-            'other_fee' => 'nullable|numeric|min:0',
-        ]);
+        try {
+            $request->validate([
+                'qty_total' => 'nullable|integer|min:1',
+                'price' => 'nullable|numeric|min:0',
+                'price_per_unit_usd' => 'nullable|numeric|min:0',
+                'price_usd' => 'nullable|numeric|min:0',
+                'bbn_price' => 'nullable|numeric|min:0',
+                'expedition_fee' => 'nullable|numeric|min:0',
+                'other_fee' => 'nullable|numeric|min:0',
+                'dpp_tax_id' => 'nullable|integer|exists:taxes,id',
+                'ppn_tax_id' => 'nullable|integer|exists:taxes,id',
+            ]);
 
-        $qty = $request->qty_total ?? 0;
-        $price = $request->price ?? 0;
-        $pricePerUnitUsd = $request->price_per_unit_usd ?? 0;
+            if ($request->filled('dpp_tax_id')) {
+                $dppTaxRate = $this->resolveTax('dpp', $request->dpp_tax_id)['rate'];
+            } else {
+                $taxDefault = $this->resolveTax('dpp', null);
+                $dppTaxRate = $taxDefault['rate'];
+            }
 
-        $bbn = $request->bbn_price ?? 0;
-        $expedition = $request->expedition_fee ?? 0;
-        $other = $request->other_fee ?? 0;
+            if ($request->filled('ppn_tax_id')) {
+                $ppnTaxRate = $this->resolveTax('ppn', $request->ppn_tax_id)['rate'];
+            } else {
+                $taxDefault = $this->resolveTax('ppn', null);
+                $ppnTaxRate = $taxDefault['rate'];
+            }
 
-        $additional_fee = $bbn + $expedition + $other;
+            $qty = $request->qty_total ?? 0;
+            $price = $request->price ?? 0;
+            $pricePerUnitUsd = $request->price_per_unit_usd ?? 0;
 
-        $hpp = $price - $additional_fee;
+            $bbn = $request->bbn_price ?? 0;
+            $expedition = $request->expedition_fee ?? 0;
+            $other = $request->other_fee ?? 0;
 
-        $hpp = $this->calculateDecimalAmount($hpp);
-        $dpp = $this->calculateDecimalAmount($hpp / 1.11);
-        $ppn = $this->calculateDecimalAmount($dpp * 0.11);
+            $additional_fee = $bbn + $expedition + $other;
 
-        $result = [
-            'bbn_price' => $this->calculateDecimalAmount($bbn),
-            'expedition_fee' => $this->calculateDecimalAmount($expedition),
-            'other_fee' => $this->calculateDecimalAmount($other),
+            $hpp = $price - $additional_fee;
 
-            'hpp_per_unit_price' => $hpp,
-            'dpp_per_unit_price' => $dpp,
-            'ppn_per_unit_price' => $ppn,
+            $hpp = $this->calculateDecimalAmount($hpp);
+            $dpp = $dppTaxRate > 0 ? ($hpp / ($dppTaxRate / 100)) : 0;
+            $ppn = $dpp * ($ppnTaxRate / 100);
 
-            'hpp_total_price' => $hpp * $qty,
-            'dpp_total_price' => $dpp * $qty,
-            'ppn_total_price' => $ppn * $qty,
+            $hppPerUnit = $this->calculateDecimalAmount($hpp);
+            $dppPerUnit = $this->calculateDecimalAmount($dpp);
+            $ppnPerUnit = $this->calculateDecimalAmount($ppn);
 
-            'price_per_unit_usd' => (float) $pricePerUnitUsd,
-            'price_usd' => (float) ($pricePerUnitUsd * $qty),
-        ];
+            $hppTotal = $this->calculateDecimalAmount($hpp * $qty);
+            $dppTotal = $this->calculateDecimalAmount($dpp * $qty);
+            $ppnTotal = $this->calculateDecimalAmount($ppn * $qty);
 
-        return $this->responseSuccess((object) $result, 'Transaction Item Formula', 200);
+            $priceUsd = $request->price_usd ?? ($pricePerUnitUsd * $qty);
+
+            $result = [
+                'bbn_price' => $this->calculateDecimalAmount($bbn),
+                'expedition_fee' => $this->calculateDecimalAmount($expedition),
+                'other_fee' => $this->calculateDecimalAmount($other),
+
+                'hpp_per_unit_price' => $hppPerUnit,
+                'dpp_per_unit_price' => $dppPerUnit,
+                'ppn_per_unit_price' => $ppnPerUnit,
+
+                'hpp_total_price' => $hppTotal,
+                'dpp_total_price' => $dppTotal,
+                'ppn_total_price' => $ppnTotal,
+
+                'price_per_unit_usd' => (float) $pricePerUnitUsd,
+                'price_usd' => (float) $priceUsd,
+            ];
+
+            return $this->responseSuccess((object) $result, 'Transaction Item Formula', 200);
+        } catch (ValidationException $e) {
+            return $this->responseError($e->errors(), 'Validation failed', 422);
+        } catch (ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
+        } catch (Exception $err) {
+            Log::error('Error While calculating Unit Transaction Item formula : ' . $err->getMessage());
+
+            return $this->responseError($err->getMessage(), 'Transaction Item Formula Failed', 500);
+        }
     }
 
     public function update(Request $request, string $id)
@@ -492,5 +559,21 @@ class UnitTransactionItemController extends Controller
         } catch (Exception $err) {
             return $this->responseError(null, 'Unit Transaction Item Detail Not Found or Failed Deleted', 500);
         }
+    }
+
+    private function resolveTax(string $code, ?int $id): array
+    {
+        if ($id) {
+            $tax = Tax::findOrFail($id);
+        } else {
+            $tax = Tax::where('code', $code)->firstOrFail();
+        }
+
+        $version = $tax->getDefault();
+
+        return [
+            'id' => $tax->id,
+            'rate' => $version->rate,
+        ];
     }
 }

@@ -12,6 +12,7 @@ class TaxSeeder extends Seeder
     {
         $taxes = [
             ['code' => 'ppn', 'name' => 'Pajak Pertambahan Nilai', 'is_lock' => true],
+            ['code' => 'dpp', 'name' => 'Dasar Pengenaan Pajak', 'is_lock' => true],
             ['code' => 'pph21', 'name' => 'Pajak Penghasilan Pasal 21', 'is_lock' => true],
             ['code' => 'pph23', 'name' => 'Pajak Penghasilan Pasal 23', 'is_lock' => true],
             ['code' => 'pphfinal', 'name' => 'Pajak Penghasilan Final', 'is_lock' => true],
@@ -24,6 +25,9 @@ class TaxSeeder extends Seeder
         $taxVersions = [
             'ppn' => [
                 ['name' => 'PPN 11%', 'rate' => 11, 'is_default' => true, 'is_lock' => true],
+            ],
+            'dpp' => [
+                ['name' => 'DPP 100%', 'rate' => 111, 'is_default' => true, 'is_lock' => true],
             ],
             'pph21' => [
                 ['name' => 'PPh 21 - 5%', 'rate' => 5, 'is_default' => true, 'is_lock' => true],

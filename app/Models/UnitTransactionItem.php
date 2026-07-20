@@ -18,6 +18,7 @@ class UnitTransactionItem extends Model
         'unit_type_id',
         'sparepart_id',
 
+        // tax
         'dpp_tax_id',
         'dpp_tax_rate',
         'ppn_tax_id',
