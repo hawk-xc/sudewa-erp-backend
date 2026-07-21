@@ -262,6 +262,9 @@ Route::group(
                 // upload unit transaction invoice
                 Route::post('unit-transaction/{id}/upload-invoice', [UnitTransactionController::class, 'uploadInvoiceFile'])->name('upload-invoice-file');
 
+                // Get refund data
+                Route::get('unit-transaction/{id}/refunds', [UnitTransactionController::class, 'getRefundData'])->name('get-refunds-data');
+                
                 Route::post('unit-transaction/{id}/transaction-adjustment', [UnitTransactionController::class, 'storeTransactionAdjustment']);
                 Route::apiResource('unit-transaction', UnitTransactionController::class);
                 Route::apiResource('unit-transaction-item', UnitTransactionItemController::class);

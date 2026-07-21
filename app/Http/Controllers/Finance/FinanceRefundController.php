@@ -17,6 +17,8 @@ class FinanceRefundController extends Controller
 {
     use ResponseTrait;
 
+    protected array $financeRefundTable;
+
     public function __construct()
     {
         $this->middleware(['permission:finance:list'])->only(['index', 'show']);
@@ -85,7 +87,7 @@ class FinanceRefundController extends Controller
         }
     }
 
-    public function show($id)
+    public function show(string $id)
     {
         try {
             $data = FinanceRefund::with([
@@ -158,7 +160,7 @@ class FinanceRefundController extends Controller
                         $newCash->adjustAmount($refundAmount, 'refund_' . $trxType);
                     }
                 }
-            }
+            } 
 
             return $this->responseSuccess($financeRefund->load(['unitTransactionRefund', 'cash']), 'Finance Refund updated successfully');
         } catch (ModelNotFoundException $err) {

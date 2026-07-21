@@ -109,6 +109,7 @@ class UnitTransactionController extends Controller
                 $item->transaction_bbn_total = $item->getSumAmount('bbn_price');
                 $item->transaction_other_fee = $item->getSumAmount('other_fee');
                 $item->expedition_fee_total = $item->unitTransactionItems->sum('expedition_fee');
+                $item->has_returned_data = $item->unitTransactionRefunds->isNotEmpty();
 
                 if ($item->unitTransactionBilling) {
                     $billing = $item->unitTransactionBilling;
@@ -194,25 +195,6 @@ class UnitTransactionController extends Controller
                 $data->billing_summary = null;
             }
 
-            $data->unitTransactionAdjustments->transform(function ($adjustment) {
-                $adjustment->details = $adjustment->unitTransactionAdjustmentItems
-                    ->groupBy(function ($item) {
-                        return $item->unitTransactionItem->unitType->name ?? 'Unknown';
-                    })
-                    ->map(function ($items, $unitTypeName) {
-                        return [
-                            'unit_type_name' => $unitTypeName,
-                            'qty' => $items->sum('qty'),
-                        ];
-                    })
-                    ->values();
-
-                // Unset raw items to keep response clean
-                unset($adjustment->unitTransactionAdjustmentItems);
-
-                return $adjustment;
-            });
-
             return $this->responseSuccess($data, 'Unit Transaction retrieved successfully', 200);
         } catch (ModelNotFoundException $err) {
             $model = class_basename($err->getModel() ?: 'Data');
@@ -221,6 +203,22 @@ class UnitTransactionController extends Controller
             return $this->responseError(null, $friendlyModel . ' not found', 404);
         } catch (Exception $err) {
             return $this->responseError($err->getMessage(), 'Unit Transaction not found', 404);
+        }
+    }
+
+    public function getRefundData(string $id) 
+    {
+        try {
+            $unitTransaction = UnitTransaction::with(['unitTransactionRefunds', 'unitTransactionRefunds.unitTransactionRefundPayments', 'unitTransactionRefunds.unitTransactionItemDetails'])->findOrFail($id);
+
+            return $this->responseSuccess($unitTransaction, 'Successfully get Unit Transaction Refund data');
+        } catch (ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
+        } catch (Exception $err) {
+            return $this->responseError($err->getMessage(), 'Error get Unit Transaction Refund Data');
         }
     }
 

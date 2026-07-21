@@ -58,6 +58,12 @@ class UnitTransactionRefundController extends Controller
                 ->withSum('unitTransactionRefundPayments as total_paid', 'amount')
                 ->withCount('unitTransactionItemDetails as total_qty');
 
+            foreach ($this->refundTable as $refundTable) {
+                if ($request->filled($refundTable)) {
+                    $query->where($refundTable, $request->get($refundTable));
+                }
+            }
+
             if ($request->filled('search')) {
                 $search = $request->search;
                 $query->where(function ($q) use ($search) {

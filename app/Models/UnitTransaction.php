@@ -45,6 +45,11 @@ class UnitTransaction extends Model
         return $this->hasOne(UnitTransactionBilling::class);
     }
 
+    public function unitTransactionRefunds()
+    {
+        return $this->hasMany(UnitTransactionRefund::class, 'unit_transaction_id', 'id');
+    }
+
     public function unitTransactionItems()
     {
         return $this->hasMany(UnitTransactionItem::class);
