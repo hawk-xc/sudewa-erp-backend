@@ -193,7 +193,6 @@ class UnitTransactionBillingHistoryController extends Controller
                     $billing->update([
                         'total_paid'        => $totalPaid,
                         'remaining_payment' => 0,
-                        'is_paid'           => false,
                         'last_payment_at'   => now(),
                     ]);
                 } else {
@@ -201,7 +200,6 @@ class UnitTransactionBillingHistoryController extends Controller
                     $billing->update([
                         'total_paid'        => $totalPaid,
                         'remaining_payment' => $remaining,
-                        'is_paid'           => $remaining <= 0,
                         'last_payment_at'   => now(),
                     ]);
                 }
@@ -315,19 +313,16 @@ class UnitTransactionBillingHistoryController extends Controller
                     ->whereIn('cashes.code', ['cash_idr', 'bca_idr'])
                     ->sum('cash_unit_transaction_billing_history.amount');
 
-                // Jika ada pembayaran USD, remaining=0 dan is_paid=false
                 if ($hasUsdPayment) {
                     $billing->update([
                         'total_paid'        => $totalPaid,
                         'remaining_payment' => 0,
-                        'is_paid'           => false,
                     ]);
                 } else {
                     $remaining = $billing->grand_total - $totalIdrPaid;
                     $billing->update([
                         'total_paid'        => $totalPaid,
                         'remaining_payment' => $remaining,
-                        'is_paid'           => $remaining <= 0,
                     ]);
                 }
             });
