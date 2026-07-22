@@ -32,11 +32,11 @@ class FinanceRefundController extends Controller
                 'unitTransactionRefund:id,uuid,unit_transaction_id,code,refund_date,refund_amount,note',
                 'unitTransactionRefund.unitTransaction:id,uuid,person_id,code,type',
                 'unitTransactionRefund.unitTransaction.person:id,uuid,name,type',
-                'cash:id,uuid,company_id,code,type'
+                'cash:id,uuid,company_id,code,cash_name,type'
             ]);
 
             if ($request->filled('status')) {
-                if (in_array($request->status, ['waiting', 'reject','approve'])) {
+                if (in_array($request->status, ['waiting', 'reject', 'approve'])) {
                     $query->where('status', $request->status);
                 }
             }
@@ -116,7 +116,7 @@ class FinanceRefundController extends Controller
                     'sometimes',
                     'nullable',
                     'exists:cashes,id',
-                    new RightCashRule(fn () => $financeRefund->unitTransactionRefund->unitTransaction->warehouse->company_id),
+                    new RightCashRule(fn() => $financeRefund->unitTransactionRefund->unitTransaction->warehouse->company_id),
                 ],
                 'status' => 'sometimes|required|in:waiting,reject,approve',
             ]);
@@ -160,7 +160,7 @@ class FinanceRefundController extends Controller
                         $newCash->adjustAmount($refundAmount, 'refund_' . $trxType);
                     }
                 }
-            } 
+            }
 
             return $this->responseSuccess($financeRefund->load(['unitTransactionRefund', 'cash']), 'Finance Refund updated successfully');
         } catch (ModelNotFoundException $err) {
