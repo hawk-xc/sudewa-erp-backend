@@ -264,6 +264,9 @@ Route::group(
 
                 // Get refund data
                 Route::get('unit-transaction/{id}/refunds', [UnitTransactionController::class, 'getRefundData'])->name('get-refunds-data');
+
+                // Get Item Transaction Details data
+                Route::get('unit-transaction/{id}/get-item-details', [UnitTransactionController::class, 'getUnitTransactinItemDetailsData'])->name('get-item-transaction-data');
                 
                 Route::post('unit-transaction/{id}/transaction-adjustment', [UnitTransactionController::class, 'storeTransactionAdjustment']);
                 Route::apiResource('unit-transaction', UnitTransactionController::class);

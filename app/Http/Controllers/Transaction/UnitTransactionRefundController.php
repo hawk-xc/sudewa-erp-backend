@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Transaction;
 
 use App\Http\Controllers\Controller;
-use App\Models\FinanceRefund;
 use App\Models\UnitTransaction;
 use App\Models\UnitTransactionItemDetail;
 use App\Models\UnitTransactionRefund;
@@ -256,6 +255,8 @@ class UnitTransactionRefundController extends Controller
                 'unitTransaction:id,uuid,code,type',
                 'unitTransactionRefundPayments',
                 'unitTransactionItemDetails',
+                'unitTransactionItemDetails.unitTransactionItem:id,unit_type_id',
+                'unitTransactionItemDetails.unitTransactionItem.unitType:id,code,name',
             ])->findOrFail($id);
 
             $refund->total_payable = (int) $refund->refund_amount;
@@ -321,11 +322,13 @@ class UnitTransactionRefundController extends Controller
                                 $oldDetail->update([
                                     'in_stock' => true,
                                     'is_forecast' => false,
+                                    'status' => 'normal',
                                 ]);
                             } else if ($oldTx->type === 'sales') {
                                 $oldDetail->update([
                                     'in_stock' => false,
                                     'is_forecast' => false,
+                                    'status' => 'normal',
                                 ]);
                             }
                             $oldTx->recalculateBillingTotals();
@@ -432,13 +435,13 @@ class UnitTransactionRefundController extends Controller
                                 $detail->update([
                                     'in_stock' => true,
                                     'is_forecast' => false,
-                                    'status' => null,
+                                    'status' => 'normal',
                                 ]);
                             } else if ($tx->type === 'sales') {
                                 $detail->update([
                                     'in_stock' => false,
                                     'is_forecast' => false,
-                                    'status' => null,
+                                    'status' => 'normal',
                                 ]);
                             }
                             $tx->recalculateBillingTotals();

@@ -222,6 +222,50 @@ class UnitTransactionController extends Controller
         }
     }
 
+    public function getUnitTransactinItemDetailsData(Request $request, string $id) 
+    {
+        try {
+            $unitTransaction = UnitTransaction::with([
+                'unitTransactionItems.unitTransactionItemDetails' => function ($query) use ($request) {
+                    if ($request->filled('color')) {
+                        $query->where('color', 'like', '%' . $request->color . '%');
+                    }
+                    if ($request->filled('machine_number')) {
+                        $query->where('machine_number', 'like', '%' . $request->machine_number . '%');
+                    }
+                    if ($request->filled('chassis_number')) {
+                        $query->where('chassis_number', 'like', '%' . $request->chassis_number . '%');
+                    }
+                    if ($request->has('in_stock') && $request->in_stock !== null && $request->in_stock !== '') {
+                        $inStock = filter_var($request->in_stock, FILTER_VALIDATE_BOOLEAN);
+                        $query->where('in_stock', $inStock);
+                    } else {
+                        $query->where('in_stock', true);
+                    }
+                    if ($request->filled('status')) {
+                        $query->where('status', $request->status);
+                    }
+                }
+            ])->findOrFail($id);
+            $unitTransactionItemDetails = [];
+
+            foreach ($unitTransaction->unitTransactionItems as $unitTransactionItem) {
+                foreach ($unitTransactionItem->unitTransactionItemDetails as $unitTransactionItemDetail) {
+                    $unitTransactionItemDetails[] = $unitTransactionItemDetail;
+                }
+            }
+
+            return $this->responseSuccess($unitTransactionItemDetails, 'Successfully get Unit Transaction Item Data Details');
+        } catch (ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
+        } catch (Exception $err) {
+            return $this->responseError($err->getMessage(), 'Error get Unit Transaction Item Details Data Deetails');
+        }
+    }
+
     public function store(Request $request)
     {
         try {
