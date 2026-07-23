@@ -308,10 +308,16 @@ class FinanceBillingController extends Controller
                 return $fb->cash?->code === 'bca_usd';
             });
 
+            if ($hasUsdPayment) {
+                // USD bypass
+                $cashFlow->update(['is_valid' => true]);
+            }
+
             $itemArray = $item->toArray();
             $itemArray['remaining_payment'] = $hasUsdPayment ? 0 : $cashFlow->remaining_payment;
             $itemArray['is_paid'] = $cashFlow->remaining_payment == 0;
             $itemArray['usd_payment_set'] = $hasUsdPayment;
+
 
             return $this->responseSuccess($itemArray, 'Finance Billing created successfully', 201);
         } catch (ValidationException $e) {

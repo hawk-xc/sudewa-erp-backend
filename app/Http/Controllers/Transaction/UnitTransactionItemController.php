@@ -456,12 +456,15 @@ class UnitTransactionItemController extends Controller
                 }
 
                 // transaction billing paid guard
-                if ($item->unitTransaction->unitTransactionBilling->is_paid) {
-                    return $this->responseError(
-                        'Cannot update unit transaction data, unit transaction had billing data and status paid',
-                        'Validation failed',
-                        422
-                    );
+                $paidTransaction = $item->unitTransaction->unitTransactionBilling;
+                if ($paidTransaction) {
+                    if ($paidTransaction->is_paid == true) {
+                        return $this->responseError(
+                            'Cannot update unit transaction data, unit transaction had billing data and status paid',
+                            'Validation failed',
+                            422
+                        );
+                    }
                 }
             }
 
