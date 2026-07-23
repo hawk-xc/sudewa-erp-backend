@@ -2,18 +2,19 @@
 
 namespace App\Http\Controllers\MasterData;
 
-use Illuminate\Database\Eloquent\ModelNotFoundException;
-
-use App\Traits\GlobalCodeNumberTrait;
 use App\Exports\UnitTypeExport;
 use App\Http\Controllers\Controller;
 use App\Imports\UnitTypeImport;
 use App\Models\Company;
 use App\Models\UnitTransactionItemDetail;
 use App\Models\UnitType;
+use App\Models\Warehouse;
+use App\Models\WarehouseMovement;
 use App\Repositories\AuthRepository;
+use App\Traits\GlobalCodeNumberTrait;
 use App\Traits\ResponseTrait;
 use Exception;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -58,6 +59,27 @@ class MasterUnitTypeController extends Controller
                 $query->where(function ($q) use ($search) {
                     $q->where('name', 'like', "%{$search}%")->orWhere('code', 'like', "%{$search}%");
                 });
+            }
+
+            if ($request->filled('in_stock') && $request->filled('company_id')) {
+                if ($request->in_stock == 'true') {
+                    $warehouseIds = Warehouse::where('company_id', $request->company_id)->pluck('id');
+                    
+                    $availableUnitTypeIds = WarehouseMovement::query()
+                        ->join('unit_transaction_item_details', 'warehouse_movements.unit_transaction_item_detail_id', '=', 'unit_transaction_item_details.id')
+                        ->join('unit_transaction_items', 'unit_transaction_item_details.unit_transaction_item_id', '=', 'unit_transaction_items.id')
+                        ->join('warehouse_activities', 'warehouse_movements.warehouse_activity_id', '=', 'warehouse_activities.id')
+                        ->whereIn('warehouse_activities.warehouse_id', $warehouseIds)
+                        ->where('warehouse_movements.status', 'in')
+                        ->where('unit_transaction_item_details.status', 'normal')
+                        ->where('unit_transaction_item_details.is_forecast', false)
+                        ->where('unit_transaction_item_details.in_stock', true)
+                        ->distinct()
+                        ->pluck('unit_transaction_items.unit_type_id')
+                        ->toArray();
+
+                    $query->whereIn('id', $availableUnitTypeIds);
+                } 
             }
 
             if ($request->filled('brand_id')) {

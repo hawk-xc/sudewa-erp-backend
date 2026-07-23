@@ -74,7 +74,6 @@ class MasterUnitTypePriceArchiveController extends Controller
                 $query->where('sell_price', '<=', $request->max_sell_price);
             }
 
-
             $unitTypePriceArchives = $request->filled('per_page') ? $query->paginate($request->per_page) : $query->get();
 
             return $this->responseSuccess($unitTypePriceArchives, 'Unit Type Price Archives retrieved successfully', 200);
