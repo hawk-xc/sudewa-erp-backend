@@ -62,12 +62,16 @@ class WarehouseActivityController extends Controller
     private function applyFilters($query, Request $request)
     {
         return $query
-            ->when($request->warehouse_id, fn ($q) => $q->where('warehouse_id', $request->warehouse_id))
-            ->when($request->person_id, fn ($q) => $q->where('person_id', $request->person_id))
-            ->when($request->activity_type, fn ($q) => $q->where('activity_type', $request->activity_type))
-            ->when($request->date_from && $request->date_to, fn ($q) => $q->whereBetween('activity_date', [$request->date_from, $request->date_to])
+            ->when($request->warehouse_id, fn($q) => $q->where('warehouse_id', $request->warehouse_id))
+            ->when($request->person_id, fn($q) => $q->where('person_id', $request->person_id))
+            ->when($request->activity_type, fn($q) => $q->where('activity_type', $request->activity_type))
+            ->when(
+                $request->date_from && $request->date_to,
+                fn($q) => $q->whereBetween('activity_date', [$request->date_from, $request->date_to])
             )
-            ->when($request->search, fn ($q) => $q->where('activity_number', 'like', "%{$request->search}%")
+            ->when(
+                $request->search,
+                fn($q) => $q->where('activity_number', 'like', "%{$request->search}%")
             );
     }
 
@@ -81,7 +85,6 @@ class WarehouseActivityController extends Controller
                 ->paginate($request->per_page ?? 10);
 
             return $this->responseSuccess($data, 'Warehouse activities retrieved successfully');
-
         } catch (Exception $e) {
             Log::error('WarehouseActivity index error', [
                 'message' => $e->getMessage(),
@@ -103,10 +106,9 @@ class WarehouseActivityController extends Controller
         ]);
 
         try {
-            $data = DB::transaction(fn () => WarehouseActivity::create($validated));
+            $data = DB::transaction(fn() => WarehouseActivity::create($validated));
 
             return $this->responseSuccess($data, 'Warehouse activity created successfully', 201);
-
         } catch (Exception $err) {
             Log::error('WarehouseActivity store error', [
                 'message' => $err->getMessage(),
@@ -122,7 +124,6 @@ class WarehouseActivityController extends Controller
             $data = $this->baseQuery()->findOrFail($id);
 
             return $this->responseSuccess($data, 'Warehouse activity retrieved successfully');
-
         } catch (Exception $e) {
             Log::error('WarehouseActivity show error', [
                 'message' => $e->getMessage(),
@@ -146,14 +147,14 @@ class WarehouseActivityController extends Controller
                 'description' => 'sometimes|string',
             ]);
 
-            DB::transaction(fn () => $warehouseActivity->update($validated)
+            DB::transaction(
+                fn() => $warehouseActivity->update($validated)
             );
 
             return $this->responseSuccess(
                 $warehouseActivity->fresh(),
                 'Warehouse activity updated successfully'
             );
-
         } catch (Exception $e) {
             Log::error('WarehouseActivity update error', [
                 'message' => $e->getMessage(),
@@ -168,10 +169,9 @@ class WarehouseActivityController extends Controller
         try {
             $warehouseActivity = WarehouseActivity::findOrFail($id);
 
-            DB::transaction(fn () => $warehouseActivity->delete());
+            DB::transaction(fn() => $warehouseActivity->delete());
 
             return $this->responseSuccess($warehouseActivity, 'Warehouse activity deleted successfully');
-
         } catch (Exception $e) {
             Log::error('WarehouseActivity destroy error', [
                 'message' => $e->getMessage(),
@@ -207,8 +207,8 @@ class WarehouseActivityController extends Controller
             $allowedDetailIds = $person->unitTransactions()
                 ->with('unitTransactionItems.unitTransactionItemDetails:id,unit_transaction_item_id')
                 ->get()
-                ->flatMap(fn ($trx) => $trx->unitTransactionItems)
-                ->flatMap(fn ($item) => $item->unitTransactionItemDetails)
+                ->flatMap(fn($trx) => $trx->unitTransactionItems)
+                ->flatMap(fn($item) => $item->unitTransactionItemDetails)
                 ->pluck('id')
                 ->toArray();
 
@@ -248,18 +248,6 @@ class WarehouseActivityController extends Controller
                         );
                     }
 
-                    // if (! $billing) {
-                    //     throw new Exception(
-                    //         "Transaction for detail ID {$detail->id} has no billing yet"
-                    //     );
-                    // }
-
-                    // if (! $billing->is_paid) {
-                    //     throw new Exception(
-                    //         "Transaction for detail ID {$detail->id} has no paid billing yet"
-                    //     );
-                    // }
-
                     if ($detail->in_stock) {
                         throw new Exception(
                             "Detail ID {$detail->id} already in stock"
@@ -282,7 +270,6 @@ class WarehouseActivityController extends Controller
                 (object) $responseData,
                 'Receipt stock processed successfully'
             );
-
         } catch (Exception $e) {
             Log::error('WarehouseActivity receiptStock error', [
                 'message' => $e->getMessage(),
@@ -339,19 +326,7 @@ class WarehouseActivityController extends Controller
 
                     $billing = $transaction->unitTransactionBilling;
 
-                    // if (! $billing) {
-                    //     throw new Exception(
-                    //         "Transaction for detail ID {$detail->id} has no billing yet"
-                    //     );
-                    // }
-
-                    // if (! $detail->in_stock) {
-                    //     throw new Exception(
-                    //         "Detail ID {$detail->id} is not available in stock"
-                    //     );
-                    // }
-
-                    $detail->update(['in_stock' => false]);
+                    $detail->update(['in_stock' => false, 'is_forecast' => false]);
 
                     $detail->dispatchStock();
 
@@ -368,7 +343,6 @@ class WarehouseActivityController extends Controller
                 (object) $responseData,
                 'Dispatch stock processed successfully'
             );
-
         } catch (Exception $e) {
             Log::error('WarehouseActivity dispatchStock error', [
                 'message' => $e->getMessage(),
@@ -447,7 +421,6 @@ class WarehouseActivityController extends Controller
                 (object) $responseData,
                 'Refund stock processed successfully'
             );
-
         } catch (Exception $e) {
             Log::error('WarehouseActivity refundStock error', [
                 'message' => $e->getMessage(),
@@ -526,7 +499,6 @@ class WarehouseActivityController extends Controller
                 (object) $responseData,
                 'Return stock processed successfully'
             );
-
         } catch (Exception $e) {
             Log::error('WarehouseActivity returnStock error', [
                 'message' => $e->getMessage(),
@@ -560,7 +532,7 @@ class WarehouseActivityController extends Controller
             $allowedDetailIds = $person->goodsTransactions()
                 ->with('goodsTransactionDetails:id,goods_transaction_id')
                 ->get()
-                ->flatMap(fn ($trx) => $trx->goodsTransactionDetails)
+                ->flatMap(fn($trx) => $trx->goodsTransactionDetails)
                 ->pluck('id')
                 ->toArray();
 
@@ -630,7 +602,6 @@ class WarehouseActivityController extends Controller
                 (object) $responseData,
                 'Receipt goods stock processed successfully'
             );
-
         } catch (Exception $e) {
             Log::error('WarehouseActivity receiptMaterialStock error', [
                 'message' => $e->getMessage(),
@@ -700,7 +671,6 @@ class WarehouseActivityController extends Controller
                 (object) $responseData,
                 'Dispatch goods stock processed successfully'
             );
-
         } catch (Exception $e) {
             Log::error('WarehouseActivity dispatchMaterialStock error', [
                 'message' => $e->getMessage(),
@@ -744,7 +714,6 @@ class WarehouseActivityController extends Controller
                 $goodsTransactionDetailList,
                 'Refund goods stock processed successfully'
             );
-
         } catch (Exception $e) {
             Log::error('WarehouseActivity refundMaterialStock error', [
                 'message' => $e->getMessage(),
@@ -788,7 +757,6 @@ class WarehouseActivityController extends Controller
                 $goodsTransactionDetailList,
                 'Return goods stock processed successfully'
             );
-
         } catch (Exception $e) {
             Log::error('WarehouseActivity returnMaterialStock error', [
                 'message' => $e->getMessage(),
