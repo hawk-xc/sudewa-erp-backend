@@ -83,7 +83,7 @@ class AssetImport implements ToCollection, WithHeadingRow
                 $validator = Validator::make($rowData, [
                     'name' => 'required|string|max:255',
                     'code' => 'required|string|unique:assets,code',
-                    'serial_number' => 'required|string|unique:assets,serial_number',
+                    'serial_number' => 'required|string|unique:finance_assets,serial_number',
                     'purchase_date' => 'nullable|date',
                     'type' => 'required|in:inventory,vehicles,buildings,land',
                     'price' => 'nullable|numeric|min:0',
@@ -95,13 +95,20 @@ class AssetImport implements ToCollection, WithHeadingRow
                     );
                 }
 
-                Asset::create([
+                $asset = Asset::create([
                     'company_id' => $this->companyId,
                     'code' => $rowData['code'],
                     'name' => $rowData['name'],
+                    'type' => $rowData['type'],
+                ]);
+
+                $financeAsset = $asset->financeAsset;
+                if (!$financeAsset) {
+                    $financeAsset = $asset->financeAsset()->create([]);
+                }
+                $financeAsset->update([
                     'serial_number' => $rowData['serial_number'],
                     'purchase_date' => $rowData['purchase_date'],
-                    'type' => $rowData['type'],
                     'price' => $rowData['price'],
                 ]);
             }

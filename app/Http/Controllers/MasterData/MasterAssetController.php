@@ -24,7 +24,7 @@ class MasterAssetController extends Controller
 {
     use ResponseTrait, GlobalCodeNumberTrait;
 
-    protected $assetTable;
+    protected array $assetTable;
 
     public function __construct()
     {
@@ -33,7 +33,7 @@ class MasterAssetController extends Controller
         $this->middleware(['permission:master-data:edit'])->only('update');
         $this->middleware(['permission:master-data:delete'])->only(['destroy']);
 
-        $this->assetTable = ['id', 'uuid', 'company_id', 'code', 'serial_number', 'purchase_date', 'name', 'type', 'price', 'created_at', 'updated_at'];
+        $this->assetTable = ['id', 'uuid', 'company_id', 'code', 'name', 'type', 'created_at', 'updated_at'];
     }
 
     
@@ -43,8 +43,9 @@ class MasterAssetController extends Controller
      */
     public function index(Request $request)
     {
-        $query = Asset::query();
-        $query->select($this->assetTable);
+        $query = Asset::query()->with('financeAsset');
+        $selectColumns = array_map(fn($col) => "assets.$col", $this->assetTable);
+        $query->select($selectColumns);
 
         try {
             if ($request->filled('search')) {
@@ -53,26 +54,38 @@ class MasterAssetController extends Controller
 
                 $query->where(function ($q) use ($search, $caseSensitive) {
                     if ($caseSensitive) {
-                        $q->where('name', 'LIKE BINARY', "%$search%")
-                            ->orWhere('code', 'LIKE BINARY', "%$search%")
-                            ->orWhere('serial_number', 'LIKE BINARY', "%$search%")
-                            ->orWhere('type', 'LIKE BINARY', "%$search%");
+                        $q->where('assets.name', 'LIKE BINARY', "%$search%")
+                            ->orWhere('assets.code', 'LIKE BINARY', "%$search%")
+                            ->orWhere('assets.type', 'LIKE BINARY', "%$search%")
+                            ->orWhereHas('financeAsset', function ($fq) use ($search) {
+                                $fq->where('serial_number', 'LIKE BINARY', "%$search%");
+                            });
                     } else {
-                        $q->where('name', 'like', "%$search%")
-                            ->orWhere('code', 'like', "%$search%")
-                            ->orWhere('serial_number', 'like', "%$search%")
-                            ->orWhere('type', 'like', "%$search%");
+                        $q->where('assets.name', 'like', "%$search%")
+                            ->orWhere('assets.code', 'like', "%$search%")
+                            ->orWhere('assets.type', 'like', "%$search%")
+                            ->orWhereHas('financeAsset', function ($fq) use ($search) {
+                                $fq->where('serial_number', 'like', "%$search%");
+                            });
                     }
                 });
             }
 
             foreach ($this->assetTable as $field) {
                 if ($request->filled($field)) {
-                    $query->where($field, $request->$field);
+                    $query->where('assets.'.$field, $request->$field);
                 }
             }
 
-            $allowedSort = $this->assetTable;
+            foreach (['serial_number', 'purchase_date', 'price'] as $field) {
+                if ($request->filled($field)) {
+                    $query->whereHas('financeAsset', function ($fq) use ($field, $request) {
+                        $fq->where($field, $request->$field);
+                    });
+                }
+            }
+
+            $allowedSort = array_merge($this->assetTable, ['serial_number', 'purchase_date', 'price']);
 
             $sortBy = in_array($request->sort_by, $allowedSort)
                 ? $request->sort_by
@@ -80,7 +93,12 @@ class MasterAssetController extends Controller
 
             $sortOrder = $request->sort_order === 'asc' ? 'asc' : 'desc';
 
-            $query->orderBy($sortBy, $sortOrder);
+            if (in_array($sortBy, ['serial_number', 'purchase_date', 'price'])) {
+                $query->leftJoin('finance_assets', 'assets.id', '=', 'finance_assets.asset_id')
+                    ->orderBy('finance_assets.' . $sortBy, $sortOrder);
+            } else {
+                $query->orderBy('assets.' . $sortBy, $sortOrder);
+            }
 
             $perPage = $request->per_page ?? 10;
             $data = $query->paginate($perPage);
@@ -99,7 +117,7 @@ class MasterAssetController extends Controller
     public function show(string $id)
     {
         try {
-            $asset = Asset::select($this->assetTable)->findOrFail($id);
+            $asset = Asset::with('financeAsset')->select($this->assetTable)->findOrFail($id);
 
             return $this->responseSuccess($asset, 'Asset retrieved successfully', 200);
         } catch (ModelNotFoundException $err) {
@@ -120,11 +138,8 @@ class MasterAssetController extends Controller
     {
         $validated = $request->validate([
             'company_id' => 'required|integer|exists:companies,id',
-            'serial_number' => 'required|string|unique:assets,serial_number',
             'name' => 'required|string|max:255',
-            'purchase_date' => 'nullable|date',
             'type' => 'required|in:inventory,vehicles,buildings,land',
-            'price' => 'nullable|numeric|min:0',
         ]);
 
         try {
@@ -132,7 +147,14 @@ class MasterAssetController extends Controller
                 $companySlug = \App\Models\Company::where('id', (int) $validated['company_id'])->value('slug') ?? '';
                 $validated['code'] = $this->code($companySlug, 'asset');
 
-                return Asset::create($validated);
+                $asset = Asset::create([
+                    'company_id' => $validated['company_id'],
+                    'code' => $validated['code'],
+                    'name' => $validated['name'],
+                    'type' => $validated['type'],
+                ]);
+
+                return $asset->fresh(['financeAsset']);
             });
 
             return $this->responseSuccess($asset, 'Asset created successfully', 201);
@@ -151,14 +173,11 @@ class MasterAssetController extends Controller
         $request->validate([
             'company_id' => 'sometimes|integer|exists:companies,id',
             'name' => 'sometimes|string|max:255',
-            'serial_number' => 'sometimes|string|unique:assets,serial_number,'.$id,
-            'purchase_date' => 'nullable|date',
             'type' => 'sometimes|in:inventory,vehicles,buildings,land',
-            'price' => 'nullable|numeric|min:0',
         ]);
 
         try {
-            $data = array_filter($request->only(['company_id', 'name', 'serial_number', 'purchase_date', 'type', 'price']), fn ($value) => $value !== '');
+            $data = array_filter($request->only(['company_id', 'name', 'type']), fn ($value) => $value !== '' && $value !== null);
 
             if (empty($data)) {
                 return $this->responseError(null, 'No data provided to update', 422);
@@ -168,7 +187,7 @@ class MasterAssetController extends Controller
                 $asset = Asset::findOrFail($id);
                 $asset->update($data);
 
-                return $asset->fresh();
+                return $asset->fresh(['financeAsset']);
             });
 
             return $this->responseSuccess($asset, 'Asset Update Successfully', 200);

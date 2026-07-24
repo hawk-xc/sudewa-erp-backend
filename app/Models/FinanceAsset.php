@@ -14,14 +14,19 @@ class FinanceAsset extends Model
 
     protected $fillable = [
         'uuid',
+        'price',
         'asset_id',
+        'purchase_date',
         'economic_age',
-        'description' // text
+        'description',
+        'serial_number',
     ];
 
     protected $casts = [
+        'price' => 'integer',
         'asset_id' => 'integer',
         'economic_age' => 'integer',
+        'purchase_date' => 'date',
     ];
 
     public function company()

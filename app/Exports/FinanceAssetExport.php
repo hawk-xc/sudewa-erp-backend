@@ -24,7 +24,7 @@ class FinanceAssetExport implements FromCollection, WithHeadings
             ->join('assets', 'finance_assets.asset_id', '=', 'assets.id')
             ->select([
                 'assets.code as asset_code',
-                'assets.serial_number as serial_number',
+                'finance_assets.serial_number as serial_number',
                 'finance_assets.economic_age',
                 'finance_assets.description',
             ]);
@@ -36,9 +36,11 @@ class FinanceAssetExport implements FromCollection, WithHeadings
             $query->where(function ($q) use ($search, $caseSensitive) {
                 if ($caseSensitive) {
                     $q->where('assets.code', 'LIKE BINARY', "%$search%")
+                        ->orWhere('finance_assets.serial_number', 'LIKE BINARY', "%$search%")
                         ->orWhere('finance_assets.description', 'LIKE BINARY', "%$search%");
                 } else {
                     $q->where('assets.code', 'like', "%$search%")
+                        ->orWhere('finance_assets.serial_number', 'like', "%$search%")
                         ->orWhere('finance_assets.description', 'like', "%$search%");
                 }
             });

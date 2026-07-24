@@ -16,17 +16,35 @@ class Asset extends Model
         'uuid',
         'company_id',
         'code',
-        'serial_number',
-        'purchase_date',
         'name',
         'type', // inventory, vehicles, buildings, land
-        'price'
     ];
 
     protected $casts = [
         'company_id' => 'integer',
-        'price' => 'integer'  
     ];
+
+    protected $appends = [
+        'serial_number',
+        'purchase_date',
+        'price',
+    ];
+
+    public function getSerialNumberAttribute()
+    {
+        return $this->financeAsset?->serial_number;
+    }
+
+    public function getPurchaseDateAttribute()
+    {
+        $date = $this->financeAsset?->purchase_date;
+        return $date instanceof \Carbon\Carbon ? $date->format('Y-m-d') : $date;
+    }
+
+    public function getPriceAttribute()
+    {
+        return $this->financeAsset?->price;
+    }
 
     public function company()
     {

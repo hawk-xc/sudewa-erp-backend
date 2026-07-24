@@ -37,10 +37,35 @@ class FinanceAssetImport implements ToCollection, WithHeadingRow
                     'description' => isset($row['deskripsi']) ? trim($row['deskripsi']) : null,
                 ];
 
-                $validator = Validator::make($rowData, [
+                if (isset($row['harga'])) {
+                    $rowData['price'] = (float) $row['harga'];
+                }
+                if (isset($row['nomor_serial'])) {
+                    $rowData['serial_number'] = trim($row['nomor_serial']);
+                }
+                if (!empty($row['tanggal_beli'])) {
+                    try {
+                        $rowData['purchase_date'] = \PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject($row['tanggal_beli'])->format('Y-m-d');
+                    } catch (\Exception $e) {
+                        // ignore
+                    }
+                }
+
+                $rules = [
                     'economic_age' => 'nullable|integer|min:0',
                     'description' => 'nullable|string',
-                ]);
+                ];
+                if (isset($rowData['price'])) {
+                    $rules['price'] = 'nullable|numeric|min:0';
+                }
+                if (isset($rowData['serial_number'])) {
+                    $rules['serial_number'] = 'nullable|string|unique:finance_assets,serial_number,' . ($asset->financeAsset?->id ?? 'NULL');
+                }
+                if (isset($rowData['purchase_date'])) {
+                    $rules['purchase_date'] = 'nullable|date';
+                }
+
+                $validator = Validator::make($rowData, $rules);
 
                 if ($validator->fails()) {
                     throw new \Exception(

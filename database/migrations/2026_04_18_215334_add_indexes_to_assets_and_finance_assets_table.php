@@ -14,12 +14,12 @@ return new class extends Migration
         Schema::table('assets', function (Blueprint $table) {
             $table->index('name');
             $table->index('type');
-            $table->index('purchase_date');
         });
 
         Schema::table('finance_assets', function (Blueprint $table) {
             $table->index('asset_id');
             $table->index('economic_age');
+            $table->index('purchase_date');
         });
     }
 
@@ -31,12 +31,12 @@ return new class extends Migration
         Schema::table('assets', function (Blueprint $table) {
             $table->dropIndex(['name']);
             $table->dropIndex(['type']);
-            $table->dropIndex(['purchase_date']);
         });
 
         Schema::table('finance_assets', function (Blueprint $table) {
             $table->dropIndex(['asset_id']);
             $table->dropIndex(['economic_age']);
+            $table->dropIndex(['purchase_date']);
         });
     }
 };

@@ -20,8 +20,18 @@ class AssetExport implements FromCollection, WithHeadings
 
     public function collection()
     {
-        $query = Asset::query();
-        $query->select($this->columns);
+        $query = Asset::query()
+            ->leftJoin('finance_assets', 'assets.id', '=', 'finance_assets.asset_id');
+
+        $selectColumns = [];
+        foreach ($this->columns as $col) {
+            if (in_array($col, ['serial_number', 'purchase_date', 'price'])) {
+                $selectColumns[] = 'finance_assets.' . $col . ' as ' . $col;
+            } else {
+                $selectColumns[] = 'assets.' . $col . ' as ' . $col;
+            }
+        }
+        $query->select($selectColumns);
 
         if ($this->request->filled('search')) {
             $search = $this->request->search;
@@ -29,20 +39,26 @@ class AssetExport implements FromCollection, WithHeadings
 
             $query->where(function ($q) use ($search, $caseSensitive) {
                 if ($caseSensitive) {
-                    $q->where('name', 'LIKE BINARY', "%$search%")
-                        ->orWhere('code', 'LIKE BINARY', "%$search%")
-                        ->orWhere('type', 'LIKE BINARY', "%$search%");
+                    $q->where('assets.name', 'LIKE BINARY', "%$search%")
+                        ->orWhere('assets.code', 'LIKE BINARY', "%$search%")
+                        ->orWhere('finance_assets.serial_number', 'LIKE BINARY', "%$search%")
+                        ->orWhere('assets.type', 'LIKE BINARY', "%$search%");
                 } else {
-                    $q->where('name', 'like', "%$search%")
-                        ->orWhere('code', 'like', "%$search%")
-                        ->orWhere('type', 'like', "%$search%");
+                    $q->where('assets.name', 'like', "%$search%")
+                        ->orWhere('assets.code', 'like', "%$search%")
+                        ->orWhere('finance_assets.serial_number', 'like', "%$search%")
+                        ->orWhere('assets.type', 'like', "%$search%");
                 }
             });
         }
 
         foreach ($this->columns as $field) {
             if ($this->request->filled($field)) {
-                $query->where($field, $this->request->$field);
+                if (in_array($field, ['serial_number', 'purchase_date', 'price'])) {
+                    $query->where('finance_assets.' . $field, $this->request->$field);
+                } else {
+                    $query->where('assets.' . $field, $this->request->$field);
+                }
             }
         }
 
@@ -54,7 +70,11 @@ class AssetExport implements FromCollection, WithHeadings
 
         $sortOrder = $this->request->sort_order === 'asc' ? 'asc' : 'desc';
 
-        $query->orderBy($sortBy, $sortOrder);
+        if (in_array($sortBy, ['serial_number', 'purchase_date', 'price'])) {
+            $query->orderBy('finance_assets.' . $sortBy, $sortOrder);
+        } else {
+            $query->orderBy('assets.' . $sortBy, $sortOrder);
+        }
 
         return $query->get();
     }

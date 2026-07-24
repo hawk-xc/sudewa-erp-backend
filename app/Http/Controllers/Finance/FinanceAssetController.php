@@ -31,7 +31,7 @@ class FinanceAssetController extends Controller
         $this->middleware(['permission:finance:edit'])->only('update');
 
         $this->financeAssetTable = [
-            'id', 'uuid', 'asset_id', 'economic_age',
+            'id', 'uuid', 'asset_id', 'serial_number', 'purchase_date', 'price', 'economic_age',
             'description', 'created_at', 'updated_at'
         ];
     }
@@ -41,7 +41,7 @@ class FinanceAssetController extends Controller
      */
     public function index(Request $request)
     {
-        $query = FinanceAsset::query()->with('asset:id,code,serial_number,name,type,purchase_date,price');
+        $query = FinanceAsset::query()->with('asset:id,company_id,code,name,type');
         $query->select($this->financeAssetTable);
 
         try {
@@ -52,15 +52,15 @@ class FinanceAssetController extends Controller
                 $query->where(function ($q) use ($search, $caseSensitive) {
                     if ($caseSensitive) {
                         $q->where('description', 'LIKE BINARY', "%$search%")
+                            ->orWhere('serial_number', 'LIKE BINARY', "%$search%")
                             ->orWhereHas('asset', function ($query) use ($search) {
-                                $query->where('serial_number', 'LIKE BINARY', "%$search%")
-                                    ->orWhere('code', 'LIKE BINARY', "%$search%");
+                                $query->where('code', 'LIKE BINARY', "%$search%");
                             });
                     } else {
                         $q->where('description', 'like', "%$search%")
+                            ->orWhere('serial_number', 'like', "%$search%")
                             ->orWhereHas('asset', function ($query) use ($search) {
-                                $query->where('serial_number', 'like', "%$search%")
-                                    ->orWhere('code', 'like', "%$search%");
+                                $query->where('code', 'like', "%$search%");
                             });
                     }
                 });
@@ -93,9 +93,9 @@ class FinanceAssetController extends Controller
 
             $data->getCollection()->transform(function ($item) {
                 $economicAgeInMonths = ($item->economic_age ?? 0) * 12;
-                $depreciationPerMonth = $economicAgeInMonths > 0 ? ($item->asset?->price ?? 0) / $economicAgeInMonths : 0;
+                $depreciationPerMonth = $economicAgeInMonths > 0 ? ($item->price ?? 0) / $economicAgeInMonths : 0;
 
-                $purchaseDate = $item->asset?->purchase_date;
+                $purchaseDate = $item->purchase_date;
                 $monthsUsed = 0;
                 if ($purchaseDate) {
                     $purchaseCarbon = \Carbon\Carbon::parse($purchaseDate);
@@ -105,12 +105,16 @@ class FinanceAssetController extends Controller
                 }
 
                 $difference = 48 - $depreciationPerMonth;
-                $finalValue = ($item->asset?->price ?? 0) - ($depreciationPerMonth * $monthsUsed);
+                $finalValue = ($item->price ?? 0) - ($depreciationPerMonth * $monthsUsed);
 
                 $item->depreciation_per_month = round($depreciationPerMonth, 2);
                 $item->months_used = $monthsUsed;
                 $item->difference = round($difference, 2);
                 $item->final_value = round($finalValue, 2);
+
+                if ($item->asset) {
+                    $item->asset->makeHidden(['financeAsset', 'finance_asset', 'serial_number', 'purchase_date', 'price']);
+                }
 
                 return $item;
             });
@@ -129,12 +133,12 @@ class FinanceAssetController extends Controller
     public function show(string $id)
     {
         try {
-            $asset = FinanceAsset::with('asset')->select($this->financeAssetTable)->findOrFail($id);
+            $asset = FinanceAsset::with('asset:id,company_id,code,name,type')->select($this->financeAssetTable)->findOrFail($id);
 
             $economicAgeInMonths = ($asset->economic_age ?? 0) * 12;
-            $depreciationPerMonth = $economicAgeInMonths > 0 ? ($asset->asset?->price ?? 0) / $economicAgeInMonths : 0;
+            $depreciationPerMonth = $economicAgeInMonths > 0 ? ($asset->price ?? 0) / $economicAgeInMonths : 0;
 
-            $purchaseDate = $asset->asset?->purchase_date;
+            $purchaseDate = $asset->purchase_date;
             $monthsUsed = 0;
             if ($purchaseDate) {
                 $purchaseCarbon = \Carbon\Carbon::parse($purchaseDate);
@@ -144,12 +148,16 @@ class FinanceAssetController extends Controller
             }
 
             $difference = 48 - $depreciationPerMonth;
-            $finalValue = ($asset->asset?->price ?? 0) - ($depreciationPerMonth * $monthsUsed);
+            $finalValue = ($asset->price ?? 0) - ($depreciationPerMonth * $monthsUsed);
 
             $asset->depreciation_per_month = round($depreciationPerMonth, 2);
             $asset->months_used = $monthsUsed;
             $asset->difference = round($difference, 2);
             $asset->final_value = round($finalValue, 2);
+
+            if ($asset->asset) {
+                $asset->asset->makeHidden(['financeAsset', 'finance_asset', 'serial_number', 'purchase_date', 'price']);
+            }
 
             return $this->responseSuccess($asset, 'Finance Asset retrieved successfully', 200);
         } catch (ModelNotFoundException $err) {
@@ -171,10 +179,13 @@ class FinanceAssetController extends Controller
         $request->validate([
             'economic_age' => 'sometimes|integer|min:0',
             'description' => 'sometimes|string',
+            'serial_number' => 'sometimes|string|unique:finance_assets,serial_number,'.$id,
+            'purchase_date' => 'nullable|date',
+            'price' => 'nullable|numeric|min:0',
         ]);
 
         try {
-            $data = array_filter($request->only(['economic_age', 'description']), fn ($value) => $value !== '' && $value !== null);
+            $data = array_filter($request->only(['economic_age', 'description', 'serial_number', 'purchase_date', 'price']), fn ($value) => $value !== '' && $value !== null);
 
             $asset = DB::transaction(function () use ($id, $data) {
                 $asset = FinanceAsset::findOrFail($id);
