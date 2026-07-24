@@ -93,7 +93,7 @@ class UnitTransactionItemSalesController extends Controller
             $model = class_basename($err->getModel() ?: 'Data');
             $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
             return $this->responseError(null, $friendlyModel . ' not found', 404);
-        } catch (\Exception $err) {
+        } catch (Exception $err) {
             return $this->responseError($err->getMessage(), 'Failed to retrieve data', 500);
         }
     }
@@ -124,28 +124,31 @@ class UnitTransactionItemSalesController extends Controller
 
         try {
             $unitTransactionItemSales = DB::transaction(function () use ($validated) {
-
-                $results = [];
-
                 $uniqueDetails = array_unique($validated['unit_transaction_details']);
 
-                foreach ($uniqueDetails as $itemId) {
+                // Get existing detail IDs for this item
+                $existingDetails = UnitTransactionItemSales::where('unit_transaction_item_id', $validated['unit_transaction_item_id'])
+                    ->pluck('unit_transaction_item_detail_id')
+                    ->toArray();
 
-                    $exists = UnitTransactionItemSales::where('unit_transaction_item_id', $validated['unit_transaction_item_id'])
-                        ->where('unit_transaction_item_detail_id', $itemId)
-                        ->exists();
+                // Delete details that are no longer in the request
+                $toDelete = array_diff($existingDetails, $uniqueDetails);
+                if (!empty($toDelete)) {
+                    UnitTransactionItemSales::where('unit_transaction_item_id', $validated['unit_transaction_item_id'])
+                        ->whereIn('unit_transaction_item_detail_id', $toDelete)
+                        ->delete();
+                }
 
-                    if ($exists) {
-                        continue;
-                    }
-
-                    $results[] = UnitTransactionItemSales::create([
+                // Insert new details that are not already in the database
+                $toInsert = array_diff($uniqueDetails, $existingDetails);
+                foreach ($toInsert as $detailId) {
+                    UnitTransactionItemSales::create([
                         'unit_transaction_item_id' => $validated['unit_transaction_item_id'],
-                        'unit_transaction_item_detail_id' => $itemId,
+                        'unit_transaction_item_detail_id' => $detailId,
                     ]);
                 }
 
-                return $results;
+                return UnitTransactionItemSales::where('unit_transaction_item_id', $validated['unit_transaction_item_id'])->get();
             });
 
             return $this->responseSuccess(
@@ -158,7 +161,7 @@ class UnitTransactionItemSalesController extends Controller
             $model = class_basename($err->getModel() ?: 'Data');
             $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
             return $this->responseError(null, $friendlyModel . ' not found', 404);
-        } catch (\Exception $err) {
+        } catch (Exception $err) {
             return $this->responseError(
                 $err->getMessage(),
                 'Validation failed',
@@ -200,7 +203,7 @@ class UnitTransactionItemSalesController extends Controller
             $model = class_basename($err->getModel() ?: 'Data');
             $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
             return $this->responseError(null, $friendlyModel . ' not found', 404);
-        } catch (\Exception $err) {
+        } catch (Exception $err) {
             Log::error('Error while showing Unit Transaction Item Sales '.$err->getMessage());
             return $this->responseError($err->getMessage(), 'Failed Showing Unit Transaction Item Sales Data', 500);
         }
@@ -233,28 +236,31 @@ class UnitTransactionItemSalesController extends Controller
 
         try {
             $results = DB::transaction(function () use ($validated) {
-
-                $results = [];
-
                 $uniqueDetails = array_unique($validated['unit_transaction_details']);
 
-                foreach ($uniqueDetails as $detailId) {
+                // Get existing detail IDs for this item
+                $existingDetails = UnitTransactionItemSales::where('unit_transaction_item_id', $validated['unit_transaction_item_id'])
+                    ->pluck('unit_transaction_item_detail_id')
+                    ->toArray();
 
-                    $exists = UnitTransactionItemSales::where('unit_transaction_item_id', $validated['unit_transaction_item_id'])
-                        ->where('unit_transaction_item_detail_id', $detailId)
-                        ->exists();
+                // Delete details that are no longer in the request
+                $toDelete = array_diff($existingDetails, $uniqueDetails);
+                if (!empty($toDelete)) {
+                    UnitTransactionItemSales::where('unit_transaction_item_id', $validated['unit_transaction_item_id'])
+                        ->whereIn('unit_transaction_item_detail_id', $toDelete)
+                        ->delete();
+                }
 
-                    if ($exists) {
-                        continue;
-                    }
-
-                    $results[] = UnitTransactionItemSales::create([
+                // Insert new details that are not already in the database
+                $toInsert = array_diff($uniqueDetails, $existingDetails);
+                foreach ($toInsert as $detailId) {
+                    UnitTransactionItemSales::create([
                         'unit_transaction_item_id' => $validated['unit_transaction_item_id'],
                         'unit_transaction_item_detail_id' => $detailId,
                     ]);
                 }
 
-                return $results;
+                return UnitTransactionItemSales::where('unit_transaction_item_id', $validated['unit_transaction_item_id'])->get();
             });
 
             return $this->responseSuccess(
@@ -267,7 +273,7 @@ class UnitTransactionItemSalesController extends Controller
             $model = class_basename($err->getModel() ?: 'Data');
             $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
             return $this->responseError(null, $friendlyModel . ' not found', 404);
-        } catch (\Exception $err) {
+        } catch (Exception $err) {
             return $this->responseError(
                 $err->getMessage(),
                 'Update failed',
@@ -290,7 +296,7 @@ class UnitTransactionItemSalesController extends Controller
             $model = class_basename($err->getModel() ?: 'Data');
             $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
             return $this->responseError(null, $friendlyModel . ' not found', 404);
-        } catch (\Exception $err) {
+        } catch (Exception $err) {
             Log::error('Error While deleting Unit Transaction Item Sales data : '.$err->getMessage());
 
             return $this->responseError(
