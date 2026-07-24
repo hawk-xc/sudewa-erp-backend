@@ -36,7 +36,7 @@ class MasterAssetController extends Controller
         $this->assetTable = ['id', 'uuid', 'company_id', 'code', 'name', 'type', 'created_at', 'updated_at'];
     }
 
-    
+
 
     /**
      * List all assets.
@@ -73,7 +73,7 @@ class MasterAssetController extends Controller
 
             foreach ($this->assetTable as $field) {
                 if ($request->filled($field)) {
-                    $query->where('assets.'.$field, $request->$field);
+                    $query->where('assets.' . $field, $request->$field);
                 }
             }
 
@@ -105,7 +105,7 @@ class MasterAssetController extends Controller
 
             return $this->responseSuccess($data, 'Asset list retrieved successfully', 200);
         } catch (Exception $err) {
-            Log::error('Error While retrieved Asset data : '.$err->getMessage());
+            Log::error('Error While retrieved Asset data : ' . $err->getMessage());
 
             return $this->responseError($err->getMessage(), 'Asset list retrieved Failed', 500);
         }
@@ -125,7 +125,7 @@ class MasterAssetController extends Controller
             $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
             return $this->responseError(null, $friendlyModel . ' not found', 404);
         } catch (Exception $err) {
-            Log::error('Error While retrieved Asset data : '.$err->getMessage());
+            Log::error('Error While retrieved Asset data : ' . $err->getMessage());
 
             return $this->responseError('The requested resource could not be found.', 'Resource Not Found', 404);
         }
@@ -140,12 +140,13 @@ class MasterAssetController extends Controller
             'company_id' => 'required|integer|exists:companies,id',
             'name' => 'required|string|max:255',
             'type' => 'required|in:inventory,vehicles,buildings,land',
+            'code' => 'nullable|string|unique:assets,code'
         ]);
 
         try {
-            $asset = DB::transaction(function () use ($validated) {
+            $asset = DB::transaction(function () use ($validated, $request) {
                 $companySlug = \App\Models\Company::where('id', (int) $validated['company_id'])->value('slug') ?? '';
-                $validated['code'] = $this->code($companySlug, 'asset');
+                $validated['code'] = $request->filled('code') ? $validated['code'] : $this->code($companySlug, 'asset');
 
                 $asset = Asset::create([
                     'company_id' => $validated['company_id'],
@@ -159,7 +160,7 @@ class MasterAssetController extends Controller
 
             return $this->responseSuccess($asset, 'Asset created successfully', 201);
         } catch (Exception $err) {
-            Log::error('Error while trying create Asset Data : '.$err->getMessage());
+            Log::error('Error while trying create Asset Data : ' . $err->getMessage());
 
             return $this->responseError($err->getMessage(), 'Error while trying create Asset Data', 500);
         }
@@ -170,22 +171,25 @@ class MasterAssetController extends Controller
      */
     public function update(Request $request, string $id)
     {
-        $request->validate([
+        $validated = $request->validate([
             'company_id' => 'sometimes|integer|exists:companies,id',
             'name' => 'sometimes|string|max:255',
             'type' => 'sometimes|in:inventory,vehicles,buildings,land',
+            'code' => 'sometimes|string|unique:assets,code,' . $id
         ]);
 
         try {
-            $data = array_filter($request->only(['company_id', 'name', 'type']), fn ($value) => $value !== '' && $value !== null);
+            $data = array_filter($request->only(['company_id', 'name', 'type']), fn($value) => $value !== '' && $value !== null);
 
             if (empty($data)) {
                 return $this->responseError(null, 'No data provided to update', 422);
             }
 
-            $asset = DB::transaction(function () use ($id, $data) {
+            $asset = DB::transaction(function () use ($id, $data, $request, $validated) {
                 $asset = Asset::findOrFail($id);
                 $asset->update($data);
+                $companySlug = \App\Models\Company::where('id', (int) $validated['company_id'])->value('slug') ?? '';
+                $data['code'] = $request->filled('code') ? $validated['code'] : $this->code($companySlug, 'asset');
 
                 return $asset->fresh(['financeAsset']);
             });
@@ -196,7 +200,7 @@ class MasterAssetController extends Controller
             $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
             return $this->responseError(null, $friendlyModel . ' not found', 404);
         } catch (Exception $err) {
-            Log::error('Error while trying update Asset data : '.$err->getMessage());
+            Log::error('Error while trying update Asset data : ' . $err->getMessage());
 
             return $this->responseError($err->getMessage(), 'Error while trying update Asset data', 500);
         }
@@ -217,7 +221,7 @@ class MasterAssetController extends Controller
             $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
             return $this->responseError(null, $friendlyModel . ' not found', 404);
         } catch (Exception $err) {
-            Log::error('Error while trying delete Asset data : '.$err->getMessage());
+            Log::error('Error while trying delete Asset data : ' . $err->getMessage());
 
             return $this->responseError($err->getMessage(), 'Asset Deleted Failed', 500);
         }
@@ -260,7 +264,7 @@ class MasterAssetController extends Controller
                 'wajira_asset_data.xlsx'
             );
         } catch (Exception $err) {
-            Log::error('Error export asset : '.$err->getMessage());
+            Log::error('Error export asset : ' . $err->getMessage());
 
             return $this->responseError(
                 $err->getMessage(),
