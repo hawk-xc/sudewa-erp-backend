@@ -19,6 +19,15 @@ class Tax extends Model
         'is_lock',
     ];
 
+    protected $appends = [
+        'tax_version_count',
+    ];
+
+    protected function getTaxVersionCountAttribute()
+    {
+        return $this->taxVersions->count();
+    }
+
     public function taxVersions()
     {
         return $this->hasMany(TaxVersion::class, 'tax_id', 'id');
