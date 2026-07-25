@@ -64,7 +64,7 @@ class MasterUnitTypeController extends Controller
             if ($request->filled('in_stock') && $request->filled('company_id')) {
                 if ($request->in_stock == 'true') {
                     $warehouseIds = Warehouse::where('company_id', $request->company_id)->pluck('id');
-                    
+
                     $availableUnitTypeIds = WarehouseMovement::query()
                         ->join('unit_transaction_item_details', 'warehouse_movements.unit_transaction_item_detail_id', '=', 'unit_transaction_item_details.id')
                         ->join('unit_transaction_items', 'unit_transaction_item_details.unit_transaction_item_id', '=', 'unit_transaction_items.id')
@@ -79,7 +79,7 @@ class MasterUnitTypeController extends Controller
                         ->toArray();
 
                     $query->whereIn('id', $availableUnitTypeIds);
-                } 
+                }
             }
 
             if ($request->filled('brand_id')) {
@@ -147,8 +147,9 @@ class MasterUnitTypeController extends Controller
                         $q->where('warehouse_id', $warehouseId);
                     });
 
-                if ($request->filled('in_stock') && in_array($request->in_stock, ['true', 'false'])) {
-                        $detailsQuery->where('in_stock', (bool) $request->in_stock);
+                if ($request->filled('in_stock') && in_array($request->in_stock, ["true", "false"])) {
+                    $inStock = $request->in_stock === "true";
+                    $detailsQuery->where('in_stock', (bool) $inStock);
                 }
 
                 if ($request->filled('color')) {
@@ -329,7 +330,7 @@ class MasterUnitTypeController extends Controller
             return Excel::download(
                 new UnitTypeExport($request, $this->unitTypeTable),
                 'wajira_unit_type_data.xlsx'
-            );  
+            );
         } catch (ModelNotFoundException $err) {
             $model = class_basename($err->getModel() ?: 'Data');
             $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
