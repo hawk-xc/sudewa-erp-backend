@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Finance;
 use App\Http\Controllers\Controller;
 use App\Models\FinanceBilling;
 use App\Models\CashFlow;
+use App\Models\UnitTypeDetailPpn;
 use App\Repositories\AuthRepository;
 use App\Traits\FileTrait;
 use App\Traits\ResponseTrait;
@@ -195,6 +196,8 @@ class DailyCashFlowController extends Controller
                 'credit' => 'required_without:debet|numeric|min:0|prohibits:debet',
                 'transaction_category' => 'nullable|string|in:general,operational,director_receivable,shareholder_receivable,receivable,inventory',
                 'payment_proof' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:2048',
+                'is_paid' => 'sometimes|in:true,false',
+                'unit_transaction_billing_id' => 'nullable|integer|exists:unit_transaction_billings,id',
             ]);
 
             $debet = $request->filled('debet') ?? 0;
@@ -208,8 +211,13 @@ class DailyCashFlowController extends Controller
 
             $validated['cash_flow_type'] = $debet > 0 ? 'debet' : 'credit';
 
+            if ($request->filled('is_paid')) {
+                $validated['is_paid'] = $request->is_paid == 'true';
+            }
+
             $cashFlow = DB::transaction(function () use ($validated) {
                 $cashFlow = CashFlow::create($validated);
+                $this->handleUnitTypeDetailPpn($cashFlow);
                 return $cashFlow;
             });
 
@@ -236,6 +244,7 @@ class DailyCashFlowController extends Controller
                 'transaction_category' => 'sometimes|string|in:general,operational,director_receivable,shareholder_receivable,receivable,inventory',
                 'payment_proof' => 'sometimes|nullable|file|mimes:jpg,jpeg,png,pdf|max:2048',
                 'is_paid' => 'sometimes|in:true,false',
+                'unit_transaction_billing_id' => 'sometimes|nullable|integer|exists:unit_transaction_billings,id',
             ]);
 
             if ($cashFlow->is_paid === true && $cashFlow->is_valid === false) {
@@ -304,8 +313,14 @@ class DailyCashFlowController extends Controller
                 }
 
                 $data['is_paid'] = $request->is_paid == 'true' ? true : false;
+
+                // handle Unit Type PPN data
                 $cashFlow->update($data);
-                return $cashFlow->fresh();
+                $cashFlow = $cashFlow->fresh();
+
+                $this->handleUnitTypeDetailPpn($cashFlow);
+
+                return $cashFlow;
             });
 
             return $this->responseSuccess($cashFlow, 'Cash Flow updated successfully', 200);
@@ -367,6 +382,50 @@ class DailyCashFlowController extends Controller
             Log::error('Error while deleting Cash Flow : ' . $err->getMessage());
 
             return $this->responseError($err->getMessage(), 'Error while deleting Cash Flow', 500);
+        }
+    }
+
+    /**
+     * Handle Unit Type PPN data when cash flow is paid.
+     *
+     * @param CashFlow $cashFlow
+     * @return void
+     */
+    private function handleUnitTypeDetailPpn(CashFlow $cashFlow): void
+    {
+        if ($cashFlow->is_paid && $cashFlow->unit_transaction_billing_id) {
+            $billing = $cashFlow->unitTransactionBilling;
+            if ($billing) {
+                $unitTransaction = $billing->unitTransaction;
+                if ($unitTransaction) {
+                    $unitTransaction->update([
+                        'stock_state' => 'inbound_incoming_goods',
+                    ]);
+
+                    foreach ($unitTransaction->unitTransactionItems as $itemObj) {
+                        $details = $unitTransaction->type === 'purchase'
+                            ? $itemObj->unitTransactionItemDetails
+                            : $itemObj->unitTypeSoldDetails;
+
+                        foreach ($details as $detail) {
+                            $unitTransactionType = $unitTransaction->type;
+                            $type = 'ppn_' . $unitTransactionType;
+
+                            $exists = UnitTypeDetailPpn::where('unit_transaction_item_detail_id', $detail->id)
+                                ->where('type', $type)
+                                ->exists();
+
+                            if (!$exists) {
+                                UnitTypeDetailPpn::create([
+                                    'unit_transaction_item_detail_id' => $detail->id,
+                                    'unit_transaction_id' => $unitTransaction->id,
+                                    'type' => $type,
+                                ]);
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 }

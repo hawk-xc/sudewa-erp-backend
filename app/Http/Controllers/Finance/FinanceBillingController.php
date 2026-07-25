@@ -7,7 +7,6 @@ use App\Models\Cash;
 use App\Models\CashFlow;
 use App\Models\FinanceBilling;
 use App\Models\UnitTransactionBilling;
-use App\Models\UnitTypeDetailPpn;
 use App\Repositories\AuthRepository;
 use App\Rules\RightAccountRule;
 use App\Rules\RightCashRule;
@@ -256,45 +255,6 @@ class FinanceBillingController extends Controller
 
             $item = DB::transaction(function () use ($validated, $cashFlow) {
                 $item = FinanceBilling::create($validated);
-
-                if ($cashFlow->unit_transaction_billing_id) {
-                    $billing = $cashFlow->unitTransactionBilling;
-                    $alreadyAllocated = FinanceBilling::whereHas('cashFlow', function ($q) use ($billing) {
-                        $q->where('unit_transaction_billing_id', $billing->id);
-                    })->sum('amount_original');
-
-                    if ($alreadyAllocated >= $billing->grand_total) {
-                        $unitTransaction = $billing->unitTransaction;
-                        if ($unitTransaction) {
-                            $unitTransaction->update([
-                                'stock_state' => 'inbound_incoming_goods',
-                            ]);
-
-                            foreach ($unitTransaction->unitTransactionItems as $itemObj) {
-                                $details = $unitTransaction->type === 'purchase'
-                                    ? $itemObj->unitTransactionItemDetails
-                                    : $itemObj->unitTypeSoldDetails;
-
-                                foreach ($details as $detail) {
-                                    $unitTransactionType = $unitTransaction->type;
-                                    $type = 'ppn_' . $unitTransactionType;
-
-                                    $exists = UnitTypeDetailPpn::where('unit_transaction_item_detail_id', $detail->id)
-                                        ->where('type', $type)
-                                        ->exists();
-
-                                    if (! $exists) {
-                                        UnitTypeDetailPpn::create([
-                                            'unit_transaction_item_detail_id' => $detail->id,
-                                            'unit_transaction_id' => $unitTransaction->id,
-                                            'type' => $type,
-                                        ]);
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
 
                 $cashFlow->updateValidity();
 
