@@ -158,6 +158,7 @@ class UnitTransactionController extends Controller
                 'unitTransactionBilling.unitTransactionBillingHistories',
                 'unitTransactionBilling.unitTransactionBillingHistories.cashes',
                 'unitTransactionItems',
+                'unitTransactionItems.unitType:id,name',
                 'unitTransactionItems.unitTransactionItemDetails',
                 'unitTransactionItems.unitTypeSoldDetails',
                 'unitTransactionItems.dppTax:id,tax_id',
@@ -167,6 +168,20 @@ class UnitTransactionController extends Controller
             ])
                 ->select($this->unitTransactionTable)
                 ->findOrFail($id);
+
+            foreach ($data->unitTransactionItems as $item) {
+                $unitTypeName = $item->unitType?->name;
+
+                foreach ($item->unitTransactionItemDetails as $detail) {
+                    $detail->unit_type_name = $unitTypeName;
+                }
+
+                foreach ($item->unitTypeSoldDetails as $soldDetail) {
+                    $soldDetail->unit_type_name = $unitTypeName;
+                }
+
+                $item->unsetRelation('unitType');
+            }
 
             $data->unit_transaction_bruto_total = $data->getBrutoAmount();
             $data->unit_transaction_bruto_total_actual = $data->getBrutoAmountActual();
@@ -206,7 +221,7 @@ class UnitTransactionController extends Controller
         }
     }
 
-    public function getRefundData(string $id) 
+    public function getRefundData(string $id)
     {
         try {
             $unitTransaction = UnitTransaction::with(['unitTransactionRefunds', 'unitTransactionRefunds.unitTransactionRefundPayments', 'unitTransactionRefunds.unitTransactionItemDetails'])->findOrFail($id);
@@ -222,10 +237,11 @@ class UnitTransactionController extends Controller
         }
     }
 
-    public function getUnitTransactinItemDetailsData(Request $request, string $id) 
+    public function getUnitTransactinItemDetailsData(Request $request, string $id)
     {
         try {
             $unitTransaction = UnitTransaction::with([
+                'unitTransactionItems.unitType:id,name',
                 'unitTransactionItems.unitTransactionItemDetails' => function ($query) use ($request) {
                     if ($request->filled('color')) {
                         $query->where('color', 'like', '%' . $request->color . '%');
@@ -250,7 +266,9 @@ class UnitTransactionController extends Controller
             $unitTransactionItemDetails = [];
 
             foreach ($unitTransaction->unitTransactionItems as $unitTransactionItem) {
+                $unitTypeName = $unitTransactionItem->unitType?->name;
                 foreach ($unitTransactionItem->unitTransactionItemDetails as $unitTransactionItemDetail) {
+                    $unitTransactionItemDetail->unit_type_name = $unitTypeName;
                     $unitTransactionItemDetails[] = $unitTransactionItemDetail;
                 }
             }
