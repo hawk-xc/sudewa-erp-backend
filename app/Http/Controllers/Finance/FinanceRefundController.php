@@ -35,6 +35,12 @@ class FinanceRefundController extends Controller
                 'cash:id,uuid,company_id,code,cash_name,type'
             ]);
 
+            if ($request->filled('refund_type') && in_array($request->refund_type, ['purchase', 'sales'])) {
+                $query->whereHas('unitTransactionRefund.unitTransaction', function ($q) use ($request) {
+                    $q->where('type', $request->refund_type);
+                });
+            }
+
             if ($request->filled('status')) {
                 if (in_array($request->status, ['waiting', 'reject', 'approve'])) {
                     $query->where('status', $request->status);

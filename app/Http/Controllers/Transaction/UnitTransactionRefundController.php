@@ -128,6 +128,7 @@ class UnitTransactionRefundController extends Controller
 
                     // Check if owned by the selected unit transaction
                     $unitTransactionId = $request->unit_transaction_id;
+                    $unitTransaction = null;
                     if ($unitTransactionId) {
                         $unitTransaction = DB::table('unit_transactions')->find($unitTransactionId);
                         if ($unitTransaction) {
@@ -156,14 +157,28 @@ class UnitTransactionRefundController extends Controller
                     }
 
                     // Check if in stock
-                    $notInStockIds = UnitTransactionItemDetail::whereIn('id', $value)
-                        ->where('in_stock', false)
-                        ->pluck('id')
-                        ->toArray();
+                    if ($unitTransaction) {
+                        if ($unitTransaction->type === 'purchase') {
+                            $notInStockIds = UnitTransactionItemDetail::whereIn('id', $value)
+                                ->where('in_stock', false)
+                                ->pluck('id')
+                                ->toArray();
 
-                    if (!empty($notInStockIds)) {
-                        $fail('The following item detail IDs are not in stock: ' . implode(', ', $notInStockIds));
-                        return;
+                            if (!empty($notInStockIds)) {
+                                $fail('The following item detail IDs are not in stock: ' . implode(', ', $notInStockIds));
+                                return;
+                            }
+                        } else if ($unitTransaction->type === 'sales') {
+                            $inStockIds = UnitTransactionItemDetail::whereIn('id', $value)
+                                ->where('in_stock', true)
+                                ->pluck('id')
+                                ->toArray();
+
+                            if (!empty($inStockIds)) {
+                                $fail('The following item detail IDs are already in stock: ' . implode(', ', $inStockIds));
+                                return;
+                            }
+                        }
                     }
                 }
             ],
