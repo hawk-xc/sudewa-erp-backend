@@ -142,10 +142,8 @@ class MasterUnitTypePriceVersion extends Controller
                 'sell_price' => 'required|integer|min:0',
                 'effective_from' => 'nullable|date',
                 'effective_until' => 'nullable|date|after_or_equal:effective_from',
-                'is_default' => 'sometimes|string|in:true,false',
+                'is_default' => 'sometimes|in:1,0',
             ]);
-
-            $validated['is_default'] = $request->is_default === 'true' ? true : false;
 
             $priceVersion = DB::transaction(function () use ($validated) {
                 if ($validated['is_default'] ?? false) {
@@ -184,7 +182,7 @@ class MasterUnitTypePriceVersion extends Controller
                     'name' => 'sometimes|nullable|string|max:255',
                     'effective_from' => 'sometimes|nullable|date',
                     'effective_until' => 'sometimes|nullable|date|after_or_equal:effective_from',
-                    'is_default' => 'sometimes|string|in:true,false',
+                    'is_default' => 'sometimes|in:1,0',
                 ]);
             } else {
                 $validated = $request->validate([
@@ -194,16 +192,19 @@ class MasterUnitTypePriceVersion extends Controller
                     'sell_price' => 'sometimes|required|integer|min:0',
                     'effective_from' => 'sometimes|nullable|date',
                     'effective_until' => 'sometimes|nullable|date|after_or_equal:effective_from',
-                    'is_default' => 'sometimes|string|in:true,false',
+                    'is_default' => 'sometimes|in:1,0',
                 ]);
             }
 
-            $validated['is_default'] = $request->is_default === 'true' ? true : 'false';
+            if (isset($validated['is_default']) && !$validated['is_default'] && $priceVersion->is_default) {
+                return $this->responseError('At least one price version must be set as default.', 'Validation Error', 422);
+            }
 
             DB::transaction(function () use ($priceVersion, $validated) {
                 if ($validated['is_default'] ?? false) {
                     $unitTypeId = $validated['unit_type_id'] ?? $priceVersion->unit_type_id;
                     UnitTypePriceVersion::where('unit_type_id', $unitTypeId)
+                        ->where('id', '!=', $priceVersion->id)
                         ->where('is_default', true)
                         ->update(['is_default' => false]);
                 }
@@ -235,6 +236,10 @@ class MasterUnitTypePriceVersion extends Controller
 
             if ($priceVersion->is_lock) {
                 return $this->responseError('Locked price versions cannot be deleted.', 'Action Forbidden', 403);
+            }
+
+            if ($priceVersion->is_default) {
+                return $this->responseError('Default price version cannot be deleted. A unit type must have at least one default price version.', 'Action Forbidden', 403);
             }
 
             DB::transaction(function () use ($priceVersion) {
