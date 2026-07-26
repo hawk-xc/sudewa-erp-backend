@@ -269,7 +269,10 @@ Route::group(
 
                 // Get Item Transaction Details data
                 Route::get('unit-transaction/{id}/get-item-details', [UnitTransactionController::class, 'getUnitTransactinItemDetailsData'])->name('get-item-transaction-data');
-                
+
+                // Unit Transaction Item Details Bulk Delete
+                Route::delete('unit-transaction-item-detail/bulk-delete', [UnitTransactionItemDetailController::class, 'bulkDelete'])->name('unit-transation-item-detials-bulk-delete');
+
                 Route::post('unit-transaction/{id}/transaction-adjustment', [UnitTransactionController::class, 'storeTransactionAdjustment']);
                 Route::apiResource('unit-transaction', UnitTransactionController::class);
                 Route::apiResource('unit-transaction-item', UnitTransactionItemController::class);
@@ -401,7 +404,7 @@ Route::group(
         // Settings
         Route::group(['prefix' => 'settings', 'as' => 'settings.'], function () {
             Route::get('tax/{code}/default', [TaxController::class, 'getDefault']);
-            
+
             Route::apiResource('tax', TaxController::class);
             Route::apiResource('tax-version', TaxVersionController::class);
         });

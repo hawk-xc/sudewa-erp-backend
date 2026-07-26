@@ -25,7 +25,7 @@ class UnitTransactionItemDetailController extends Controller
         $this->middleware(['permission:transaction:list'])->only(['index', 'show']);
         $this->middleware(['permission:transaction:create'])->only('store');
         $this->middleware(['permission:transaction:edit'])->only('update');
-        $this->middleware(['permission:transaction:delete'])->only(['destroy']);
+        $this->middleware(['permission:transaction:delete'])->only(['destroy', 'bulkDelete']);
 
         $this->unitTransactionItemDetailTable = [
             'id',
@@ -83,7 +83,7 @@ class UnitTransactionItemDetailController extends Controller
             $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
             return $this->responseError(null, $friendlyModel . ' not found', 404);
         } catch (\Exception $err) {
-            Log::error('Error While retrieved Unit Transaction Item Detail data : '.$err->getMessage());
+            Log::error('Error While retrieved Unit Transaction Item Detail data : ' . $err->getMessage());
 
             return $this->responseError(null, 'Unit Transaction Item Detail list retrieved Failed', 500);
         }
@@ -150,7 +150,7 @@ class UnitTransactionItemDetailController extends Controller
             $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
             return $this->responseError(null, $friendlyModel . ' not found', 404);
         } catch (\Exception $err) {
-            Log::error('Error While storing Unit Transaction Item Detail data : '.$err->getMessage());
+            Log::error('Error While storing Unit Transaction Item Detail data : ' . $err->getMessage());
 
             return $this->responseError($err->getMessage(), 'Unit Transaction Item Detail creation failed', 500);
         }
@@ -175,8 +175,8 @@ class UnitTransactionItemDetailController extends Controller
             $validated = $request->validate([
                 'unit_transaction_item_id' => 'sometimes|integer|exists:unit_transaction_items,id',
                 'color' => 'sometimes|required|string|max:255',
-                'machine_number' => 'sometimes|required|string|max:255|unique:unit_transaction_item_details,machine_number,'.$id,
-                'chassis_number' => 'sometimes|required|string|max:255|unique:unit_transaction_item_details,chassis_number,'.$id,
+                'machine_number' => 'sometimes|required|string|max:255|unique:unit_transaction_item_details,machine_number,' . $id,
+                'chassis_number' => 'sometimes|required|string|max:255|unique:unit_transaction_item_details,chassis_number,' . $id,
                 'status' => 'sometimes|string|in:minor_damage,major_damage,returned,refunded,lost,in_repair',
             ]);
 
@@ -194,7 +194,7 @@ class UnitTransactionItemDetailController extends Controller
             $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
             return $this->responseError(null, $friendlyModel . ' not found', 404);
         } catch (\Exception $err) {
-            Log::error('Error While updating Unit Transaction Item Detail data : '.$err->getMessage());
+            Log::error('Error While updating Unit Transaction Item Detail data : ' . $err->getMessage());
 
             return $this->responseError($err->getMessage(), 'Unit Transaction Item Detail update failed', 500);
         }
@@ -226,7 +226,7 @@ class UnitTransactionItemDetailController extends Controller
             $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
             return $this->responseError(null, $friendlyModel . ' not found', 404);
         } catch (\Exception $err) {
-            Log::error('Error While deleting Unit Transaction Item Detail data : '.$err->getMessage());
+            Log::error('Error While deleting Unit Transaction Item Detail data : ' . $err->getMessage());
 
             return $this->responseError([], 'Unit Transaction Item Detail Not Found or Failed Deleted', 500);
         }
@@ -252,6 +252,47 @@ class UnitTransactionItemDetailController extends Controller
             ]);
 
             return $this->responseError(null, $err->getMessage(), 500);
+        }
+    }
+
+    public function bulkDelete(Request $request)
+    {
+        $request->validate([
+            'unit_transaction_item_id' => 'required|integer|exists:unit_transaction_items,id',
+            'unit_transaction_item_details_id' => 'required|array',
+            'unit_transaction_item_details_id.*' => 'required|integer|exists:unit_transaction_item_details,id',
+        ]);
+
+        $unitTransactionItemId = $request->unit_transaction_item_id;
+        $unitTransactionItemDetailsId = $request->unit_transaction_item_details_id;
+
+        try {
+            $unitItemTransaction = UnitTransactionItem::findOrFail($unitTransactionItemId);
+            $unitTransactionGetType = $unitItemTransaction->unitTransaction->type;
+
+            if ($unitTransactionGetType == 'sales') {
+                return $this->responseError(
+                    'Cannot delete data. this operation only use in purchase state',
+                    'Validation failed',
+                    422
+                );
+            }
+
+            DB::transaction(function () use ($unitTransactionItemId, $unitTransactionItemDetailsId) {
+                UnitTransactionItemDetail::where('unit_transaction_item_id', $unitTransactionItemId)
+                    ->whereIn('id', $unitTransactionItemDetailsId)
+                    ->delete();
+            });
+
+            return $this->responseSuccess([], 'Unit Transaction Item Details successfully Deleted in bulk', 200);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
+        } catch (Exception $err) {
+            Log::error('Error While deleting Bulk unit transaction item detail data : ' . $err->getMessage());
+
+            return $this->responseError($err->getMessage(), 'Bulk Delete unit transaction item detail failed', 500);
         }
     }
 }
