@@ -123,7 +123,7 @@ class UnitTransactionItemDetail extends Model
         $this->update([
             'status' => 'returned',
             'is_forecast' => false,
-            'in_stock' => false,
+            'in_stock' => true,
         ]);
 
         $movement = $this->warehouseMovement()->where('status', 'in')->first();
