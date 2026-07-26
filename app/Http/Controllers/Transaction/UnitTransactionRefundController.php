@@ -299,7 +299,7 @@ class UnitTransactionRefundController extends Controller
         if (is_string($request->unit_transaction_item_detail_ids)) {
             $request->merge(['unit_transaction_item_detail_ids' => json_decode($request->unit_transaction_item_detail_ids, true)]);
         }
-        
+
         $request->validate([
             'unit_transaction_id' => 'nullable|exists:unit_transactions,id',
             'refund_date' => 'nullable|date',
@@ -361,7 +361,7 @@ class UnitTransactionRefundController extends Controller
                     'refund_date',
                     'refund_amount',
                     'note'
-                ]), fn ($value) => $value !== '' && $value !== null);
+                ]), fn($value) => $value !== '' && $value !== null);
 
                 $refund->update($data);
 
@@ -433,11 +433,28 @@ class UnitTransactionRefundController extends Controller
     /**
      * Delete a unit transaction refund.
      */
-    public function destroy(string $id)
+    public function destroy(Request $request, string $id)
     {
+        $deleteFinanceRefund = (bool) $request->query('delete-finance-refund', false);
+
         try {
-            DB::transaction(function () use ($id) {
+            DB::transaction(function () use ($id, $deleteFinanceRefund) {
                 $refund = UnitTransactionRefund::findOrFail($id);
+
+                if ($deleteFinanceRefund) {
+                    $financeRefund = $refund->financeRefund;
+                    if ($financeRefund) {
+                        if ($financeRefund->status === 'approve') {
+                            $nominal = (float) $financeRefund->financeRefundPayments()->sum('refund_nominal');
+                            $cash = $financeRefund->cash;
+                            $tx = $refund->unitTransaction;
+                            if ($cash && $tx && $nominal > 0) {
+                                $cash->adjustAmount(-$nominal, 'refund_' . $tx->type);
+                            }
+                        }
+                        $financeRefund->delete();
+                    }
+                }
 
                 // 1. Revert old item details of this refund
                 $detailIds = $refund->unitTransactionItemDetails()->pluck('unit_transaction_item_details.id')->toArray();
