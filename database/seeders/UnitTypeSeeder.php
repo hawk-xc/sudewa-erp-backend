@@ -103,12 +103,16 @@ class UnitTypeSeeder extends Seeder
         }
 
         foreach ($data as $item) {
+            $buyPrice = $item['buy_price'];
+            $sellPrice = $item['sell_price'];
+            unset($item['buy_price'], $item['sell_price']);
+
             $unitType = UnitType::create($item);
 
             $unitType->unitTypePriceVersions()->create([
                 'name' => 'Initial Price',
-                'buy_price' => $item['buy_price'],
-                'sell_price' => $item['sell_price'],
+                'buy_price' => $buyPrice,
+                'sell_price' => $sellPrice,
                 'effective_from' => now(),
                 'effective_until' => null,
                 'is_default' => true,
