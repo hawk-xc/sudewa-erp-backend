@@ -2,9 +2,11 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Exception;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class UnitType extends Model
 {
@@ -86,5 +88,32 @@ class UnitType extends Model
             ->get()
             ->pluck('unitTransactionItemDetails')
             ->flatten();
+    }
+
+    public function unitTypePriceVersions()
+    {
+        return $this->hasMany(UnitTypePriceVersion::class, 'unit_type_id', 'id');
+    }
+
+    public function getLatestPrice()
+    {
+        try {
+            return $this->unitTypePriceVersions()->latest()->first();
+        } catch (Exception $err) {
+            Log::error('Error getting latest unit type price version: ' . $err->getMessage());
+            return null;
+        }
+    }
+
+    public function getDefaultPrice()
+    {
+        try {
+            return $this->unitTypePriceVersions()
+                ->where('is_default', true)
+                ->firstOrFail();
+        } catch (Exception $err) {
+            Log::error('Error getting default unit type price version: ' . $err->getMessage());
+            return null;
+        }
     }
 }

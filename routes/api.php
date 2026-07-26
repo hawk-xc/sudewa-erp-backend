@@ -71,6 +71,7 @@ use App\Http\Controllers\Finance\FinanceInvoiceBillingPaymentController;
 use App\Http\Controllers\Transaction\UnitTransactionItemSalesController;
 use App\Http\Controllers\MasterData\MasterOwnershipTransferFeeController;
 use App\Http\Controllers\MasterData\MasterUnitTypePriceArchiveController;
+use App\Http\Controllers\MasterData\MasterUnitTypePriceVersion;
 use App\Http\Controllers\Transaction\UnitTransactionItemDetailController;
 use App\Http\Controllers\Warehouse\VehicleEquipmentTransactionController;
 use App\Http\Controllers\Transaction\UnitTransactionRefundPaymentController;
@@ -192,6 +193,7 @@ Route::group(
             Route::apiResource('brand', MasterBrandController::class);
             Route::apiResource('unit-type', MasterUnitTypeController::class);
             Route::apiResource('unit-type-price-archive', MasterUnitTypePriceArchiveController::class);
+            Route::apiResource('unit-type-price-version', MasterUnitTypePriceVersion::class);
             Route::apiResource('sparepart-category', MasterSparepartCategoryController::class);
             Route::apiResource('sparepart', MasterSparepartController::class);
             Route::apiResource('region', MasterRegionController::class);

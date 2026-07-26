@@ -17,6 +17,7 @@ class UnitTypeSeeder extends Seeder
     {
         DB::statement('SET FOREIGN_KEY_CHECKS=0;');
         UnitType::truncate();
+        DB::table('unit_type_price_versions')->truncate();
         DB::statement('SET FOREIGN_KEY_CHECKS=1;');
 
         $brands = Brand::pluck('id', 'name');
@@ -64,7 +65,7 @@ class UnitTypeSeeder extends Seeder
 
             $data[] = [
                 'uuid' => Str::uuid(),
-                'code' => 'MT'.str_pad($counter++, 4, '0', STR_PAD_LEFT),
+                'code' => 'MT' . str_pad($counter++, 4, '0', STR_PAD_LEFT),
                 'brand_id' => $brands[$motor['brand']],
                 'name' => $motor['name'],
                 'image' => null,
@@ -86,12 +87,12 @@ class UnitTypeSeeder extends Seeder
         for ($i = $count; $i < 50; $i++) {
             $data[] = [
                 'uuid' => Str::uuid(),
-                'code' => 'MT'.str_pad($counter++, 4, '0', STR_PAD_LEFT),
+                'code' => 'MT' . str_pad($counter++, 4, '0', STR_PAD_LEFT),
                 'brand_id' => $brandIds[array_rand($brandIds)],
-                'name' => 'Motor Type '.($i + 1),
+                'name' => 'Motor Type ' . ($i + 1),
                 'image' => null,
                 'unit_type' => 'motorcycle',
-                'unit_model' => 'Model '.($i + 1),
+                'unit_model' => 'Model ' . ($i + 1),
                 'netto_weight' => rand(90, 140),
                 'bruto_weight' => rand(100, 160),
                 'buy_price' => rand(10000000, 50000000),
@@ -101,6 +102,18 @@ class UnitTypeSeeder extends Seeder
             ];
         }
 
-        UnitType::insert($data);
+        foreach ($data as $item) {
+            $unitType = UnitType::create($item);
+
+            $unitType->unitTypePriceVersions()->create([
+                'name' => 'Initial Price',
+                'buy_price' => $item['buy_price'],
+                'sell_price' => $item['sell_price'],
+                'effective_from' => now(),
+                'effective_until' => null,
+                'is_default' => true,
+                'is_lock' => false,
+            ]);
+        }
     }
 }
