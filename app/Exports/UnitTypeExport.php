@@ -68,6 +68,14 @@ class UnitTypeExport implements FromCollection, WithHeadings
             ->selectRaw('unit_transaction_items.unit_type_id, COUNT(*) as stock')
             ->groupBy('unit_transaction_items.unit_type_id');
 
+        $defaultPriceQuery = DB::table('unit_type_price_versions')
+            ->where('is_default', true)
+            ->select(['unit_type_id', 'buy_price', 'sell_price']);
+
+        $query->leftJoinSub($defaultPriceQuery, 'default_price', function ($join) {
+            $join->on('unit_types.id', '=', 'default_price.unit_type_id');
+        });
+
         $query->leftJoinSub($realStockQuery, 'real_stock', function ($join) {
             $join->on('unit_types.id', '=', 'real_stock.unit_type_id');
         });
@@ -85,8 +93,8 @@ class UnitTypeExport implements FromCollection, WithHeadings
             'unit_types.unit_model',
             'unit_types.netto_weight',
             'unit_types.bruto_weight',
-            'unit_types.buy_price',
-            'unit_types.sell_price',
+            DB::raw('COALESCE(default_price.buy_price, 0) as buy_price'),
+            DB::raw('COALESCE(default_price.sell_price, 0) as sell_price'),
             DB::raw('COALESCE(real_stock.stock, 0) as available_stock'),
             DB::raw('COALESCE(forecast_stock.stock, 0) as forecast_stock'),
             'unit_types.created_at',

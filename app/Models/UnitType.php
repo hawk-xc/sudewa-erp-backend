@@ -24,17 +24,43 @@ class UnitType extends Model
         'unit_model',
         'netto_weight',
         'bruto_weight',
-        'buy_price',
-        'sell_price',
     ];
 
     protected $casts = [
         'brand_id' => 'integer',
         'netto_weight' => 'integer',
         'bruto_weight' => 'integer',
-        'buy_price' => 'integer',
-        'sell_price' => 'integer',
     ];
+
+    protected $appends = [
+        'buy_price',
+        'sell_price',
+    ];
+
+    protected $cachedDefaultPrice = null;
+    protected bool $isDefaultPriceCached = false;
+
+    public function getBuyPriceAttribute()
+    {
+        if (!$this->isDefaultPriceCached) {
+            $this->cachedDefaultPrice = $this->relationLoaded('unitTypePriceVersions')
+                ? ($this->unitTypePriceVersions->firstWhere('is_default', true) ?: $this->unitTypePriceVersions->first())
+                : ($this->getDefaultPrice() ?: $this->getLatestPrice());
+            $this->isDefaultPriceCached = true;
+        }
+        return $this->cachedDefaultPrice ? (int) $this->cachedDefaultPrice->buy_price : 0;
+    }
+
+    public function getSellPriceAttribute()
+    {
+        if (!$this->isDefaultPriceCached) {
+            $this->cachedDefaultPrice = $this->relationLoaded('unitTypePriceVersions')
+                ? ($this->unitTypePriceVersions->firstWhere('is_default', true) ?: $this->unitTypePriceVersions->first())
+                : ($this->getDefaultPrice() ?: $this->getLatestPrice());
+            $this->isDefaultPriceCached = true;
+        }
+        return $this->cachedDefaultPrice ? (int) $this->cachedDefaultPrice->sell_price : 0;
+    }
 
     public function brand()
     {

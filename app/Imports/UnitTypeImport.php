@@ -79,7 +79,7 @@ class UnitTypeImport implements ToCollection, WithHeadingRow
 
                 $brandId = $this->brandMap[$brandKey];
 
-                UnitType::create([
+                $unitType = UnitType::create([
                     'code' => $rowData['kode'],
                     'brand_id' => $brandId,
                     'name' => $rowData['nama'],
@@ -87,8 +87,16 @@ class UnitTypeImport implements ToCollection, WithHeadingRow
                     'unit_model' => $rowData['model_unit'],
                     'netto_weight' => $rowData['berat_netto'],
                     'bruto_weight' => $rowData['berat_brutto'],
-                    'buy_price' => $rowData['harga_beli'],
-                    'sell_price' => $rowData['harga_jual'],
+                ]);
+
+                $unitType->unitTypePriceVersions()->create([
+                    'name' => 'Initial Price',
+                    'buy_price' => $rowData['harga_beli'] ?? 0,
+                    'sell_price' => $rowData['harga_jual'] ?? 0,
+                    'effective_from' => now(),
+                    'effective_until' => null,
+                    'is_default' => true,
+                    'is_lock' => false,
                 ]);
             }
         });

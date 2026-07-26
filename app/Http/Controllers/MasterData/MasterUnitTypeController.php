@@ -51,7 +51,7 @@ class MasterUnitTypeController extends Controller
     public function index(Request $request)
     {
         try {
-            $query = UnitType::with('brand:id,name');
+            $query = UnitType::with(['brand:id,name', 'unitTypePriceVersions:id,uuid,unit_type_id,name,buy_price,sell_price,is_default']);
 
             if ($request->filled('search')) {
                 $search = $request->search;
@@ -130,7 +130,7 @@ class MasterUnitTypeController extends Controller
     public function show(Request $request, int $id)
     {
         try {
-            $unitType = UnitType::with('brand')->findOrFail($id);
+            $unitType = UnitType::with(['brand', 'unitTypePriceVersions'])->findOrFail($id);
 
             if ($request->filled('company_id')) {
                 $company = Company::findOrFail($request->company_id);
@@ -214,12 +214,26 @@ class MasterUnitTypeController extends Controller
 
         try {
             $unitType = DB::transaction(function () use ($validated) {
+                $buyPrice = $validated['buy_price'] ?? 0;
+                $sellPrice = $validated['sell_price'] ?? 0;
+                unset($validated['buy_price'], $validated['sell_price']);
+
                 $unitType = UnitType::create($validated);
+
+                $unitType->unitTypePriceVersions()->create([
+                    'name' => 'Initial Price',
+                    'buy_price' => $buyPrice,
+                    'sell_price' => $sellPrice,
+                    'effective_from' => now(),
+                    'effective_until' => null,
+                    'is_default' => true,
+                    'is_lock' => false,
+                ]);
 
                 return $unitType;
             });
 
-            return $this->responseSuccess($unitType->load('brand'), 'Unit Type created successfully', 201);
+            return $this->responseSuccess($unitType->load(['brand', 'unitTypePriceVersions']), 'Unit Type created successfully', 201);
         } catch (ModelNotFoundException $err) {
             $model = class_basename($err->getModel() ?: 'Data');
             $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
@@ -257,10 +271,38 @@ class MasterUnitTypeController extends Controller
 
         try {
             DB::transaction(function () use ($validated, $unitType) {
+                $buyPrice = $validated['buy_price'] ?? null;
+                $sellPrice = $validated['sell_price'] ?? null;
+                unset($validated['buy_price'], $validated['sell_price']);
+
                 $unitType->update($validated);
+
+                if ($buyPrice !== null || $sellPrice !== null) {
+                    $defaultPrice = $unitType->unitTypePriceVersions()->where('is_default', true)->first();
+                    if ($defaultPrice) {
+                        $updateData = [];
+                        if ($buyPrice !== null) {
+                            $updateData['buy_price'] = $buyPrice;
+                        }
+                        if ($sellPrice !== null) {
+                            $updateData['sell_price'] = $sellPrice;
+                        }
+                        $defaultPrice->update($updateData);
+                    } else {
+                        $unitType->unitTypePriceVersions()->create([
+                            'name' => 'Initial Price',
+                            'buy_price' => $buyPrice ?? 0,
+                            'sell_price' => $sellPrice ?? 0,
+                            'effective_from' => now(),
+                            'effective_until' => null,
+                            'is_default' => true,
+                            'is_lock' => false,
+                        ]);
+                    }
+                }
             });
 
-            return $this->responseSuccess($unitType->fresh(), 'Unit Type updated successfully', 200);
+            return $this->responseSuccess($unitType->fresh(['unitTypePriceVersions']), 'Unit Type updated successfully', 200);
         } catch (ModelNotFoundException $err) {
             $model = class_basename($err->getModel() ?: 'Data');
             $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
