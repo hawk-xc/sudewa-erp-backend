@@ -174,7 +174,50 @@ class WarehouseActivityController extends Controller
         try {
             $warehouseActivity = WarehouseActivity::findOrFail($id);
 
-            DB::transaction(fn() => $warehouseActivity->delete());
+            DB::transaction(function () use ($warehouseActivity) {
+                $movements = $warehouseActivity->warehouseMovements()
+                    ->with('unitTransactionItemDetail.unitTransactionItem.unitTransaction')
+                    ->get();
+
+                foreach ($movements as $movement) {
+                    $detail = $movement->unitTransactionItemDetail;
+                    if ($detail) {
+                        if ($movement->status === 'in') {
+                            $detail->update([
+                                'in_stock' => false,
+                                'is_forecast' => true,
+                                'status' => 'normal',
+                            ]);
+                        } elseif ($movement->status === 'refund') {
+                            $tx = $detail->unitTransactionItem?->unitTransaction;
+                            if ($tx) {
+                                if ($tx->type === 'purchase') {
+                                    $detail->update([
+                                        'in_stock' => true,
+                                        'is_forecast' => false,
+                                        'status' => 'normal',
+                                    ]);
+                                } elseif ($tx->type === 'sales') {
+                                    $detail->update([
+                                        'in_stock' => false,
+                                        'is_forecast' => false,
+                                        'status' => 'normal',
+                                    ]);
+                                }
+                                $tx->recalculateBillingTotals();
+                            }
+                        } elseif ($movement->status === 'out') {
+                            $detail->update([
+                                'in_stock' => true,
+                                'is_forecast' => false,
+                                'status' => 'normal',
+                            ]);
+                        }
+                    }
+                }
+
+                $warehouseActivity->delete();
+            });
 
             return $this->responseSuccess($warehouseActivity, 'Warehouse activity deleted successfully');
         } catch (Exception $e) {
