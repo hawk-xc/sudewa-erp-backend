@@ -389,6 +389,8 @@ class UnitTransactionItemController extends Controller
         try {
             $item = UnitTransactionItem::findOrFail($id);
 
+            $itemDetailsCount = $item->unitTransactionItemDetails()->count();
+
             $validated = $request->validate([
                 'unit_transaction_id' => 'sometimes|integer|exists:unit_transactions,id',
                 'unit_type_id' => 'sometimes|nullable|integer|exists:unit_types,id',
@@ -404,6 +406,10 @@ class UnitTransactionItemController extends Controller
                 'expedition_fee' => 'nullable|numeric',
                 'other_fee' => 'nullable|numeric',
             ]);
+
+            if ($request->filled('qty_total') && $request->qty_total < $itemDetailsCount) {
+                return $this->responseError('Cannot update data. The quantity exceeds the remaining warehouse capacity.', 'Validation failed', 422);
+            }
 
             if ($request->filled('unit_transaction_id')) {
                 $unitTransaction = UnitTransaction::findOrFail($request->unit_transaction_id);
