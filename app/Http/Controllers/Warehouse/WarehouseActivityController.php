@@ -121,7 +121,12 @@ class WarehouseActivityController extends Controller
     public function show(string $id)
     {
         try {
-            $data = $this->baseQuery()->findOrFail($id);
+            $data = $this->baseQuery()->with([
+                'warehouseMovements.unitTransactionItemDetail.unitTransactionItem:id,uuid,unit_transaction_id,unit_type_id',
+                'warehouseMovements.unitTransactionItemDetail.unitTransactionItem.unitType:id,name'
+            ])->findOrFail($id);
+
+            $data->total_unit_transaction_item_details = $data->warehouseMovements->count();
 
             return $this->responseSuccess($data, 'Warehouse activity retrieved successfully');
         } catch (Exception $e) {
