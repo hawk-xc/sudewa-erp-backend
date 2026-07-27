@@ -35,7 +35,7 @@ class WarehouseMovement extends Model
 
     public function unitTransaction()
     {
-        return $this->belongsTo(UnitTransaction::class, 'unit_transction_id', 'id');
+        return $this->belongsTo(UnitTransaction::class, 'unit_transaction_id', 'id');
     }
 
     public function warehouseActivity()

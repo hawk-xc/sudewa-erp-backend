@@ -122,6 +122,7 @@ class WarehouseActivityController extends Controller
     {
         try {
             $data = $this->baseQuery()->with([
+                'warehouseMovements.unitTransaction:id,uuid,code',
                 'warehouseMovements.unitTransactionItemDetail.unitTransactionItem:id,uuid,unit_transaction_id,unit_type_id',
                 'warehouseMovements.unitTransactionItemDetail.unitTransactionItem.unitType:id,name'
             ])->findOrFail($id);
