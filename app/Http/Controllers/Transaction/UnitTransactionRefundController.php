@@ -174,10 +174,10 @@ class UnitTransactionRefundController extends Controller
                                 ->pluck('id')
                                 ->toArray();
 
-                            if (!empty($inStockIds)) {
-                                $fail('The following item detail IDs are already in stock: ' . implode(', ', $inStockIds));
-                                return;
-                            }
+                            // if (!empty($inStockIds)) {
+                            //     $fail('The following item detail IDs are already in stock: ' . implode(', ', $inStockIds));
+                            //     return;
+                            // }
                         }
                     }
                 }
