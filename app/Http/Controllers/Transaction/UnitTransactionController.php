@@ -801,7 +801,7 @@ class UnitTransactionController extends Controller
                 $adjustment = $unitTransaction->unitTransactionAdjustments()->create([
                     'cash_id' => $validated['cash_id'],
                     'amount' => $amount,
-                    'description' => $validated['description'],
+                    'description' => $validated['description'] ?? "Refund Transaksi Beli {$unitTransaction->code} Sebanyak {$unitTransaction->unitTransactionItemDetails->count()} Unit",
                     'type' => 'refund',
                 ]);
 

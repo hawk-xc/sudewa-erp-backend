@@ -9,6 +9,7 @@ use App\Models\UnitTransactionRefundPayment;
 use App\Traits\GlobalCodeNumberTrait;
 use App\Traits\ResponseTrait;
 use Exception;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -68,7 +69,7 @@ class UnitTransactionRefundPaymentController extends Controller
             $data = $query->paginate($request->per_page ?? 10);
 
             return $this->responseSuccess($data, 'Unit transaction refund payments retrieved successfully', 200);
-        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $err) {
+        } catch (ModelNotFoundException $err) {
             $model = class_basename($err->getModel() ?: 'Data');
             $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
             return $this->responseError(null, $friendlyModel . ' not found', 404);
@@ -140,11 +141,11 @@ class UnitTransactionRefundPaymentController extends Controller
             }
 
             return $this->responseSuccess($payment, 'Unit transaction refund payment created successfully', 201);
-        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $err) {
+        } catch (ModelNotFoundException $err) {
             $model = class_basename($err->getModel() ?: 'Data');
             $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
             return $this->responseError(null, $friendlyModel . ' not found', 404);
-        } catch (\Exception $err) {
+        } catch (Exception $err) {
             Log::error('Error while creating unit transaction refund payment: ' . $err->getMessage());
 
             return $this->responseError($err->getMessage(), 'Failed to create unit transaction refund payment', 500);
@@ -162,7 +163,7 @@ class UnitTransactionRefundPaymentController extends Controller
             ])->findOrFail($id);
 
             return $this->responseSuccess($payment, 'Unit transaction refund payment retrieved successfully', 200);
-        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $err) {
+        } catch (ModelNotFoundException $err) {
             $model = class_basename($err->getModel() ?: 'Data');
             $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
             return $this->responseError(null, $friendlyModel . ' not found', 404);
@@ -233,7 +234,7 @@ class UnitTransactionRefundPaymentController extends Controller
             }
 
             return $this->responseSuccess($payment, 'Unit transaction refund payment updated successfully', 200);
-        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $err) {
+        } catch (ModelNotFoundException $err) {
             $model = class_basename($err->getModel() ?: 'Data');
             $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
             return $this->responseError(null, $friendlyModel . ' not found', 404);
@@ -254,7 +255,7 @@ class UnitTransactionRefundPaymentController extends Controller
             $payment->delete();
 
             return $this->responseSuccess(null, 'Unit transaction refund payment deleted successfully', 200);
-        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $err) {
+        } catch (ModelNotFoundException $err) {
             $model = class_basename($err->getModel() ?: 'Data');
             $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
             return $this->responseError(null, $friendlyModel . ' not found', 404);

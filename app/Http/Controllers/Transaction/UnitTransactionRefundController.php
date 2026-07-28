@@ -209,7 +209,7 @@ class UnitTransactionRefundController extends Controller
                         'warehouse_id' => $unitTransaction->warehouse_id,
                         'activity_type' => $unitTransaction->type === 'purchase' ? 'issue' : 'receipt',
                         'activity_date' => $refund->refund_date ?? now(),
-                        'description' => 'Refund ' . $refund->code,
+                        'description' => $request->note ?? 'Refund ' . $refund->code,
                     ]);
 
                     $details = UnitTransactionItemDetail::whereIn('id', $request->unit_transaction_item_detail_ids)->get();
