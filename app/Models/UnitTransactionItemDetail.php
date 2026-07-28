@@ -78,23 +78,26 @@ class UnitTransactionItemDetail extends Model
         );
     }
 
-    public function dispatchStock()
+    public function dispatchStock(?int $activityId = null)
     {
-        $movement = $this->warehouseMovement()->first();
-
-        if (! $movement) {
-            throw new \Exception('Vehicle not found in warehouse');
-        }
-
-        $movement->update([
-            'status' => 'out',
-        ]);
-
         $this->update([
+            'is_forecast' => false,
             'in_stock' => false,
         ]);
 
-        return $movement;
+        $unitTransaction = $this->unitTransactionItem->unitTransaction;
+
+        return WarehouseMovement::firstOrCreate(
+            [
+                'unit_transaction_item_detail_id' => $this->id,
+                'status' => 'out',
+            ],
+            [
+                'warehouse_activity_id' => $activityId,
+                'unit_transaction_id' => $unitTransaction->id,
+                'status' => 'out',
+            ]
+        );
     }
 
     public function refundStock()

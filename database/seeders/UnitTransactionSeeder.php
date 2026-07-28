@@ -420,7 +420,7 @@ class UnitTransactionSeeder extends Seeder
                 }
 
                 // Create dispatch warehouse activity
-                WarehouseActivity::create([
+                $warehouseActivity = WarehouseActivity::create([
                     'person_id' => $unitTransaction->person_id,
                     'warehouse_id' => $warehouse->id,
                     'activity_type' => 'issue',
@@ -429,7 +429,7 @@ class UnitTransactionSeeder extends Seeder
 
                 // Dispatch stock
                 foreach ($salesDetails as $detail) {
-                    $detail->dispatchStock();
+                    $detail->dispatchStock($warehouseActivity->id);
                 }
 
                 $unitTransaction->update([

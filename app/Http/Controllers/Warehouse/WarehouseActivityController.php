@@ -351,7 +351,7 @@ class WarehouseActivityController extends Controller
 
             $unitTransactionItemDetailList = [];
 
-            DB::transaction(function () use ($validated, $activity, &$unitTransactionItemDetailList) {
+            DB::transaction(function () use ($activityId, $validated, $activity, &$unitTransactionItemDetailList) {
                 if (isset($validated['cash_id'])) {
                     $activity->update([
                         'cash_id' => $validated['cash_id'],
@@ -377,7 +377,7 @@ class WarehouseActivityController extends Controller
 
                     $detail->update(['in_stock' => false, 'is_forecast' => false]);
 
-                    $detail->dispatchStock();
+                    $detail->dispatchStock($activityId);
 
                     $unitTransactionItemDetailList[] = $detail;
                 }
@@ -682,7 +682,7 @@ class WarehouseActivityController extends Controller
 
             $goodsTransactionDetailList = [];
 
-            DB::transaction(function () use ($validated, &$goodsTransactionDetailList) {
+            DB::transaction(function () use ($activityId, $validated, &$goodsTransactionDetailList) {
 
                 $details = GoodsTransactionDetail::with([
                     'goodsTransaction',
@@ -705,7 +705,7 @@ class WarehouseActivityController extends Controller
 
                     $detail->update(['in_stock' => false]);
 
-                    $detail->dispatchStock();
+                    $detail->dispatchStock($activityId);
 
                     $goodsTransactionDetailList[] = $detail;
                 }
