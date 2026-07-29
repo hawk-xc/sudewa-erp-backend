@@ -15,6 +15,7 @@ class UnitTransactionItemDetail extends Model
     protected $fillable = [
         'uuid',
         'unit_transaction_item_id',
+        'warehouse_sub_block_id',
         'color',
         'machine_number',
         'chassis_number',
@@ -25,6 +26,7 @@ class UnitTransactionItemDetail extends Model
 
     protected $casts = [
         'unit_transaction_item_id' => 'integer',
+        'warehouse_sub_block_id' => 'integer',
         'in_stock' => 'bool',
         'is_forecast' => 'bool',
     ];
@@ -59,6 +61,11 @@ class UnitTransactionItemDetail extends Model
             'unit_transaction_item_detail_id',
             'unit_transaction_refund_id'
         );
+    }
+
+    public function warehouseSubBlock()
+    {
+        return $this->belongsTo(WarehouseSubBlock::class, 'warehouse_sub_block_id', 'id');
     }
 
     public function receiptStock(?int $activityId = null)
@@ -138,6 +145,15 @@ class UnitTransactionItemDetail extends Model
         if ($item && $item->unitTransaction) {
             $item->unitTransaction->recalculateBillingTotals();
         }
+
+        return $this;
+    }
+
+    public function assignWarehouseSubBlock(?int $warehouseSubBlockId = null)
+    {
+        $this->update([
+            'warehouse_sub_block_id' => $warehouseSubBlockId,
+        ]);
 
         return $this;
     }
