@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\Settings;
+namespace App\Http\Controllers\MasterData;
 
 use Exception;
 use App\Models\Tax;
@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\Log;
 use App\Http\Controllers\Controller;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 
-class TaxController extends Controller
+class MasterTaxController extends Controller
 {
     use ResponseTrait;
 
@@ -19,10 +19,10 @@ class TaxController extends Controller
 
     public function __construct()
     {
-        $this->middleware(['permission:settings:list'])->only(['index', 'show']);
-        $this->middleware(['permission:settings:create'])->only('store');
-        $this->middleware(['permission:settings:edit'])->only('update');
-        $this->middleware(['permission:settings:delete'])->only(['destroy']);
+        $this->middleware(['permission:master-data:list'])->only(['index', 'show']);
+        $this->middleware(['permission:master-data:create'])->only('store');
+        $this->middleware(['permission:master-data:edit'])->only('update');
+        $this->middleware(['permission:master-data:delete'])->only(['destroy']);
 
         $this->taxTable = ['id', 'code', 'name', 'is_lock', 'created_at'];
     }
