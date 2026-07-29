@@ -398,10 +398,6 @@ class DailyCashFlowController extends Controller
             if ($billing) {
                 $unitTransaction = $billing->unitTransaction;
                 if ($unitTransaction) {
-                    $unitTransaction->update([
-                        'stock_state' => 'inbound_incoming_goods',
-                    ]);
-
                     foreach ($unitTransaction->unitTransactionItems as $itemObj) {
                         $details = $unitTransaction->type === 'purchase'
                             ? $itemObj->unitTransactionItemDetails

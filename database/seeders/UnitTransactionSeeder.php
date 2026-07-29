@@ -80,7 +80,6 @@ class UnitTransactionSeeder extends Seeder
                     'person_id' => $suppliers->random()->id,
                     'code' => $code,
                     'type' => 'purchase',
-                    'stock_state' => 'draft',
                 ]);
 
                 // Create items for complete purchase
@@ -195,10 +194,6 @@ class UnitTransactionSeeder extends Seeder
                     $detail->update(['in_stock' => true]);
                 }
 
-                $unitTransaction->update([
-                    'stock_state' => 'inbound_receipt',
-                ]);
-
                 $this->command->info("Created Complete Purchase: {$code}");
             });
         }
@@ -213,7 +208,6 @@ class UnitTransactionSeeder extends Seeder
                     'person_id' => $suppliers->random()->id,
                     'code' => $code,
                     'type' => 'purchase',
-                    'stock_state' => 'draft',
                 ]);
 
                 // Create items for draft purchase
@@ -305,7 +299,6 @@ class UnitTransactionSeeder extends Seeder
                     'person_id' => $customers->random()->id,
                     'code' => $code,
                     'type' => 'sales',
-                    'stock_state' => 'draft',
                 ]);
 
                 $itemsCount = rand(1, 3);
@@ -432,10 +425,6 @@ class UnitTransactionSeeder extends Seeder
                     $detail->dispatchStock($warehouseActivity->id);
                 }
 
-                $unitTransaction->update([
-                    'stock_state' => 'outbound_delivered',
-                ]);
-
                 $this->command->info("Created Complete Sales: {$code}");
             });
         }
@@ -457,7 +446,6 @@ class UnitTransactionSeeder extends Seeder
                     'person_id' => $customers->random()->id,
                     'code' => $code,
                     'type' => 'sales',
-                    'stock_state' => 'draft',
                 ]);
 
                 $itemsCount = rand(1, 3);

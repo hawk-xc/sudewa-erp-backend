@@ -42,7 +42,7 @@ class UnitTransactionAdjustmentController extends Controller
 
             $query->select($this->unitTransactionAdjustmentTable)
                 ->with([
-                    'unitTransaction:id,uuid,person_id,code,type,stock_state',
+                    'unitTransaction:id,uuid,person_id,code,type',
                     'unitTransaction.person:id,uuid,code,type,name',
                     'cash:id,uuid,code,description,type',
                 ]);
@@ -81,7 +81,7 @@ class UnitTransactionAdjustmentController extends Controller
     {
         try {
             $data = UnitTransactionAdjustment::with([
-                'unitTransaction:id,uuid,code,type,stock_state',
+                'unitTransaction:id,uuid,code,type',
                 'cash:id,uuid,code,description,type',
             ])
                 ->select($this->unitTransactionAdjustmentTable)

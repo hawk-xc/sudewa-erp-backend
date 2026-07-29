@@ -43,7 +43,7 @@ class UnitTypeDetailReportController extends Controller
                 ->with([
                     'unitTransactionItem:id,unit_transaction_id,unit_type_id',
                     'unitTransactionItem.unitType:id,code,name,unit_type,unit_model',
-                    'unitTransactionItem.unitTransaction:id,code,type,stock_state,person_id,created_at',
+                    'unitTransactionItem.unitTransaction:id,code,type,person_id,created_at',
                     'unitTransactionItem.unitTransaction.person:id,name',
                     'warehouseMovement:id,uuid,serial_number,warehouse_activity_id,unit_transaction_id,unit_transaction_item_detail_id,status,created_at'
                 ]);
@@ -57,12 +57,6 @@ class UnitTypeDetailReportController extends Controller
             if ($request->filled('warehouse_id')) {
                 $query->whereHas('unitTransactionItem.unitTransaction', function ($q) use ($request) {
                     $q->where('warehouse_id', $request->warehouse_id);
-                });
-            }
-
-            if ($request->filled('stock_state')) {
-                $query->whereHas('unitTransactionItem.unitTransaction', function ($q) use ($request) {
-                    $q->where('stock_state', $request->stock_state);
                 });
             }
 
@@ -122,7 +116,6 @@ class UnitTypeDetailReportController extends Controller
                     'receipt_date' => $item->warehouseMovement->created_at ?? null,
                     'transaction_code' => $item->unitTransactionItem->unitTransaction->code ?? null,
                     'type' => $item->unitTransactionItem->unitTransaction->type ?? null,
-                    'stock_state' => $item->unitTransactionItem->unitTransaction->stock_state ?? null,
                     'person' => $item->unitTransactionItem->unitTransaction->person->name ?? null,
                     'unit_type' => $item->unitTransactionItem->unitType ?? null,
                     'machine_number' => $item->machine_number,

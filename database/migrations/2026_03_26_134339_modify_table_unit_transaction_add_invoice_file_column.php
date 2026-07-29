@@ -12,7 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('unit_transactions', function (Blueprint $table) {
-            $table->string('invoice_file')->nullable(true)->after('stock_state');
+            $table->string('invoice_file')->nullable(true)->after('type');
         });
     }
 

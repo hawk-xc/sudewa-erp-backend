@@ -45,7 +45,6 @@ class UnitTransactionController extends Controller
             'person_id',
             'code',
             'type',
-            'stock_state',
             'invoice_file',
             'is_refunded',
             'created_at',
@@ -89,8 +88,7 @@ class UnitTransactionController extends Controller
 
                 $query->where(function ($q) use ($search) {
                     $q->where('code', 'like', "%$search%")
-                        ->orWhere('type', 'like', "%$search%")
-                        ->orWhere('stock_state', 'like', "%$search%");
+                        ->orWhere('type', 'like', "%$search%");
                 });
             }
 
@@ -296,7 +294,6 @@ class UnitTransactionController extends Controller
                 ],
                 'code' => 'sometimes|string|max:255|unique:unit_transactions,code',
                 'type' => 'required|string|in:purchase,sales',
-                'stock_state' => 'required|string',
 
                 // optional item
                 'unit_type_id' => 'nullable|integer|exists:unit_types,id',
@@ -477,7 +474,6 @@ class UnitTransactionController extends Controller
                 ],
                 'code' => 'sometimes|required|string|max:255|unique:unit_transactions,code,' . $id,
                 'type' => 'sometimes|required|string|in:purchase,sales',
-                'stock_state' => 'sometimes|required|string',
             ]);
 
             DB::transaction(function () use ($unitTransaction, $validated) {
@@ -536,9 +532,6 @@ class UnitTransactionController extends Controller
 
     public function updateState(Request $request, string $id)
     {
-        $purchaseStates = ['draft', 'cancel', 'rejected', 'prepare', 'inbound_purcase_order', 'inbound_incoming_goods', 'inbound_receipt'];
-        $salesStates = ['draft', 'cancel', 'prepare', 'outbound_reserved', 'outbound_in_transit', 'outbound_delivered'];
-
         try {
             $unitTransaction = UnitTransaction::with('unitTransactionItems')->findOrFail((int) $id);
 
@@ -547,16 +540,9 @@ class UnitTransactionController extends Controller
             }
 
             $validated = $request->validate([
-                'stock_state' => 'required|string',
                 'unit_transaction_details' => 'nullable|array',
                 'unit_transaction_details.*' => 'integer|distinct|exists:unit_transaction_item_details,id',
             ]);
-
-            $allowedStates = $unitTransaction->type === 'purchase' ? $purchaseStates : $salesStates;
-
-            if (! in_array($validated['stock_state'], $allowedStates)) {
-                return $this->responseError(null, 'Invalid stock state for this transaction type', 422);
-            }
 
             if ($unitTransaction->unitTransactionItems->isEmpty()) {
                 return $this->responseError(null, 'No transaction items found', 422);
@@ -598,29 +584,11 @@ class UnitTransactionController extends Controller
                 return $this->responseError(null, 'Selected details not found in this transaction', 422);
             }
 
-            DB::transaction(function () use ($unitTransaction, $validated, $validDetails) {
-
-                $unitTransaction->update(['stock_state' => $validated['stock_state']]);
-
-                foreach ($unitTransaction->unitTransactionItems as $item) {
-                    $item->update(['stock_state' => $validated['stock_state']]);
-                }
-
-                switch ($validated['stock_state']) {
-                    case 'inbound_incoming_goods':
-                        UnitTransactionItemDetail::whereIn('id', $validDetails->pluck('id'))
-                            ->update([
-                                'is_forecast' => true,
-                            ]);
-                        break;
-
-                    case 'outbound_delivered':
-                        UnitTransactionItemDetail::whereIn('id', $validDetails->pluck('id'))
-                            ->update([
-                                'is_forecast' => true,
-                            ]);
-                        break;
-                }
+            DB::transaction(function () use ($unitTransaction, $validDetails) {
+                UnitTransactionItemDetail::whereIn('id', $validDetails->pluck('id'))
+                    ->update([
+                        'is_forecast' => true,
+                    ]);
             });
 
             return $this->responseSuccess(
@@ -996,7 +964,7 @@ class UnitTransactionController extends Controller
             // Eager load relationships
             $query->with([
                 'unitTransactionItem:id,uuid,unit_transaction_id',
-                'unitTransactionItem.unitTransaction:id,uuid,code,type,stock_state',
+                'unitTransactionItem.unitTransaction:id,uuid,code,type',
             ]);
 
             // Pagination

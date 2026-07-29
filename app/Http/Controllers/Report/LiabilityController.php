@@ -26,7 +26,7 @@ class LiabilityController extends Controller
             $query->with([
                 'financeBillings',
                 'unitTransactionBilling:id,uuid,unit_transaction_id,last_payment_at,is_paid',
-                'unitTransactionBilling.unitTransaction:id,uuid,code,warehouse_id,person_id,type,stock_state',
+                'unitTransactionBilling.unitTransaction:id,uuid,code,warehouse_id,person_id,type',
                 'unitTransactionBilling.unitTransaction.person:id,uuid,code,company_id,type,name,address,phone'
             ]);
  

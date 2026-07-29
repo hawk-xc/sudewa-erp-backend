@@ -288,14 +288,7 @@ class WarehouseActivityController extends Controller
 
                     $transaction = $detail->unitTransactionItem->unitTransaction;
 
-                    $stockState = $transaction->stock_state;
                     $billing = $transaction->unitTransactionBilling;
-
-                    if (! in_array($stockState, ['inbound_incoming_goods', 'inbound_receipt'])) {
-                        throw new Exception(
-                            "Invalid stock state '{$stockState}' for detail ID {$detail->id}"
-                        );
-                    }
 
                     if ($detail->in_stock) {
                         throw new Exception(

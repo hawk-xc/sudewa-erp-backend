@@ -18,7 +18,6 @@ class UnitTransaction extends Model
         'person_id',
         'code',
         'type',
-        'stock_state',
         'invoice_file',
         'is_refunded'
     ];
@@ -26,7 +25,6 @@ class UnitTransaction extends Model
     protected $casts = [
         'warehouse_id' => 'integer',
         'person_id' => 'integer',
-        'stock_state' => 'string',
         'is_refunded' => 'boolean'
     ];
 

@@ -21,8 +21,6 @@ return new class extends Migration
 
         Schema::table('unit_transactions', function (Blueprint $table) {
             $table->index('warehouse_id', 'ut_wh_idx');
-            $table->index('stock_state', 'ut_state_idx');
-            $table->index(['warehouse_id', 'stock_state'], 'ut_wh_state_idx');
         });
     }
 
@@ -41,8 +39,6 @@ return new class extends Migration
 
         Schema::table('unit_transactions', function (Blueprint $table) {
             $table->dropIndex('ut_wh_idx');
-            $table->dropIndex('ut_state_idx');
-            $table->dropIndex('ut_wh_state_idx');
         });
     }
 };

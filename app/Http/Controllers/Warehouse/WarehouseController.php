@@ -121,10 +121,6 @@ class WarehouseController extends Controller
                 $transactionQuery->where('type', $request->type);
             }
 
-            if ($request->filled('stock_state')) {
-                $transactionQuery->where('stock_state', $request->stock_state);
-            }
-
             if ($request->filled('person_id')) {
                 $transactionQuery->where('person_id', $request->person_id);
             }
@@ -142,7 +138,7 @@ class WarehouseController extends Controller
             $sortBy = $request->get('sort_by', 'id');
             $sortDir = $request->get('sort_dir', 'desc');
 
-            $allowedSort = ['id', 'code', 'type', 'stock_state', 'created_at'];
+            $allowedSort = ['id', 'code', 'type', 'created_at'];
 
             if (! in_array($sortBy, $allowedSort)) {
                 $sortBy = 'id';
@@ -355,10 +351,6 @@ class WarehouseController extends Controller
                 ->whereHas('unitTransactionItem.unitTransaction', function ($q) use ($warehouse, $request) {
                     $q->where('warehouse_id', $warehouse->id);
 
-                    if ($request->filled('stock_state')) {
-                        $q->where('stock_state', $request->stock_state);
-                    }
-
                     if ($request->filled('unit_transaction_id')) {
                         $q->where('id', $request->unit_transaction_id);
                     }
@@ -367,7 +359,7 @@ class WarehouseController extends Controller
                     'unitTransactionItem:id,unit_transaction_id,unit_type_id,price,qty_total',
                     'unitTransactionItem.unitType:id,code,brand_id,name,unit_type,unit_model',
                     'unitTransactionItem.unitType.brand:id,uuid,name',
-                    'unitTransactionItem.unitTransaction:id,code,stock_state',
+                    'unitTransactionItem.unitTransaction:id,code',
                 ]);
 
             if ($request->has('in_stock')) {
@@ -411,7 +403,7 @@ class WarehouseController extends Controller
                     'stock_forecast' => (!$item->in_stock && $item->status === 'normal') ? 1 : 0,
                     'purchase_price' => (int) $item->unitTransactionItem->price / $item->unitTransactionItem->qty_total,
                     'status' => $item->status,
-                    'stock_status' => $unitItem->unitTransaction->stock_state ?? null,
+
                 ];
             });
 

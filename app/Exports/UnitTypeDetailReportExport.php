@@ -26,12 +26,6 @@ class UnitTypeDetailReportExport implements FromCollection, WithHeadings
             });
         }
 
-        if ($this->request->filled('stock_state')) {
-            $query->whereHas('unitTransactionItem.unitTransaction', function ($q) {
-                $q->where('stock_state', $this->request->stock_state);
-            });
-        }
-
         if ($this->request->filled('code')) {
             $query->whereHas('unitTransactionItem.unitTransaction', function ($q) {
                 $q->where('code', 'like', "%{$this->request->code}%");
@@ -80,7 +74,6 @@ class UnitTypeDetailReportExport implements FromCollection, WithHeadings
                 'Date' => $item->created_at,
                 'Transaction Code' => $item->unitTransactionItem->unitTransaction->code ?? null,
                 'Type' => $item->unitTransactionItem->unitTransaction->type ?? null,
-                'Stock State' => $item->unitTransactionItem->unitTransaction->stock_state ?? null,
                 'Person' => $item->unitTransactionItem->unitTransaction->person->name ?? null,
                 'Unit Type Code' => $item->unitTransactionItem->unitType->code ?? null,
                 'Unit Type Name' => $item->unitTransactionItem->unitType->name ?? null,
@@ -96,6 +89,6 @@ class UnitTypeDetailReportExport implements FromCollection, WithHeadings
 
     public function headings(): array
     {
-        return ['ID', 'Tanggal', 'Kode Transaksi', 'Tipe', 'Status Stok', 'Nama', 'Kode Tipe Unit', 'Nama Tipe Unit', 'Nomor Mesin', 'Nomor Rangka', 'Warna', 'Tersedia', 'Forecast', 'Status'];
+        return ['ID', 'Tanggal', 'Kode Transaksi', 'Tipe', 'Nama', 'Kode Tipe Unit', 'Nama Tipe Unit', 'Nomor Mesin', 'Nomor Rangka', 'Warna', 'Tersedia', 'Forecast', 'Status'];
     }
 }

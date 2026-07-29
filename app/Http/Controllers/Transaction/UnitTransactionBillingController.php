@@ -302,8 +302,6 @@ class UnitTransactionBillingController extends Controller
                     $transactionTypeLabel = $unitTransaction->type === 'sales' ? 'Penjualan' : 'Pembelian';
                     $prefixLabel          = $unitTransaction->type === 'sales' ? 'diterima' : 'dibayar';
 
-                    $unitTransaction->update(['stock_state' => 'inbound_incoming_goods']);
-
                     TransactionFlow::updateOrCreate(
                         ['unit_transaction_id' => $unitTransaction->id],
                         [
