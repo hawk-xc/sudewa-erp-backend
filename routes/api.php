@@ -5,11 +5,11 @@ use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\Role\RoleController;
 use App\Http\Controllers\User\UserController;
 use App\Http\Controllers\HealthCheckController;
-use App\Http\Controllers\Settings\TaxController;
+use App\Http\Controllers\MasterData\MasterTaxController;
 use App\Http\Controllers\Finance\PpnDataController;
 use App\Http\Controllers\Report\LiabilityController;
 use App\Http\Controllers\Global\GlobalModuleController;
-use App\Http\Controllers\Settings\TaxVersionController;
+use App\Http\Controllers\MasterData\TaxVersionController;
 use App\Http\Controllers\Transaction\BBNBillController;
 use App\Http\Controllers\Warehouse\WarehouseController;
 use App\Http\Controllers\Finance\FinanceAssetController;
@@ -72,6 +72,8 @@ use App\Http\Controllers\Transaction\UnitTransactionItemSalesController;
 use App\Http\Controllers\MasterData\MasterOwnershipTransferFeeController;
 use App\Http\Controllers\MasterData\MasterUnitTypePriceArchiveController;
 use App\Http\Controllers\MasterData\MasterUnitTypePriceVersion;
+use App\Http\Controllers\MasterData\MasterWarehouseBlockController;
+use App\Http\Controllers\MasterData\WarehouseSubBlockController;
 use App\Http\Controllers\Transaction\UnitTransactionItemDetailController;
 use App\Http\Controllers\Warehouse\VehicleEquipmentTransactionController;
 use App\Http\Controllers\Transaction\UnitTransactionRefundPaymentController;
@@ -163,6 +165,8 @@ Route::group(
             Route::post('tarif/import', [MasterTarifController::class, 'import']);
             Route::post('vehicle-fleet/import', [VehicleFleetController::class, 'import']);
             Route::post('vehicle-equipment/import', [MasterVehicleEquipmentController::class, 'import']);
+            Route::post('warehouse-block/{id}/import', [MasterWarehouseBlockController::class, 'import']);
+            Route::post('warehouse-sub-block/{id}/import', [WarehouseSubBlockController::class, 'import']);
 
             // Export
             Route::get('customer/export', [MasterCustomerController::class, 'export']);
@@ -178,7 +182,13 @@ Route::group(
             Route::get('tarif/export', [MasterTarifController::class, 'export']);
             Route::get('vehicle-equipment/export', [MasterVehicleEquipmentController::class, 'export']);
             Route::get('vehicle-fleet/export', [VehicleFleetController::class, 'export']);
-            // Route::get('material/export', [MasterMaterialController::class, 'export']);
+            Route::get('warehouse-block/export', [MasterWarehouseBlockController::class, 'export']);
+            Route::get('warehouse-sub-block/export', [WarehouseSubBlockController::class, 'export']);
+
+            // Other Option
+            Route::put('warehouse-sub-block/{id}/assign-sub-block', [WarehouseSubBlockController::class, 'assignSubBlock']);
+            Route::put('warehouse-sub-block/{id}/make-default', [WarehouseSubBlockController::class, 'makeDefault']);
+            Route::get('tax/{code}/default', [MasterTaxController::class, 'getDefault']);
 
             // Master Data
             Route::apiResource('account-group', MasterAccountGroupController::class);
@@ -203,6 +213,10 @@ Route::group(
             Route::apiResource('tarif', MasterTarifController::class);
             Route::apiResource('vehicle-equipment', MasterVehicleEquipmentController::class);
             Route::apiResource('vehicle-fleet', VehicleFleetController::class);
+            Route::apiResource('warehouse-block', MasterWarehouseBlockController::class);
+            Route::apiResource('warehouse-sub-block', WarehouseSubBlockController::class);
+            Route::apiResource('tax', MasterTaxController::class);
+            Route::apiResource('tax-version', TaxVersionController::class);
         });
 
         // Warehouse API
@@ -401,12 +415,5 @@ Route::group(
             Route::get('vehicle-registration-stats', [BillingStatController::class, 'vehicleRegistrationStats']);
         });
 
-        // Settings
-        Route::group(['prefix' => 'settings', 'as' => 'settings.'], function () {
-            Route::get('tax/{code}/default', [TaxController::class, 'getDefault']);
-
-            Route::apiResource('tax', TaxController::class);
-            Route::apiResource('tax-version', TaxVersionController::class);
-        });
     },
 );
