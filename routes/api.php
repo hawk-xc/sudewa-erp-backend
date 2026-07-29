@@ -286,6 +286,7 @@ Route::group(
 
                 // Unit Transaction Item Details Bulk Delete
                 Route::delete('unit-transaction-item-detail/bulk-delete', [UnitTransactionItemDetailController::class, 'bulkDelete'])->name('unit-transation-item-detials-bulk-delete');
+                Route::put('unit-transaction-item-details/update-state', [UnitTransactionItemDetailController::class, 'bulkChangeState'])->name('unit-transation-item-detials-bulk-change-state');
 
                 Route::post('unit-transaction/{id}/transaction-adjustment', [UnitTransactionController::class, 'storeTransactionAdjustment']);
                 Route::apiResource('unit-transaction', UnitTransactionController::class);
@@ -414,6 +415,5 @@ Route::group(
             Route::get('vehicle-document-stats', [BillingStatController::class, 'vehicleDocumentStats']);
             Route::get('vehicle-registration-stats', [BillingStatController::class, 'vehicleRegistrationStats']);
         });
-
     },
 );

@@ -302,7 +302,7 @@ class WarehouseActivityController extends Controller
                         );
                     }
 
-                    $detail->update(['in_stock' => true, 'is_forecast' => false]);
+                    $detail->update(['in_stock' => true, 'is_forecast' => false, 'stock_state' => 'purchase_order']);
                     $detail->receiptStock((int) $activity->id);
 
                     $unitTransactionItemDetailList[] = $detail;

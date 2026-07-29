@@ -296,4 +296,34 @@ class UnitTransactionItemDetailController extends Controller
             return $this->responseError($err->getMessage(), 'Bulk Delete unit transaction item detail failed', 500);
         }
     }
+
+    public function bulkChangeState(Request $request)
+    {
+        $request->validate([
+            'unit_transaction_item_details_id' => 'required|array',
+            'unit_transaction_item_details_id.*' => 'required|integer|exists:unit_transaction_item_details,id',
+            'stock_state' => 'required|string|in:draft,cancel,prepare,purchase_order,in_transit,receipt',
+        ]);
+
+        $unitTransactionItemDetailsId = $request->unit_transaction_item_details_id;
+        $stockState = $request->stock_state;
+
+        try {
+            DB::transaction(function () use ($unitTransactionItemDetailsId, $stockState) {
+                UnitTransactionItemDetail::whereIn('id', $unitTransactionItemDetailsId)->update([
+                    'stock_state' => $stockState,
+                ]);
+            });
+
+            return $this->responseSuccess([], 'Unit Transaction Item Details successfully Changed State in bulk', 200);
+        } catch (ModelNotFoundException $err) {
+            $model = class_basename($err->getModel() ?: 'Data');
+            $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
+            return $this->responseError(null, $friendlyModel . ' not found', 404);
+        } catch (Exception $err) {
+            Log::error('Error While changing state bulk unit transaction item detail data : ' . $err->getMessage());
+
+            return $this->responseError($err->getMessage(), 'Bulk Change state unit transaction item detail failed', 500);
+        }
+    }
 }
