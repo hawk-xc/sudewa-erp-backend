@@ -373,17 +373,9 @@ class UnitTransactionController extends Controller
                         }
                     }
 
-                    if ($request->filled('dpp_tax_id')) {
-                        $taxDefault = $this->resolveTax('dpp', $request->dpp_tax_id);
-
-                        $dppTaxRate = $taxDefault['rate'];
-                        $dppTaxId = $taxDefault['id'];
-                    } else {
-                        $taxDefault = $this->resolveTax('dpp', null);
-
-                        $dppTaxId = $taxDefault['id'];
-                        $dppTaxRate = $taxDefault['rate'];
-                    }
+                    $taxDefault = $this->resolveTax('dpp', $request->dpp_tax_id);
+                    $dppTaxRate = $taxDefault['rate'];
+                    $dppTaxId = $taxDefault['id'];
 
                     if ($request->filled('ppn_tax_id')) {
                         $taxDefault = $this->resolveTax('ppn', $request->ppn_tax_id);
@@ -406,7 +398,7 @@ class UnitTransactionController extends Controller
 
                     $hpp = $this->calculateDecimalAmount($hpp);
 
-                    $dpp = $dppTaxRate > 0 ? ($hpp / ($dppTaxRate / 100)) : 0;
+                    $dpp = $this->calculateDecimalAmount($hpp / 1.11);
                     $ppn = $dpp * ($ppnTaxRate / 100);
 
                     $hppPerUnitPrice = $this->calculateDecimalAmount($hpp);
