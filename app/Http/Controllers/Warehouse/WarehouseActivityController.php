@@ -31,6 +31,7 @@ class WarehouseActivityController extends Controller
         'activity_type',
         'activity_date',
         'description',
+        'state',
         'created_at',
     ];
 
@@ -125,6 +126,7 @@ class WarehouseActivityController extends Controller
         try {
             $data = $this->baseQuery()->with([
                 'warehouseMovements.unitTransaction:id,uuid,code',
+                'warehouseMovements.unitTransactionItemDetail.warehouseSubBlock:id,uuid,name',
                 'warehouseMovements.unitTransactionItemDetail.unitTransactionItem:id,uuid,unit_transaction_id,unit_type_id',
                 'warehouseMovements.unitTransactionItemDetail.unitTransactionItem.unitType:id,name'
             ])->findOrFail($id);
@@ -278,7 +280,7 @@ class WarehouseActivityController extends Controller
             $unitTransactionItemDetailList = [];
 
             DB::transaction(function () use ($validated, $activity, &$unitTransactionItemDetailList) {
-                $updateData = ['state' => 'done'];
+                $updateData = ['state' => 'process'];
                 if (isset($validated['cash_id'])) {
                     $updateData['cash_id'] = $validated['cash_id'];
                 }
@@ -349,7 +351,7 @@ class WarehouseActivityController extends Controller
             $unitTransactionItemDetailList = [];
 
             DB::transaction(function () use ($activityId, $validated, $activity, &$unitTransactionItemDetailList) {
-                $updateData = ['state' => 'done'];
+                $updateData = ['state' => 'process'];
                 if (isset($validated['cash_id'])) {
                     $updateData['cash_id'] = $validated['cash_id'];
                 }
@@ -439,7 +441,7 @@ class WarehouseActivityController extends Controller
                     'activity_type' => 'receipt', // sales refund is receipt of goods
                     'activity_date' => now(),
                     'description' => $validated['description'] ?? 'Automatic Sales Refund',
-                    'state' => 'done',
+                    'state' => 'process',
                 ]);
 
                 foreach ($details as $detail) {
@@ -519,7 +521,7 @@ class WarehouseActivityController extends Controller
                     'activity_type' => 'issue', // purchase return is issue of goods
                     'activity_date' => now(),
                     'description' => $validated['description'] ?? 'Automatic Purchase Return',
-                    'state' => 'done',
+                    'state' => 'process',
                 ]);
 
                 foreach ($details as $detail) {
@@ -599,7 +601,7 @@ class WarehouseActivityController extends Controller
             $goodsTransactionDetailList = [];
 
             DB::transaction(function () use ($validated, $activity, &$goodsTransactionDetailList) {
-                $activity->update(['state' => 'done']);
+                $activity->update(['state' => 'process']);
 
                 $details = GoodsTransactionDetail::with([
                     'goodsTransaction.goodsTransactionBillings',
@@ -686,7 +688,7 @@ class WarehouseActivityController extends Controller
             $goodsTransactionDetailList = [];
 
             DB::transaction(function () use ($activityId, $validated, $activity, &$goodsTransactionDetailList) {
-                $activity->update(['state' => 'done']);
+                $activity->update(['state' => 'process']);
 
                 $details = GoodsTransactionDetail::with([
                     'goodsTransaction',

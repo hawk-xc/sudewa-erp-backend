@@ -21,7 +21,7 @@ class WarehouseController extends Controller
 
     protected AuthRepository $authRepository;
 
-    protected $warehouseTable;
+    protected array $warehouseTable;
 
     public function __construct(AuthRepository $ar)
     {
@@ -341,11 +341,13 @@ class WarehouseController extends Controller
                 ->select([
                     'id',
                     'unit_transaction_item_id',
+                    'warehouse_sub_block_id',
                     'color',
                     'machine_number',
                     'chassis_number',
                     'in_stock',
                     'status',
+                    'stock_state',
                     'created_at',
                 ])
                 ->whereHas('unitTransactionItem.unitTransaction', function ($q) use ($warehouse, $request) {
@@ -360,6 +362,7 @@ class WarehouseController extends Controller
                     'unitTransactionItem.unitType:id,code,brand_id,name,unit_type,unit_model',
                     'unitTransactionItem.unitType.brand:id,uuid,name',
                     'unitTransactionItem.unitTransaction:id,code',
+                    'warehouseSubBlock:id,name',
                 ]);
 
             if ($request->has('in_stock')) {
@@ -382,6 +385,10 @@ class WarehouseController extends Controller
                 $query->where('color', 'like', '%' . strtoupper($request->color) . '%');
             }
 
+            if ($request->filled('stock_state')) {
+                $query->where('stock_state', $request->stock_state);
+            }
+
             $allowedSort = ['id', 'color', 'machine_number', 'chassis_number', 'created_at'];
             $sortBy = in_array($request->sort_by, $allowedSort) ? $request->sort_by : 'id';
             $sortDir = $request->sort_dir === 'asc' ? 'asc' : 'desc';
@@ -396,6 +403,7 @@ class WarehouseController extends Controller
                 return [
                     'id' => $item->id,
                     'unit_type' => $unitItem->unitType ?? null,
+                    'warehouse_sub_block' => $item->warehouseSubBlock ?? null,
                     'color' => $item->color,
                     'machine_number' => $item->machine_number,
                     'chassis_number' => $item->chassis_number,
@@ -403,7 +411,7 @@ class WarehouseController extends Controller
                     'stock_forecast' => (!$item->in_stock && $item->status === 'normal') ? 1 : 0,
                     'purchase_price' => (int) $item->unitTransactionItem->price / $item->unitTransactionItem->qty_total,
                     'status' => $item->status,
-
+                    'stock_state' => $item->stock_state,
                 ];
             });
 
