@@ -12,9 +12,11 @@ use App\Traits\FileTrait;
 use App\Traits\GlobalCodeNumberTrait;
 use App\Traits\ResponseTrait;
 use Exception;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\FacadesDB;
 use Illuminate\Validation\ValidationException;
 
 class UnitTransactionBillingController extends Controller
@@ -75,7 +77,7 @@ class UnitTransactionBillingController extends Controller
                 $item->total_paid = $item->getTotalPaid();
 
                 // Cek apakah ada pembayaran bca_usd
-                $hasUsdPayment = \DB::table('cash_unit_transaction_billing_history')
+                $hasUsdPayment = DB::table('cash_unit_transaction_billing_history')
                     ->join('unit_transaction_billing_histories', 'unit_transaction_billing_histories.id', '=', 'cash_unit_transaction_billing_history.unit_transaction_billing_history_id')
                     ->join('cashes', 'cashes.id', '=', 'cash_unit_transaction_billing_history.cash_id')
                     ->where('unit_transaction_billing_histories.unit_transaction_billing_id', $item->id)
@@ -93,11 +95,11 @@ class UnitTransactionBillingController extends Controller
                 'Unit Transaction Billing list retrieved successfully',
                 200
             );
-        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $err) {
+        } catch (ModelNotFoundException $err) {
             $model = class_basename($err->getModel() ?: 'Data');
             $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
             return $this->responseError(null, $friendlyModel . ' not found', 404);
-        } catch (\Exception $err) {
+        } catch (Exception $err) {
             Log::error($err->getMessage());
 
             return $this->responseError(null, 'Failed to retrieve data', 500);
@@ -123,7 +125,7 @@ class UnitTransactionBillingController extends Controller
             $totalPaid = $totalIdrPaid + $totalUsd;
 
             // Cek apakah ada pembayaran bca_usd
-            $hasUsdPayment = \DB::table('cash_unit_transaction_billing_history')
+            $hasUsdPayment = DB::table('cash_unit_transaction_billing_history')
                 ->join('unit_transaction_billing_histories', 'unit_transaction_billing_histories.id', '=', 'cash_unit_transaction_billing_history.unit_transaction_billing_history_id')
                 ->join('cashes', 'cashes.id', '=', 'cash_unit_transaction_billing_history.cash_id')
                 ->where('unit_transaction_billing_histories.unit_transaction_billing_id', $data->id)
@@ -142,11 +144,11 @@ class UnitTransactionBillingController extends Controller
             $data->total_payment_count = $totalPaymentCount;
 
             return $this->responseSuccess($data, 'Billing retrieved successfully', 200);
-        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $err) {
+        } catch (ModelNotFoundException $err) {
             $model = class_basename($err->getModel() ?: 'Data');
             $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
             return $this->responseError(null, $friendlyModel . ' not found', 404);
-        } catch (\Exception $err) {
+        } catch (Exception $err) {
             return $this->responseError($err->getMessage(), 'Billing not found', 404);
         }
     }
@@ -185,11 +187,11 @@ class UnitTransactionBillingController extends Controller
             return $this->responseSuccess($billing, 'Billing created successfully', 201);
         } catch (ValidationException $err) {
             return $this->responseError($err->errors(), 'Validation failed', 422);
-        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $err) {
+        } catch (ModelNotFoundException $err) {
             $model = class_basename($err->getModel() ?: 'Data');
             $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
             return $this->responseError(null, $friendlyModel . ' not found', 404);
-        } catch (\Exception $err) {
+        } catch (Exception $err) {
             Log::error($err->getMessage());
 
             return $this->responseError($err->getMessage(), 'Create failed', 500);
@@ -331,11 +333,11 @@ class UnitTransactionBillingController extends Controller
             );
         } catch (ValidationException $err) {
             return $this->responseError($err->errors(), 'Validation failed', 422);
-        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $err) {
+        } catch (ModelNotFoundException $err) {
             $model = class_basename($err->getModel() ?: 'Data');
             $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
             return $this->responseError(null, $friendlyModel . ' not found', 404);
-        } catch (\Exception $err) {
+        } catch (Exception $err) {
             Log::error($err->getMessage());
 
             return $this->responseError($err->getMessage(), 'Update failed', 500);
@@ -383,11 +385,11 @@ class UnitTransactionBillingController extends Controller
             });
 
             return $this->responseSuccess($billing, 'Billing deleted successfully', 200);
-        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $err) {
+        } catch (ModelNotFoundException $err) {
             $model = class_basename($err->getModel() ?: 'Data');
             $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
             return $this->responseError(null, $friendlyModel . ' not found', 404);
-        } catch (\Exception $err) {
+        } catch (Exception $err) {
             Log::error($err->getMessage());
 
             return $this->responseError(null, 'Delete failed', 500);
@@ -454,11 +456,11 @@ class UnitTransactionBillingController extends Controller
             ], 'Valid', 200);
         } catch (ValidationException $err) {
             return $this->responseError($err->errors(), 'Validation failed', 422);
-        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $err) {
+        } catch (ModelNotFoundException $err) {
             $model = class_basename($err->getModel() ?: 'Data');
             $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
             return $this->responseError(null, $friendlyModel . ' not found', 404);
-        } catch (\Exception $err) {
+        } catch (Exception $err) {
             return $this->responseError($err->getMessage(), 'Check failed', 500);
         }
     }

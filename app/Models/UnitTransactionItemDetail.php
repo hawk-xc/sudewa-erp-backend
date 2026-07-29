@@ -22,6 +22,7 @@ class UnitTransactionItemDetail extends Model
         'in_stock',
         'is_forecast',
         'status',
+        'stock_state',
     ];
 
     protected $casts = [
@@ -156,5 +157,18 @@ class UnitTransactionItemDetail extends Model
         ]);
 
         return $this;
+    }
+
+    public function changeStatus(?string $stockState = null)
+    {
+        if (!in_array($stockState, ['draft', 'cancel', 'prepare','purchase_order','in_transit','receipt'])) {
+            return false;
+        }
+
+        $this->update([
+            'stock_state' => $stockState,
+        ]);
+
+        return true;
     }
 }

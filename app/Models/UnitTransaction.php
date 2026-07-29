@@ -28,6 +28,12 @@ class UnitTransaction extends Model
         'is_refunded' => 'boolean'
     ];
 
+    protected $appends = [
+        'has_warehouse_activity',
+        'has_refund_transaction',
+        'expedition_fee_total',
+    ];
+
     public function person()
     {
         return $this->belongsTo(Person::class);
@@ -61,6 +67,11 @@ class UnitTransaction extends Model
     public function unitTransactionAdjustments()
     {
         return $this->hasMany(UnitTransactionAdjustment::class);
+    }
+
+    public function warehouseActivity()
+    {
+        return $this->hasOne(WarehouseActivity::class, 'unit_transaction_id', 'id');
     }
 
     public function getBrutoAmount()
@@ -110,6 +121,21 @@ class UnitTransaction extends Model
 
                 return $dpp + $ppn;
             });
+    }
+
+    public function getHasWarehouseActivityAttribute()
+    {
+        return $this->warehouseActivity()->exists();
+    }
+
+    public function getHasRefundTransactionAttribute()
+    {
+        return $this->unitTransactionRefunds()->exists();
+    }
+
+    public function getExpeditionFeeTotalAttribute()
+    {
+        return $this->unitTransactionItems->sum('expedition_fee');   
     }
 
     public function getBrutoAmountReturn()

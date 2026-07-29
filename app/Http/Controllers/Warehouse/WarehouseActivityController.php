@@ -100,9 +100,11 @@ class WarehouseActivityController extends Controller
             'person_id' => 'required|exists:persons,id',
             'cash_id' => 'nullable|integer|exists:cashes,id',
             'warehouse_id' => 'required|exists:warehouses,id',
+            'unit_transaction_id' => 'nullable|integer|exists:unit_transactions,id',
             'activity_type' => 'required|in:receipt,issue',
             'activity_date' => 'required|date',
             'description' => 'nullable|string',
+            'state' => 'nullable|in:draft,process,done',
         ]);
 
         try {
@@ -148,9 +150,11 @@ class WarehouseActivityController extends Controller
                 'person_id' => 'sometimes|exists:persons,id',
                 'cash_id' => 'sometimes|nullable|integer|exists:cashes,id',
                 'warehouse_id' => 'sometimes|exists:warehouses,id',
+                'unit_transaction_id' => 'sometimes|nullable|integer|exists:unit_transactions,id',
                 'activity_type' => 'sometimes|in:receipt,issue',
                 'activity_date' => 'sometimes|date',
                 'description' => 'sometimes|string',
+                'state' => 'sometimes|in:draft,process,done',
             ]);
 
             DB::transaction(
@@ -274,11 +278,11 @@ class WarehouseActivityController extends Controller
             $unitTransactionItemDetailList = [];
 
             DB::transaction(function () use ($validated, $activity, &$unitTransactionItemDetailList) {
+                $updateData = ['state' => 'done'];
                 if (isset($validated['cash_id'])) {
-                    $activity->update([
-                        'cash_id' => $validated['cash_id'],
-                    ]);
+                    $updateData['cash_id'] = $validated['cash_id'];
                 }
+                $activity->update($updateData);
 
                 $details = UnitTransactionItemDetail::with([
                     'unitTransactionItem.unitTransaction.unitTransactionBilling',
@@ -345,11 +349,11 @@ class WarehouseActivityController extends Controller
             $unitTransactionItemDetailList = [];
 
             DB::transaction(function () use ($activityId, $validated, $activity, &$unitTransactionItemDetailList) {
+                $updateData = ['state' => 'done'];
                 if (isset($validated['cash_id'])) {
-                    $activity->update([
-                        'cash_id' => $validated['cash_id'],
-                    ]);
+                    $updateData['cash_id'] = $validated['cash_id'];
                 }
+                $activity->update($updateData);
 
                 $details = UnitTransactionItemDetail::with([
                     'unitTransactionItem.unitTransaction.unitTransactionBilling',
@@ -431,9 +435,11 @@ class WarehouseActivityController extends Controller
                     'person_id' => $personId,
                     'cash_id' => $validated['cash_id'],
                     'warehouse_id' => $validated['warehouse_id'],
+                    'unit_transaction_id' => $firstDetail->unitTransactionItem->unitTransaction->id,
                     'activity_type' => 'receipt', // sales refund is receipt of goods
                     'activity_date' => now(),
                     'description' => $validated['description'] ?? 'Automatic Sales Refund',
+                    'state' => 'done',
                 ]);
 
                 foreach ($details as $detail) {
@@ -509,9 +515,11 @@ class WarehouseActivityController extends Controller
                     'person_id' => $personId,
                     'cash_id' => $validated['cash_id'],
                     'warehouse_id' => $validated['warehouse_id'],
+                    'unit_transaction_id' => $firstDetail->unitTransactionItem->unitTransaction->id,
                     'activity_type' => 'issue', // purchase return is issue of goods
                     'activity_date' => now(),
                     'description' => $validated['description'] ?? 'Automatic Purchase Return',
+                    'state' => 'done',
                 ]);
 
                 foreach ($details as $detail) {
@@ -591,6 +599,8 @@ class WarehouseActivityController extends Controller
             $goodsTransactionDetailList = [];
 
             DB::transaction(function () use ($validated, $activity, &$goodsTransactionDetailList) {
+                $activity->update(['state' => 'done']);
+
                 $details = GoodsTransactionDetail::with([
                     'goodsTransaction.goodsTransactionBillings',
                 ])->whereIn('id', $validated['goods_transaction_details'])->get();
@@ -675,7 +685,8 @@ class WarehouseActivityController extends Controller
 
             $goodsTransactionDetailList = [];
 
-            DB::transaction(function () use ($activityId, $validated, &$goodsTransactionDetailList) {
+            DB::transaction(function () use ($activityId, $validated, $activity, &$goodsTransactionDetailList) {
+                $activity->update(['state' => 'done']);
 
                 $details = GoodsTransactionDetail::with([
                     'goodsTransaction',

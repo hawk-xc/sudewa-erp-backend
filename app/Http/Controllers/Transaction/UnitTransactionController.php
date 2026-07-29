@@ -56,8 +56,6 @@ class UnitTransactionController extends Controller
         try {
             $query = UnitTransaction::query();
 
-            $query->withCount('unitTransactionItems');
-
             if ($request->type) {
                 $query->where('type', match ($request->type) {
                     'purchase' => 'purchase',
@@ -67,9 +65,6 @@ class UnitTransactionController extends Controller
             }
 
             $query->select($this->unitTransactionTable)
-                ->withCount([
-                    'unitTransactionItems as unit_transaction_item_counts',
-                ])
                 ->with([
                     'warehouse:id,uuid,name,capacity',
                     'person:id,uuid,code,name,type',
@@ -99,15 +94,13 @@ class UnitTransactionController extends Controller
 
             $data = $query->paginate($request->per_page ?? 10);
 
-            $data->getCollection()->transform(function ($item) {
+            $data->getCollection()->transform(function ($item) use ($query) {
 
                 $item->transaction_bruto_total = $item->getBrutoAmount();
                 $item->transaction_dpp_total = $item->getSumAmount('dpp_total_price');
                 $item->transaction_ppn_total = $item->getSumAmount('ppn_total_price');
                 $item->transaction_bbn_total = $item->getSumAmount('bbn_price');
                 $item->transaction_other_fee = $item->getSumAmount('other_fee');
-                $item->expedition_fee_total = $item->unitTransactionItems->sum('expedition_fee');
-                $item->has_returned_data = $item->unitTransactionRefunds->isNotEmpty();
 
                 if ($item->unitTransactionBilling) {
                     $billing = $item->unitTransactionBilling;
@@ -117,6 +110,8 @@ class UnitTransactionController extends Controller
 
                     $totalPaid = $totalCash + $totalBca;
                     $remaining = (int) $billing->grand_total - $totalPaid;
+
+                    $item->makeHidden('unitTransactionItems');
 
                     $item->billing_summary = [
                         'grand_total' => (int) $billing->grand_total,
@@ -163,6 +158,7 @@ class UnitTransactionController extends Controller
                 'unitTransactionItems.dppTax.tax:id,name,code',
                 'unitTransactionItems.ppnTax:id,tax_id',
                 'unitTransactionItems.ppnTax.tax:id,name,code',
+                'warehouseActivity',
             ])
                 ->select($this->unitTransactionTable)
                 ->findOrFail($id);

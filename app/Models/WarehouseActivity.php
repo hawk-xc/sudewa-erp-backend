@@ -21,16 +21,19 @@ class WarehouseActivity extends Model
         'person_id',
         'cash_id', // relation with cash
         'warehouse_id',
+        'unit_transaction_id',
         'activity_number',
         'activity_type',
         'activity_date',
         'description',
+        'state',
     ];
 
     protected $casts = [
         'person_id' => 'integer',
         'cash_id' => 'integer',
         'warehouse_id' => 'integer',
+        'unit_transaction_id' => 'integer',
     ];
 
     public function warehouse()
@@ -51,6 +54,11 @@ class WarehouseActivity extends Model
     public function cash()
     {
         return $this->belongsTo(Cash::class, 'cash_id', 'id');
+    }
+
+    public function unitTransaction()
+    {
+        return $this->belongsTo(UnitTransaction::class, 'unit_transaction_id', 'id');
     }
 
     protected static function boot()
