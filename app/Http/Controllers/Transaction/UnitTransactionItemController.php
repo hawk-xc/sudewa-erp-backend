@@ -134,6 +134,7 @@ class UnitTransactionItemController extends Controller
                 'unitTransactionItemSales',
                 'dppTax',
                 'ppnTax',
+                'unitType:id,uuid,code,name'
             ])->select($this->unitTransactionItemTable)->findOrFail($id);
 
             return $this->responseSuccess($item, 'Unit Transaction Item retrieved successfully', 200);

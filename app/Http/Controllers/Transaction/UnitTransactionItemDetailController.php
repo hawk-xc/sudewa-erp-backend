@@ -24,20 +24,22 @@ class UnitTransactionItemDetailController extends Controller
     public function __construct()
     {
         $this->middleware(['permission:transaction:list'])->only(['index', 'show']);
-        $this->middleware(['permission:transaction:create'])->only('store');
-        $this->middleware(['permission:transaction:edit'])->only('update');
+        $this->middleware(['permission:transaction:create'])->only(['store', 'import']);
+        $this->middleware(['permission:transaction:edit'])->only(['update', 'bulkChangeState']);
         $this->middleware(['permission:transaction:delete'])->only(['destroy', 'bulkDelete']);
 
         $this->unitTransactionItemDetailTable = [
             'id',
             'uuid',
             'unit_transaction_item_id',
+            'warehouse_sub_block_id',
             'color',
             'machine_number',
             'chassis_number',
             'in_stock',
             'is_forecast',
             'status',
+            'stock_state',
             'created_at',
         ];
     }
@@ -48,7 +50,7 @@ class UnitTransactionItemDetailController extends Controller
             $query = UnitTransactionItemDetail::query();
 
             $query->select($this->unitTransactionItemDetailTable)
-                ->with(['unitTransactionItem:id,uuid,price']);
+                ->with(['unitTransactionItem:id,uuid,price', 'warehouseSubBlock:id,uuid,name']);
 
             if ($request->filled('search')) {
                 $search = $request->search;
@@ -258,14 +260,20 @@ class UnitTransactionItemDetailController extends Controller
 
     public function bulkDelete(Request $request)
     {
+        if (is_string($request->unit_transaction_item_details_ids)) {
+            $request->merge([
+                'unit_transaction_item_details_ids' => json_decode($request->unit_transaction_item_details_ids, true),
+            ]);
+        }
+
         $request->validate([
             'unit_transaction_item_id' => 'required|integer|exists:unit_transaction_items,id',
-            'unit_transaction_item_details_id' => 'required|array',
-            'unit_transaction_item_details_id.*' => 'required|integer|exists:unit_transaction_item_details,id',
+            'unit_transaction_item_details_ids' => 'required|array',
+            'unit_transaction_item_details_ids.*' => 'required|integer|exists:unit_transaction_item_details,id',
         ]);
 
         $unitTransactionItemId = $request->unit_transaction_item_id;
-        $unitTransactionItemDetailsId = $request->unit_transaction_item_details_id;
+        $unitTransactionItemDetailsId = $request->unit_transaction_item_details_ids;
 
         try {
             $unitItemTransaction = UnitTransactionItem::findOrFail($unitTransactionItemId);
@@ -299,23 +307,42 @@ class UnitTransactionItemDetailController extends Controller
 
     public function bulkChangeState(Request $request)
     {
+        if (is_string($request->unit_transaction_item_details_ids)) {
+            $request->merge([
+                'unit_transaction_item_details_ids' => json_decode($request->unit_transaction_item_details_ids, true),
+            ]);
+        }
+
         $request->validate([
-            'unit_transaction_item_details_id' => 'required|array',
-            'unit_transaction_item_details_id.*' => 'required|integer|exists:unit_transaction_item_details,id',
-            'stock_state' => 'required|string|in:draft,cancel,prepare,purchase_order,in_transit,receipt',
+            'unit_transaction_item_details_ids' => 'required|array',
+            'unit_transaction_item_details_ids.*' => 'required|integer|exists:unit_transaction_item_details,id',
+            'stock_state' => 'sometimes|nullable|string|in:draft,cancel,prepare,purchase_order,in_transit,receipt',
+            'warehouse_sub_block_id' => 'sometimes|nullable|integer|exists:warehouse_sub_blocks,id',
         ]);
 
-        $unitTransactionItemDetailsId = $request->unit_transaction_item_details_id;
-        $stockState = $request->stock_state;
+        $unitTransactionItemDetailsId = $request->unit_transaction_item_details_ids;
+
+        $updateData = [];
+        if ($request->has('stock_state')) {
+            $updateData['stock_state'] = $request->stock_state;
+
+            if ($request->stock_state == 'receipt') {
+                $updateData['is_forecast'] = false;
+            } 
+        }
+        if ($request->has('warehouse_sub_block_id')) {
+            $updateData['warehouse_sub_block_id'] = $request->warehouse_sub_block_id;
+        }
 
         try {
-            DB::transaction(function () use ($unitTransactionItemDetailsId, $stockState) {
-                UnitTransactionItemDetail::whereIn('id', $unitTransactionItemDetailsId)->update([
-                    'stock_state' => $stockState,
-                ]);
-            });
+            if (!empty($updateData)) {
+                DB::transaction(function () use ($unitTransactionItemDetailsId, $updateData) {
+                    UnitTransactionItemDetail::whereIn('id', $unitTransactionItemDetailsId)->update($updateData);
+                });
+            }
 
-            return $this->responseSuccess([], 'Unit Transaction Item Details successfully Changed State in bulk', 200);
+            $retrievedUnitTransactionItemDetails = UnitTransactionItemDetail::whereIn('id', $unitTransactionItemDetailsId)->get();
+            return $this->responseSuccess($retrievedUnitTransactionItemDetails, 'Unit Transaction Item Details successfully Changed State in bulk', 200);
         } catch (ModelNotFoundException $err) {
             $model = class_basename($err->getModel() ?: 'Data');
             $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));

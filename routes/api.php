@@ -260,6 +260,9 @@ Route::group(
 
             // Unit Transaction API
             Route::group(['prefix' => 'unit-transaction', 'as' => 'unit-transaction.'], function () {
+                // Unit Transaction Item Details Bulk Delete
+                Route::delete('unit-transaction-item-detail/bulk-delete', [UnitTransactionItemDetailController::class, 'bulkDelete'])->name('unit-transaction-item-details-bulk-delete');
+                Route::put('unit-transaction-item-detail/update-state', [UnitTransactionItemDetailController::class, 'bulkChangeState'])->name('unit-transaction-item-details-bulk-change-state');
                 Route::post('unit-transaction-item-detail/{unit_transaction_item_id}/import', [UnitTransactionItemDetailController::class, 'import']);
 
                 // Search Unit Transaction Item Details Data
@@ -283,10 +286,6 @@ Route::group(
 
                 // Get Item Transaction Details data
                 Route::get('unit-transaction/{id}/get-item-details', [UnitTransactionController::class, 'getUnitTransactinItemDetailsData'])->name('get-item-transaction-data');
-
-                // Unit Transaction Item Details Bulk Delete
-                Route::delete('unit-transaction-item-detail/bulk-delete', [UnitTransactionItemDetailController::class, 'bulkDelete'])->name('unit-transation-item-detials-bulk-delete');
-                Route::put('unit-transaction-item-details/update-state', [UnitTransactionItemDetailController::class, 'bulkChangeState'])->name('unit-transation-item-detials-bulk-change-state');
 
                 Route::post('unit-transaction/{id}/transaction-adjustment', [UnitTransactionController::class, 'storeTransactionAdjustment']);
                 Route::apiResource('unit-transaction', UnitTransactionController::class);

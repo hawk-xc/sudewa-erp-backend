@@ -55,7 +55,14 @@ class WarehouseSubBlockController extends Controller
 
             foreach ($this->warehouseSubBlockTable as $field) {
                 if ($request->filled($field)) {
-                    $query->where($field, $request->$field);
+
+                    $value = $request->get($field);
+
+                    if (in_array($field, ['is_active', 'is_default'])) {
+                        $value = filter_var($value, FILTER_VALIDATE_BOOLEAN);
+                    }
+
+                    $query->where($field, $value);
                 }
             }
 
