@@ -328,7 +328,8 @@ class UnitTransactionItemDetailController extends Controller
 
             if ($request->stock_state == 'receipt') {
                 $updateData['is_forecast'] = false;
-            } 
+                $updateData['in_stock'] = true;
+            }
         }
         if ($request->has('warehouse_sub_block_id')) {
             $updateData['warehouse_sub_block_id'] = $request->warehouse_sub_block_id;

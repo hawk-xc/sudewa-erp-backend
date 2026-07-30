@@ -88,11 +88,6 @@ class UnitTransactionItemDetail extends Model
 
     public function dispatchStock(?int $activityId = null)
     {
-        $this->update([
-            'is_forecast' => false,
-            'in_stock' => false,
-        ]);
-
         $unitTransaction = $this->unitTransactionItem->unitTransaction;
 
         return WarehouseMovement::firstOrCreate(
@@ -161,7 +156,7 @@ class UnitTransactionItemDetail extends Model
 
     public function changeStatus(?string $stockState = null)
     {
-        if (!in_array($stockState, ['draft', 'cancel', 'prepare','purchase_order','in_transit','receipt'])) {
+        if (!in_array($stockState, ['draft', 'cancel', 'prepare', 'purchase_order', 'in_transit', 'receipt'])) {
             return false;
         }
 
