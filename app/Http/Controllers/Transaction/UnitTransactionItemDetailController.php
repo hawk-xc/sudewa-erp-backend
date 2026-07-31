@@ -318,6 +318,7 @@ class UnitTransactionItemDetailController extends Controller
             'unit_transaction_item_details_ids.*' => 'required|integer|exists:unit_transaction_item_details,id',
             'stock_state' => 'sometimes|nullable|string|in:draft,cancel,prepare,purchase_order,in_transit,receipt',
             'warehouse_sub_block_id' => 'sometimes|nullable|integer|exists:warehouse_sub_blocks,id',
+            'transaction_type' => 'nullable|in:purchase,sales'
         ]);
 
         $unitTransactionItemDetailsId = $request->unit_transaction_item_details_ids;
@@ -327,8 +328,13 @@ class UnitTransactionItemDetailController extends Controller
             $updateData['stock_state'] = $request->stock_state;
 
             if ($request->stock_state == 'receipt') {
+                if ($request->filled('transaction_type') && $request->transaction_type == 'sales') {
+                    $updateData['in_stock'] = false;
+                } else {
+                    $updateData['in_stock'] = true;
+                }
+                
                 $updateData['is_forecast'] = false;
-                $updateData['in_stock'] = true;
             }
         }
         if ($request->has('warehouse_sub_block_id')) {

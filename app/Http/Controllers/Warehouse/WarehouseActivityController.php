@@ -370,11 +370,12 @@ class WarehouseActivityController extends Controller
                 }
 
                 foreach ($details as $detail) {
-                    $transaction = $detail->unitTransactionItem->unitTransaction;
+                    // $transaction = $detail->unitTransactionItem->unitTransaction;
 
-                    $billing = $transaction->unitTransactionBilling;
+                    // $transaction->unitTransactionBilling;
 
-                    $detail->update(['in_stock' => false, 'is_forecast' => false]);
+                    // $detail->update(['in_stock' => false, 'is_forecast' => false]);
+                    $detail->update(['stock_state' => 'purchase_order']);
 
                     $detail->dispatchStock($activityId);
 

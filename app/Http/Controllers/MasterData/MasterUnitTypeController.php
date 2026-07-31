@@ -75,10 +75,13 @@ class MasterUnitTypeController extends Controller
                         ->where('unit_transaction_item_details.is_forecast', false)
                         ->where('unit_transaction_item_details.in_stock', true)
                         ->distinct()
-                        ->pluck('unit_transaction_items.unit_type_id')
-                        ->toArray();
+                        ->pluck('unit_transaction_items.unit_type_id');
 
-                    $query->whereIn('id', $availableUnitTypeIds);
+                    if ($request->filled('stock_state') && in_array($request->stock_state, ['draft','cancel','prepare','purchase_order','in_transit','receipt'], true)) {
+                        $availableUnitTypeIds->where('unit_transaction_item_details.stock_state', $request->stock_state);
+                    }
+
+                    $query->whereIn('id', $availableUnitTypeIds->toArray());
                 }
             }
 
@@ -139,7 +142,7 @@ class MasterUnitTypeController extends Controller
                 $unitType['available_stock'] = $unitType->getRealStock($warehouseId);
                 $unitType['forecasted_stock'] = $unitType->getForecastStock($warehouseId);
 
-                $detailsQuery = UnitTransactionItemDetail::query()
+                $detailsQuery = UnitTransactionItemDetail::with(['warehouseSubBlock:id,uuid,name'])
                     ->whereHas('unitTransactionItem', function ($q) use ($unitType) {
                         $q->where('unit_type_id', $unitType->id);
                     })

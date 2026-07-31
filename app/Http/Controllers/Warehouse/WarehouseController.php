@@ -356,6 +356,16 @@ class WarehouseController extends Controller
                     if ($request->filled('unit_transaction_id')) {
                         $q->where('id', $request->unit_transaction_id);
                     }
+
+                    if ($request->filled('specified')) {
+                        if (in_array($request->specified, ['purchase_outstanding', 'sales_outstanding'])) {
+                            if ($request->specified == 'purchase_outstanding') {
+                                $q->where('type', 'purchase');
+                            } else {
+                                $q->where('type', 'sales');
+                            }
+                        }
+                    }
                 })
                 ->with([
                     'unitTransactionItem:id,unit_transaction_id,unit_type_id,price,qty_total',
