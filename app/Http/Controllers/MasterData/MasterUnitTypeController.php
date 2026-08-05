@@ -35,7 +35,8 @@ class MasterUnitTypeController extends Controller
 
     public function __construct(AuthRepository $ar)
     {
-        $this->middleware(['permission:master-data:list'])->only(['index', 'show', 'export']);
+        $this->middleware(['permission:master-data:list|master-data:read'])->only('index');
+        $this->middleware(['permission:master-data:list|master-data:read'])->only(['show', 'export']);
         $this->middleware(['permission:master-data:create'])->only('store', 'import');
         $this->middleware(['permission:master-data:edit'])->only('update');
         $this->middleware(['permission:master-data:delete'])->only(['destroy']);
@@ -77,7 +78,7 @@ class MasterUnitTypeController extends Controller
                         ->distinct()
                         ->pluck('unit_transaction_items.unit_type_id');
 
-                    if ($request->filled('stock_state') && in_array($request->stock_state, ['draft','cancel','prepare','purchase_order','in_transit','receipt'], true)) {
+                    if ($request->filled('stock_state') && in_array($request->stock_state, ['draft', 'cancel', 'prepare', 'purchase_order', 'in_transit', 'receipt'], true)) {
                         $availableUnitTypeIds->where('unit_transaction_item_details.stock_state', $request->stock_state);
                     }
 
@@ -317,7 +318,7 @@ class MasterUnitTypeController extends Controller
         }
     }
 
-    public function destroy($id)
+    public function destroy(string $id)
     {
         try {
             $unitType = UnitType::withCount('unitTransactionItems')->findOrFail($id);

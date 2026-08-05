@@ -36,6 +36,8 @@ class PermissionController extends Controller
 
             $permissions->with('roles:id,name');
 
+            $permissions->whereNotIn('name', ['master-data:read', 'warehouse:read', 'warehouse:activity']);
+
             if ($request->has('name')) {
                 $permissions->where('name', 'like', '%' . $request->name . '%');
             }

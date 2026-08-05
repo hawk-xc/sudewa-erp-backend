@@ -19,6 +19,7 @@ class PermissionSeeder extends Seeder
             ['name' => 'master-data:edit', 'description' => 'Mengubah data master yang sudah ada'],
             ['name' => 'master-data:list', 'description' => 'Menampilkan daftar data master'],
             ['name' => 'master-data:delete', 'description' => 'Menghapus data master'],
+            ['name' => 'master-data:read', 'description' => 'Membaca List data master'],
 
             ['name' => 'transaction:create', 'description' => 'Membuat transaksi baru'],
             ['name' => 'transaction:list', 'description' => 'Menampilkan daftar transaksi'],
@@ -31,6 +32,8 @@ class PermissionSeeder extends Seeder
             ['name' => 'warehouse:view', 'description' => 'Melihat detail gudang'],
             ['name' => 'warehouse:edit', 'description' => 'Mengubah data gudang'],
             ['name' => 'warehouse:delete', 'description' => 'Menghapus data gudang'],
+            ['name' => 'warehouse:read', 'description' => 'Membaca list data gudang'],
+            ['name' => 'warehouse:activity', 'description' => 'Mengubah aktivitas data gudang'],
 
             ['name' => 'finance:create', 'description' => 'Membuat data keuangan baru'],
             ['name' => 'finance:list', 'description' => 'Menampilkan daftar keuangan'],

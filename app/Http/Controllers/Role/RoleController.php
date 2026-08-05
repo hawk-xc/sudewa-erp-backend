@@ -24,7 +24,7 @@ class RoleController extends Controller
     {
         $this->middleware(['permission:role:list'])->only(['index', 'show']);
         $this->middleware(['permission:role:create'])->only(['store']);
-        $this->middleware(['permission:role:update'])->only(['update']);
+        $this->middleware(['permission:role:edit'])->only(['update']);
         $this->middleware(['permission:role:delete'])->only(['destroy']);
         $this->middleware(['permission:role:assign-permission'])->only([
             'assignPermission',
@@ -85,6 +85,11 @@ class RoleController extends Controller
         if (!is_null($permissionNames)) {
             $role->syncPermissions($permissionNames);
         }
+
+        // master data default list
+        $role->givePermissionTo('master-data:read');
+        $role->givePermissionTo('warehouse:read');
+        $role->givePermissionTo('warehouse:activity');
 
         $role->load('permissions');
 
@@ -204,7 +209,7 @@ class RoleController extends Controller
             $permissionNames = $value;
         } else {
             $permissionNames = array_map('trim', explode(',', $value));
-            $permissionNames = array_filter($permissionNames, function($val) {
+            $permissionNames = array_filter($permissionNames, function ($val) {
                 return $val !== '';
             });
         }

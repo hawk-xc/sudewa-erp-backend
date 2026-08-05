@@ -34,7 +34,8 @@ class MasterDriverController extends Controller
 
     public function __construct(AuthRepository $ar)
     {
-        $this->middleware(['permission:master-data:list'])->only(['index', 'show', 'export']);
+        $this->middleware(['permission:master-data:list|master-data:read'])->only('index');
+        $this->middleware(['permission:master-data:list|master-data:read'])->only(['show', 'export']);
         $this->middleware(['permission:master-data:create'])->only('store', 'import');
         $this->middleware(['permission:master-data:edit'])->only('update');
         $this->middleware(['permission:master-data:delete'])->only(['destroy']);

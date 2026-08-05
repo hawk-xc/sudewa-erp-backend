@@ -33,7 +33,8 @@ class MasterDealerController extends Controller
 
     public function __construct(AuthRepository $ar)
     {
-        $this->middleware(['permission:master-data:list'])->only(['index', 'show', 'export']);
+        $this->middleware(['permission:master-data:list|master-data:read'])->only('index');
+        $this->middleware(['permission:master-data:list|master-data:read'])->only(['show', 'export']);
         $this->middleware(['permission:master-data:create'])->only('store', 'import');
         $this->middleware(['permission:master-data:edit'])->only('update');
         $this->middleware(['permission:master-data:delete'])->only(['destroy']);
@@ -71,7 +72,6 @@ class MasterDealerController extends Controller
                             ->orWhere('phone', 'like', "%$search%")
                             ->orWhere('npwp', 'like', "%$search%");
                     }
-
                 });
             }
 
@@ -101,7 +101,7 @@ class MasterDealerController extends Controller
             $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
             return $this->responseError(null, $friendlyModel . ' not found', 404);
         } catch (Exception $err) {
-            Log::error('Error While retrieved dealer data : '.$err->getMessage());
+            Log::error('Error While retrieved dealer data : ' . $err->getMessage());
 
             return $this->responseError($err->getMessage(), 'dealer list retrieved Failed', 500);
         }
@@ -125,7 +125,7 @@ class MasterDealerController extends Controller
             $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
             return $this->responseError(null, $friendlyModel . ' not found', 404);
         } catch (Exception $err) {
-            Log::error('Error While retrieved dealer data : '.$err->getMessage());
+            Log::error('Error While retrieved dealer data : ' . $err->getMessage());
 
             return $this->responseError('The requested resource could not be found.', 'Resource Not Found', 404);
         }
@@ -161,7 +161,7 @@ class MasterDealerController extends Controller
             $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
             return $this->responseError(null, $friendlyModel . ' not found', 404);
         } catch (Exception $err) {
-            Log::error('Error while trying create Person Data : '.$err->getMessage());
+            Log::error('Error while trying create Person Data : ' . $err->getMessage());
 
             return $this->responseError($err->getMessage(), 'Error while trying create Person Data', 500);
         }
@@ -183,7 +183,7 @@ class MasterDealerController extends Controller
         ]);
 
         try {
-            $data = array_filter($request->only(['company_id', 'pic_name', 'name', 'address', 'phone', 'npwp', 'map_link']), fn ($value) => ! is_null($value) && $value !== '');
+            $data = array_filter($request->only(['company_id', 'pic_name', 'name', 'address', 'phone', 'npwp', 'map_link']), fn($value) => ! is_null($value) && $value !== '');
 
             if (empty($data)) {
                 return $this->responseError(null, 'No data provided to update', 422);
@@ -203,7 +203,7 @@ class MasterDealerController extends Controller
             $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
             return $this->responseError(null, $friendlyModel . ' not found', 404);
         } catch (Exception $err) {
-            Log::error('Error while trying update Person data : '.$err->getMessage());
+            Log::error('Error while trying update Person data : ' . $err->getMessage());
 
             return $this->responseError($err->getMessage(), 'Error while trying update Person data', 500);
         }
@@ -224,7 +224,7 @@ class MasterDealerController extends Controller
             $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
             return $this->responseError(null, $friendlyModel . ' not found', 404);
         } catch (Exception $err) {
-            Log::error('Error while trying delete dealer data : '.$err->getMessage());
+            Log::error('Error while trying delete dealer data : ' . $err->getMessage());
 
             return $this->responseError($err->getMessage(), 'dealer Deleted Failed');
         }
@@ -238,7 +238,7 @@ class MasterDealerController extends Controller
         if ($id == null || !is_numeric($id)) {
             return $this->responseError(null, 'Company id cannot null', 404);
         }
-        
+
         $request->validate([
             'file' => 'required|file|mimes:xlsx,xls',
         ]);
@@ -269,14 +269,14 @@ class MasterDealerController extends Controller
             return Excel::download(
                 new PersonExport($request, $this->personTable, 'dealer'),
                 'wajira_dealer_data.xlsx'
-            );  
+            );
         } catch (ModelNotFoundException $err) {
             $model = class_basename($err->getModel() ?: 'Data');
             $friendlyModel = trim(preg_replace('/(?<!^)(?<![A-Z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', ' ', $model));
             return $this->responseError(null, $friendlyModel . ' not found', 404);
         } catch (Exception $err) {
-            Log::error('Error export dealer : '.$err->getMessage());
-    
+            Log::error('Error export dealer : ' . $err->getMessage());
+
             return $this->responseError(
                 $err->getMessage(),
                 'Dealer export failed',
