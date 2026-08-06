@@ -3,14 +3,15 @@
 namespace App\Http\Controllers\Warehouse;
 
 use App\Http\Controllers\Controller;
+use App\Models\GoodsTransactionDetail;
 use App\Models\Person;
 use App\Models\UnitTransactionItemDetail;
-use App\Models\GoodsTransactionDetail;
 use App\Models\WarehouseActivity;
 use App\Models\WarehouseMovement;
 use App\Repositories\AuthRepository;
 use App\Traits\ResponseTrait;
 use Exception;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -819,6 +820,36 @@ class WarehouseActivityController extends Controller
             ]);
 
             return $this->responseError(null, $e->getMessage(), 500);
+        }
+    }
+
+    public function updateState(Request $request, string $id)
+    {
+        $request->validate([
+            'state' => 'required|in:draft,process,done',
+            'state_note' => 'nullable|string'
+        ]);
+
+        $warehouseActivity = WarehouseActivity::findOrFail((int) $id);
+
+        try {
+            if ($request->filled('state') && in_array($request->state, ['draft', 'process', 'done'])) {
+                $warehouseActivity->update([
+                    'state' => (string) $request->state,
+                    'state_note' => $request->state_note ?? null
+                ]);
+
+                return $this->responseSuccess(
+                    $warehouseActivity,
+                    'Warehouse activity state updated successfully'
+                );
+            }
+
+            return $this->responseError('Invalid state', 'Failed update warehouse activity data state');
+        } catch (ModelNotFoundException $e) {
+            return $this->responseError('Warehouse activity not found', 'Failed update warehouse activity data state');
+        } catch (Exception $err) {
+            return $this->responseError($err->getMessage(), 'Failed update warehouse activity data state');
         }
     }
 }

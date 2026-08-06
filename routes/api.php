@@ -231,6 +231,7 @@ Route::group(
             // Receipt Stock
             Route::put('warehouse-activity/{id}/receipt-stock', [WarehouseActivityController::class, 'receiptStock']);
             Route::put('warehouse-activity/{id}/dispatch-stock', [WarehouseActivityController::class, 'dispatchStock']);
+            Route::put('warehouse-activity/{id}/update-state', [WarehouseActivityController::class, 'updateState']);
             Route::post('warehouse-activity/refund-stock', [WarehouseActivityController::class, 'refundStock']);
             Route::post('warehouse-activity/return-stock', [WarehouseActivityController::class, 'returnStock']);
 
