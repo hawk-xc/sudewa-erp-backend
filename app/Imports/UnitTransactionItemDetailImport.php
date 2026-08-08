@@ -22,7 +22,7 @@ class UnitTransactionItemDetailImport implements ToCollection, WithHeadingRow
     public function collection(Collection $rows)
     {
         $unitItemTransaction = UnitTransactionItem::findOrFail($this->unitTransactionItemId);
-        $quantityChecker = $unitItemTransaction->qty_total;
+        $quantityChecker = $unitItemTransaction->qty_total + 1;
         $currentCount = $rows->count();
 
         DB::transaction(function () use ($rows, $quantityChecker, $currentCount) {
@@ -44,7 +44,7 @@ class UnitTransactionItemDetailImport implements ToCollection, WithHeadingRow
 
                 if (in_array($rowData['nomor_mesin'], $machineNumbers)) {
                     throw new \Exception(
-                        "Duplicate Nomor Mesin '{$rowData['nomor_mesin']}' at row ".($index + 2)
+                        "Duplicate Nomor Mesin '{$rowData['nomor_mesin']}' at row " . ($index + 2)
                     );
                 }
                 $machineNumbers[] = $rowData['nomor_mesin'];
@@ -57,7 +57,7 @@ class UnitTransactionItemDetailImport implements ToCollection, WithHeadingRow
 
                 if ($validator->fails()) {
                     throw new \Exception(
-                        'Error on row '.($index + 2).': '.json_encode($validator->errors()->all())
+                        'Error on row ' . ($index + 2) . ': ' . json_encode($validator->errors()->all())
                     );
                 }
 
@@ -66,7 +66,7 @@ class UnitTransactionItemDetailImport implements ToCollection, WithHeadingRow
 
                 if ($exists) {
                     throw new \Exception(
-                        "Nomor Mesin '{$rowData['nomor_mesin']}' already exists at row ".($index + 2)
+                        "Nomor Mesin '{$rowData['nomor_mesin']}' already exists at row " . ($index + 2)
                     );
                 }
 
