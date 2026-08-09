@@ -34,6 +34,8 @@ class DatabaseSeeder extends Seeder
         $this->call(DefaultAccountSeeder::class);
         $this->call(VehicleFleetSeeder::class);
 
+        $this->call(WarehouseBlockSeeder::class);
+
         // Tax and Tax Version
         $this->call(TaxSeeder::class);
     }
