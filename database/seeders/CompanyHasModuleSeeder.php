@@ -14,51 +14,11 @@ class CompanyHasModuleSeeder extends Seeder
     {
         $companies = [
             [
-                'company' => 'wajira-morindo',
+                'company' => 'deraly-general',
                 'modules' => [
                     'master-data',
                     'transaction',
                     'warehouse',
-                    'finance',
-                    'report',
-                ],
-            ],
-            [
-                'company' => 'wajira-international',
-                'modules' => [
-                    'master-data',
-                    'transaction',
-                    'warehouse',
-                    'finance',
-                    'report',
-                ],
-            ],
-            [
-                'company' => 'wajira-transindo',
-                'modules' => [
-                    'warehouse',
-                    'master-data',
-                    'transaction',
-                    'finance',
-                    'report',
-                ],
-            ],
-            [
-                'company' => 'adhiyas-agradasta',
-                'modules' => [
-                    'master-data',
-                    'transaction',
-                    'warehouse',
-                    'finance',
-                    'report',
-                ],
-            ],
-            [
-                'company' => 'wajira-yanotama',
-                'modules' => [
-                    'warehouse',
-                    'master-data',
-                    'transaction',
                     'finance',
                     'report',
                 ],

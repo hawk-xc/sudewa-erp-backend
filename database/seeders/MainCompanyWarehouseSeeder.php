@@ -13,14 +13,14 @@ class MainCompanyWarehouseSeeder extends Seeder
      */
     public function run(): void
     {
-        $main_company = [1, 2, 3, 4, 5];
+        $main_company = [1];
 
         $companies = Company::whereIn('id', $main_company)->get();
 
         foreach ($companies as $company) {
             Warehouse::firstOrCreate([
                 'company_id' => (int) $company->id,
-                'name' => (string) $company->name.' Warehouse',
+                'name' => (string) $company->name . ' Warehouse',
                 'capacity' => (int) 10000,
                 'description' => null,
             ]);
